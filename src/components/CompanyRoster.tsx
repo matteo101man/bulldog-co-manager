@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCompanyAttendance, updateAttendance } from '../services/attendanceService';
@@ -229,6 +229,7 @@ function CadetRow({
         <select
           value={tuesday || ''}
           onChange={(e) => onStatusChange(cadet.id, 'tuesday', e.target.value as AttendanceStatus || null)}
+          aria-label={`${cadet.firstName} ${cadet.lastName} Tuesday attendance`}
           className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(tuesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
           <option value="">—</option>
@@ -239,6 +240,7 @@ function CadetRow({
         <select
           value={wednesday || ''}
           onChange={(e) => onStatusChange(cadet.id, 'wednesday', e.target.value as AttendanceStatus || null)}
+          aria-label={`${cadet.firstName} ${cadet.lastName} Wednesday attendance`}
           className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(wednesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
           <option value="">—</option>
@@ -249,6 +251,7 @@ function CadetRow({
         <select
           value={thursday || ''}
           onChange={(e) => onStatusChange(cadet.id, 'thursday', e.target.value as AttendanceStatus || null)}
+          aria-label={`${cadet.firstName} ${cadet.lastName} Thursday attendance`}
           className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(thursday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
           <option value="">—</option>
@@ -257,6 +260,199 @@ function CadetRow({
           <option value="unexcused">Unexcused</option>
         </select>
       </div>
+    </div>
+  );
+}
+
+interface SummaryStatsProps {
+  tuesdayStats: { present: number; excused: number; unexcused: number };
+  wednesdayStats: { present: number; excused: number; unexcused: number };
+  thursdayStats: { present: number; excused: number; unexcused: number };
+  weekStats: { present: number; excused: number; unexcused: number };
+  weekDates: { tuesday: string; wednesday: string; thursday: string };
+}
+
+function SummaryStats({ tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates }: SummaryStatsProps) {
+  return (
+    <div className="space-y-4">
+      {/* Daily Stats */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-gray-900">Daily Statistics</h3>
+        
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="font-semibold text-gray-900 mb-2">Tuesday</div>
+          <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.tuesday)}</div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <div className="text-lg font-bold text-present">{tuesdayStats.present}</div>
+              <div className="text-xs text-gray-600">Present</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-excused">{tuesdayStats.excused}</div>
+              <div className="text-xs text-gray-600">Excused</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-unexcused">{tuesdayStats.unexcused}</div>
+              <div className="text-xs text-gray-600">Unexcused</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="font-semibold text-gray-900 mb-2">Wednesday</div>
+          <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.wednesday)}</div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <div className="text-lg font-bold text-present">{wednesdayStats.present}</div>
+              <div className="text-xs text-gray-600">Present</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-excused">{wednesdayStats.excused}</div>
+              <div className="text-xs text-gray-600">Excused</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-unexcused">{wednesdayStats.unexcused}</div>
+              <div className="text-xs text-gray-600">Unexcused</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="font-semibold text-gray-900 mb-2">Thursday</div>
+          <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.thursday)}</div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <div className="text-lg font-bold text-present">{thursdayStats.present}</div>
+              <div className="text-xs text-gray-600">Present</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-excused">{thursdayStats.excused}</div>
+              <div className="text-xs text-gray-600">Excused</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-unexcused">{thursdayStats.unexcused}</div>
+              <div className="text-xs text-gray-600">Unexcused</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Stats */}
+      <div className="mt-6">
+        <h3 className="font-semibold text-gray-900 mb-3">Weekly Totals</h3>
+        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-present">{weekStats.present}</div>
+              <div className="text-sm text-gray-600">Present</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-excused">{weekStats.excused}</div>
+              <div className="text-sm text-gray-600">Excused</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-unexcused">{weekStats.unexcused}</div>
+              <div className="text-sm text-gray-600">Unexcused</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface StatusListProps {
+  cadetsByLevel: Map<string, Array<{ id: string; name: string; level: string }>>;
+  status: 'Excused' | 'Unexcused';
+  selectedDay: DayOfWeek | 'week';
+  onDayChange: (day: DayOfWeek | 'week') => void;
+}
+
+function StatusList({ cadetsByLevel, status, selectedDay, onDayChange }: StatusListProps) {
+  const levels = Array.from(cadetsByLevel.keys()).sort();
+  const totalCount = Array.from(cadetsByLevel.values()).reduce((sum, list) => sum + list.length, 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Day selector */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          View by Day/Week
+        </label>
+        <div className="grid grid-cols-4 gap-2">
+          <button
+            onClick={() => onDayChange('week')}
+            className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+              selectedDay === 'week'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300'
+            }`}
+          >
+            Week
+          </button>
+          <button
+            onClick={() => onDayChange('tuesday')}
+            className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+              selectedDay === 'tuesday'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300'
+            }`}
+          >
+            Tue
+          </button>
+          <button
+            onClick={() => onDayChange('wednesday')}
+            className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+              selectedDay === 'wednesday'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300'
+            }`}
+          >
+            Wed
+          </button>
+          <button
+            onClick={() => onDayChange('thursday')}
+            className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+              selectedDay === 'thursday'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300'
+            }`}
+          >
+            Thu
+          </button>
+        </div>
+      </div>
+
+      {/* Total count */}
+      <div className="bg-gray-50 rounded-lg p-4 text-center">
+        <div className="text-2xl font-bold text-gray-900">{totalCount}</div>
+        <div className="text-sm text-gray-600">Total {status}</div>
+      </div>
+
+      {/* Lists by level */}
+      {levels.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No {status.toLowerCase()} cadets found
+        </div>
+      ) : (
+        levels.map(level => {
+          const cadets = cadetsByLevel.get(level)!;
+          return (
+            <div key={level} className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="font-semibold text-gray-900 mb-2">
+                {level} ({cadets.length})
+              </div>
+              <div className="space-y-1">
+                {cadets.map(cadet => (
+                  <div key={cadet.id} className="text-sm text-gray-700 py-1">
+                    {cadet.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
