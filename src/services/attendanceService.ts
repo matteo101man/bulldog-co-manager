@@ -78,6 +78,9 @@ export async function getCompanyAttendance(
 ): Promise<Map<string, AttendanceRecord>> {
   const cadets = await getCadetsByCompany(company);
   const attendanceMap = new Map<string, AttendanceRecord>();
+  
+  // Create a set of cadet IDs for this company for quick lookup
+  const cadetIds = new Set(cadets.map(c => c.id));
 
   // Get all attendance records for this week
   const q = query(
@@ -88,9 +91,11 @@ export async function getCompanyAttendance(
   
   const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
   
-  // Create a map of cadetId -> attendance record
+  // Only include records for cadets in this company
   records.forEach(record => {
-    attendanceMap.set(record.cadetId, record);
+    if (cadetIds.has(record.cadetId)) {
+      attendanceMap.set(record.cadetId, record);
+    }
   });
 
   // Ensure all cadets have a record (even if null)
