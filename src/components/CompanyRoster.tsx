@@ -13,7 +13,9 @@ interface CompanyRosterProps {
 export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
+  const [localAttendanceMap, setLocalAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [statsViewMode, setStatsViewMode] = useState<'summary' | 'excused' | 'unexcused'>('summary');
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'week'>('week');
   const weekStart = getCurrentWeekStart();
@@ -32,6 +34,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
       ]);
       setCadets(cadetList);
       setAttendanceMap(attendance);
+      setLocalAttendanceMap(new Map(attendance)); // Initialize local map with server data
     } catch (error) {
       console.error('Error loading data:', error);
       // Show user-friendly error message
@@ -41,14 +44,84 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
     }
   }
 
-  async function handleStatusChange(cadetId: string, day: DayOfWeek, status: AttendanceStatus) {
-    await updateAttendance(cadetId, day, status, weekStart);
-    // Reload to refresh UI
-    await loadData();
+  function handleStatusChange(cadetId: string, day: DayOfWeek, status: AttendanceStatus) {
+    // Update local state immediately for real-time UI update
+    setLocalAttendanceMap(prev => {
+      const newMap = new Map(prev);
+      const existingRecord = newMap.get(cadetId) || {
+        cadetId,
+        tuesday: null,
+        wednesday: null,
+        thursday: null,
+        weekStartDate: weekStart
+      };
+      
+      const updatedRecord: AttendanceRecord = {
+        ...existingRecord,
+        [day]: status || null
+      };
+      
+      newMap.set(cadetId, updatedRecord);
+      return newMap;
+    });
   }
 
-  // Calculate stats
-  const records = Array.from(attendanceMap.values());
+  async function handleSave() {
+    setSaving(true);
+    try {
+      // Get all changes (compare localAttendanceMap with attendanceMap)
+      const changes: Array<{ cadetId: string; day: DayOfWeek; status: AttendanceStatus }> = [];
+      
+      localAttendanceMap.forEach((localRecord, cadetId) => {
+        const serverRecord = attendanceMap.get(cadetId);
+        
+        // Check each day for changes
+        (['tuesday', 'wednesday', 'thursday'] as DayOfWeek[]).forEach(day => {
+          const localStatus = localRecord[day];
+          const serverStatus = serverRecord?.[day] ?? null;
+          
+          if (localStatus !== serverStatus) {
+            changes.push({ cadetId, day, status: localStatus });
+          }
+        });
+      });
+
+      // Also check for records that exist in server but not in local (shouldn't happen, but be safe)
+      attendanceMap.forEach((serverRecord, cadetId) => {
+        if (!localAttendanceMap.has(cadetId)) {
+          // This shouldn't happen, but handle it
+          (['tuesday', 'wednesday', 'thursday'] as DayOfWeek[]).forEach(day => {
+            if (serverRecord[day] !== null) {
+              changes.push({ cadetId, day, status: null });
+            }
+          });
+        }
+      });
+
+      // Save all changes
+      await Promise.all(
+        changes.map(({ cadetId, day, status }) =>
+          updateAttendance(cadetId, day, status, weekStart)
+        )
+      );
+
+      // Update the server attendance map to match local
+      setAttendanceMap(new Map(localAttendanceMap));
+      
+      // Show success feedback
+      alert('Attendance saved successfully!');
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      alert(`Error saving attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Reload data to sync with server
+      await loadData();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Calculate stats using localAttendanceMap for real-time updates
+  const records = Array.from(localAttendanceMap.values());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
   const tuesdayStats = calculateDayStats(records, 'tuesday');
   const wednesdayStats = calculateDayStats(records, 'wednesday');
@@ -56,6 +129,10 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
   const weekStats = calculateWeekStats(records);
   const excusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'excused');
   const unexcusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'unexcused');
+  
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = JSON.stringify(Array.from(attendanceMap.entries()).sort()) !== 
+                            JSON.stringify(Array.from(localAttendanceMap.entries()).sort());
 
 
   if (loading) {
@@ -78,7 +155,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
             className="text-sm text-blue-600 font-medium touch-manipulation"
             style={{ minHeight: '44px', minWidth: '44px' }}
           >
-            Change
+            Home
           </button>
         </div>
       </header>
@@ -103,7 +180,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
         {/* Cadet list */}
         <div className="space-y-2">
           {cadets.map((cadet) => {
-            const record = attendanceMap.get(cadet.id);
+            const record = localAttendanceMap.get(cadet.id);
             return (
               <CadetRow
                 key={cadet.id}
@@ -118,6 +195,23 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
         {cadets.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             No cadets found for {company} Company
+          </div>
+        )}
+
+        {/* Save button */}
+        {cadets.length > 0 && (
+          <div className="mt-4 mb-4">
+            <button
+              onClick={handleSave}
+              disabled={!hasUnsavedChanges || saving}
+              className={`w-full py-3 px-4 rounded-lg font-semibold text-white touch-manipulation min-h-[44px] ${
+                hasUnsavedChanges && !saving
+                  ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                  : 'bg-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {saving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'All Changes Saved'}
+            </button>
           </div>
         )}
 
@@ -199,7 +293,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
 interface CadetRowProps {
   cadet: Cadet;
   attendance: AttendanceRecord | undefined;
-  onStatusChange: (cadetId: string, day: DayOfWeek, status: AttendanceStatus) => Promise<void>;
+  onStatusChange: (cadetId: string, day: DayOfWeek, status: AttendanceStatus) => void;
 }
 
 function CadetRow({ 
@@ -228,7 +322,10 @@ function CadetRow({
         </div>
         <select
           value={tuesday || ''}
-          onChange={(e) => onStatusChange(cadet.id, 'tuesday', e.target.value as AttendanceStatus || null)}
+          onChange={(e) => {
+            const value = e.target.value;
+            onStatusChange(cadet.id, 'tuesday', value === '' ? null : (value as AttendanceStatus));
+          }}
           aria-label={`${cadet.firstName} ${cadet.lastName} Tuesday attendance`}
           className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(tuesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
@@ -239,7 +336,10 @@ function CadetRow({
         </select>
         <select
           value={wednesday || ''}
-          onChange={(e) => onStatusChange(cadet.id, 'wednesday', e.target.value as AttendanceStatus || null)}
+          onChange={(e) => {
+            const value = e.target.value;
+            onStatusChange(cadet.id, 'wednesday', value === '' ? null : (value as AttendanceStatus));
+          }}
           aria-label={`${cadet.firstName} ${cadet.lastName} Wednesday attendance`}
           className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(wednesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
@@ -250,7 +350,10 @@ function CadetRow({
         </select>
         <select
           value={thursday || ''}
-          onChange={(e) => onStatusChange(cadet.id, 'thursday', e.target.value as AttendanceStatus || null)}
+          onChange={(e) => {
+            const value = e.target.value;
+            onStatusChange(cadet.id, 'thursday', value === '' ? null : (value as AttendanceStatus));
+          }}
           aria-label={`${cadet.firstName} ${cadet.lastName} Thursday attendance`}
           className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(thursday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
