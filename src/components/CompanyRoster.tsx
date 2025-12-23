@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCompanyAttendance, updateAttendance } from '../services/attendanceService';
@@ -16,7 +16,6 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
   const [localAttendanceMap, setLocalAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [statsViewMode, setStatsViewMode] = useState<'summary' | 'excused' | 'unexcused'>('summary');
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'week'>('week');
   const weekStart = getCurrentWeekStart();
   const weekDates = getWeekDates();
@@ -217,73 +216,19 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
 
         {/* Statistics Section */}
         {cadets.length > 0 && (
-          <div className="mt-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Statistics</h2>
-            
-            {/* Tabs */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="flex border-b border-gray-200">
-                <button
-                  onClick={() => setStatsViewMode('summary')}
-                  className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
-                    statsViewMode === 'summary'
-                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                      : 'text-gray-600'
-                  }`}
-                >
-                  Summary
-                </button>
-                <button
-                  onClick={() => setStatsViewMode('excused')}
-                  className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
-                    statsViewMode === 'excused'
-                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                      : 'text-gray-600'
-                  }`}
-                >
-                  Excused
-                </button>
-                <button
-                  onClick={() => setStatsViewMode('unexcused')}
-                  className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
-                    statsViewMode === 'unexcused'
-                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                      : 'text-gray-600'
-                  }`}
-                >
-                  Unexcused
-                </button>
-              </div>
-
-              <div className="p-4">
-                {statsViewMode === 'summary' && (
-                  <SummaryStats
-                    tuesdayStats={tuesdayStats}
-                    wednesdayStats={wednesdayStats}
-                    thursdayStats={thursdayStats}
-                    weekStats={weekStats}
-                    weekDates={weekDates}
-                  />
-                )}
-                {statsViewMode === 'excused' && (
-                  <StatusList
-                    cadetsByLevel={excusedByLevel}
-                    status="Excused"
-                    selectedDay={selectedDay}
-                    onDayChange={setSelectedDay}
-                  />
-                )}
-                {statsViewMode === 'unexcused' && (
-                  <StatusList
-                    cadetsByLevel={unexcusedByLevel}
-                    status="Unexcused"
-                    selectedDay={selectedDay}
-                    onDayChange={setSelectedDay}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+          <StatisticsSection
+            cadets={cadets}
+            records={records}
+            tuesdayStats={tuesdayStats}
+            wednesdayStats={wednesdayStats}
+            thursdayStats={thursdayStats}
+            weekStats={weekStats}
+            weekDates={weekDates}
+            excusedByLevel={excusedByLevel}
+            unexcusedByLevel={unexcusedByLevel}
+            selectedDay={selectedDay}
+            onDayChange={setSelectedDay}
+          />
         )}
       </main>
     </div>
@@ -367,7 +312,127 @@ function CadetRow({
   );
 }
 
+interface StatisticsSectionProps {
+  cadets: Cadet[];
+  records: AttendanceRecord[];
+  tuesdayStats: { present: number; excused: number; unexcused: number };
+  wednesdayStats: { present: number; excused: number; unexcused: number };
+  thursdayStats: { present: number; excused: number; unexcused: number };
+  weekStats: { present: number; excused: number; unexcused: number };
+  weekDates: { tuesday: string; wednesday: string; thursday: string };
+  excusedByLevel: Map<string, Array<{ id: string; name: string; level: string }>>;
+  unexcusedByLevel: Map<string, Array<{ id: string; name: string; level: string }>>;
+  selectedDay: DayOfWeek | 'week';
+  onDayChange: (day: DayOfWeek | 'week') => void;
+}
+
+function StatisticsSection({
+  cadets,
+  records,
+  tuesdayStats,
+  wednesdayStats,
+  thursdayStats,
+  weekStats,
+  weekDates,
+  excusedByLevel,
+  unexcusedByLevel,
+  selectedDay,
+  onDayChange
+}: StatisticsSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [statsViewMode, setStatsViewMode] = useState<'summary' | 'excused' | 'unexcused'>('summary');
+
+  return (
+    <div className="mt-6 space-y-4">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4 hover:bg-gray-50 touch-manipulation"
+      >
+        <h2 className="text-lg font-bold text-gray-900">Statistics</h2>
+        <svg
+          className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      {isExpanded && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setStatsViewMode('summary')}
+              className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+                statsViewMode === 'summary'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  : 'text-gray-600'
+              }`}
+            >
+              Summary
+            </button>
+            <button
+              onClick={() => setStatsViewMode('excused')}
+              className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+                statsViewMode === 'excused'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  : 'text-gray-600'
+              }`}
+            >
+              Excused
+            </button>
+            <button
+              onClick={() => setStatsViewMode('unexcused')}
+              className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+                statsViewMode === 'unexcused'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  : 'text-gray-600'
+              }`}
+            >
+              Unexcused
+            </button>
+          </div>
+
+          <div className="p-4">
+            {statsViewMode === 'summary' && (
+              <SummaryStats
+                cadets={cadets}
+                records={records}
+                tuesdayStats={tuesdayStats}
+                wednesdayStats={wednesdayStats}
+                thursdayStats={thursdayStats}
+                weekStats={weekStats}
+                weekDates={weekDates}
+              />
+            )}
+            {statsViewMode === 'excused' && (
+              <StatusList
+                cadetsByLevel={excusedByLevel}
+                status="Excused"
+                selectedDay={selectedDay}
+                onDayChange={onDayChange}
+              />
+            )}
+            {statsViewMode === 'unexcused' && (
+              <StatusList
+                cadetsByLevel={unexcusedByLevel}
+                status="Unexcused"
+                selectedDay={selectedDay}
+                onDayChange={onDayChange}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface SummaryStatsProps {
+  cadets: Cadet[];
+  records: AttendanceRecord[];
   tuesdayStats: { present: number; excused: number; unexcused: number };
   wednesdayStats: { present: number; excused: number; unexcused: number };
   thursdayStats: { present: number; excused: number; unexcused: number };
@@ -375,7 +440,35 @@ interface SummaryStatsProps {
   weekDates: { tuesday: string; wednesday: string; thursday: string };
 }
 
-function SummaryStats({ tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates }: SummaryStatsProps) {
+function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates }: SummaryStatsProps) {
+  const cadetsMap = new Map(cadets.map(c => [c.id, c]));
+
+  // Helper function to get cadet names for a specific day and status
+  const getCadetNames = (day: DayOfWeek, status: 'excused' | 'unexcused'): string[] => {
+    return records
+      .filter(record => record[day] === status)
+      .map(record => {
+        const cadet = cadetsMap.get(record.cadetId);
+        return cadet ? `${cadet.lastName}, ${cadet.firstName}` : '';
+      })
+      .filter(name => name !== '')
+      .sort();
+  };
+
+  // Helper function to get cadet names for week totals
+  const getWeekCadetNames = (status: 'excused' | 'unexcused'): string[] => {
+    const names = new Set<string>();
+    records.forEach(record => {
+      if (record.tuesday === status || record.wednesday === status || record.thursday === status) {
+        const cadet = cadetsMap.get(record.cadetId);
+        if (cadet) {
+          names.add(`${cadet.lastName}, ${cadet.firstName}`);
+        }
+      }
+    });
+    return Array.from(names).sort();
+  };
+
   return (
     <div className="space-y-4">
       {/* Daily Stats */}
@@ -390,14 +483,18 @@ function SummaryStats({ tuesdayStats, wednesdayStats, thursdayStats, weekStats, 
               <div className="text-lg font-bold text-present">{tuesdayStats.present}</div>
               <div className="text-xs text-gray-600">Present</div>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-excused">{tuesdayStats.excused}</div>
-              <div className="text-xs text-gray-600">Excused</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-unexcused">{tuesdayStats.unexcused}</div>
-              <div className="text-xs text-gray-600">Unexcused</div>
-            </div>
+            <StatWithTooltip
+              count={tuesdayStats.excused}
+              label="Excused"
+              cadetNames={getCadetNames('tuesday', 'excused')}
+              colorClass="text-excused"
+            />
+            <StatWithTooltip
+              count={tuesdayStats.unexcused}
+              label="Unexcused"
+              cadetNames={getCadetNames('tuesday', 'unexcused')}
+              colorClass="text-unexcused"
+            />
           </div>
         </div>
 
@@ -409,14 +506,18 @@ function SummaryStats({ tuesdayStats, wednesdayStats, thursdayStats, weekStats, 
               <div className="text-lg font-bold text-present">{wednesdayStats.present}</div>
               <div className="text-xs text-gray-600">Present</div>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-excused">{wednesdayStats.excused}</div>
-              <div className="text-xs text-gray-600">Excused</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-unexcused">{wednesdayStats.unexcused}</div>
-              <div className="text-xs text-gray-600">Unexcused</div>
-            </div>
+            <StatWithTooltip
+              count={wednesdayStats.excused}
+              label="Excused"
+              cadetNames={getCadetNames('wednesday', 'excused')}
+              colorClass="text-excused"
+            />
+            <StatWithTooltip
+              count={wednesdayStats.unexcused}
+              label="Unexcused"
+              cadetNames={getCadetNames('wednesday', 'unexcused')}
+              colorClass="text-unexcused"
+            />
           </div>
         </div>
 
@@ -428,14 +529,18 @@ function SummaryStats({ tuesdayStats, wednesdayStats, thursdayStats, weekStats, 
               <div className="text-lg font-bold text-present">{thursdayStats.present}</div>
               <div className="text-xs text-gray-600">Present</div>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-excused">{thursdayStats.excused}</div>
-              <div className="text-xs text-gray-600">Excused</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-unexcused">{thursdayStats.unexcused}</div>
-              <div className="text-xs text-gray-600">Unexcused</div>
-            </div>
+            <StatWithTooltip
+              count={thursdayStats.excused}
+              label="Excused"
+              cadetNames={getCadetNames('thursday', 'excused')}
+              colorClass="text-excused"
+            />
+            <StatWithTooltip
+              count={thursdayStats.unexcused}
+              label="Unexcused"
+              cadetNames={getCadetNames('thursday', 'unexcused')}
+              colorClass="text-unexcused"
+            />
           </div>
         </div>
       </div>
@@ -449,17 +554,97 @@ function SummaryStats({ tuesdayStats, wednesdayStats, thursdayStats, weekStats, 
               <div className="text-2xl font-bold text-present">{weekStats.present}</div>
               <div className="text-sm text-gray-600">Present</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-excused">{weekStats.excused}</div>
-              <div className="text-sm text-gray-600">Excused</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-unexcused">{weekStats.unexcused}</div>
-              <div className="text-sm text-gray-600">Unexcused</div>
-            </div>
+            <StatWithTooltip
+              count={weekStats.excused}
+              label="Excused"
+              cadetNames={getWeekCadetNames('excused')}
+              colorClass="text-excused"
+              size="large"
+            />
+            <StatWithTooltip
+              count={weekStats.unexcused}
+              label="Unexcused"
+              cadetNames={getWeekCadetNames('unexcused')}
+              colorClass="text-unexcused"
+              size="large"
+            />
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface StatWithTooltipProps {
+  count: number;
+  label: string;
+  cadetNames: string[];
+  colorClass: string;
+  size?: 'normal' | 'large';
+}
+
+function StatWithTooltip({ count, label, cadetNames, colorClass, size = 'normal' }: StatWithTooltipProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    }
+
+    if (showTooltip) {
+      // Use a small delay to avoid immediate closure on click
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
+    }
+  }, [showTooltip]);
+
+  if (count === 0) {
+    return (
+      <div className="text-center">
+        <div className={size === 'large' ? 'text-2xl font-bold text-gray-400' : `text-lg font-bold ${colorClass}`}>
+          {count}
+        </div>
+        <div className={size === 'large' ? 'text-sm text-gray-600' : 'text-xs text-gray-600'}>{label}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center relative" ref={tooltipRef}>
+      <div
+        className={`${size === 'large' ? 'text-2xl' : 'text-lg'} font-bold ${colorClass} cursor-pointer touch-manipulation`}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onClick={() => setShowTooltip(!showTooltip)}
+      >
+        {count}
+      </div>
+      <div className={size === 'large' ? 'text-sm text-gray-600' : 'text-xs text-gray-600'}>{label}</div>
+      {showTooltip && cadetNames.length > 0 && (
+        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
+          <div className="font-semibold mb-2 text-white">{label} Cadets:</div>
+          <div className="space-y-1">
+            {cadetNames.map((name, index) => (
+              <div key={index} className="text-white/90">
+                {name}
+              </div>
+            ))}
+          </div>
+          {/* Arrow pointing down */}
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+        </div>
+      )}
     </div>
   );
 }
