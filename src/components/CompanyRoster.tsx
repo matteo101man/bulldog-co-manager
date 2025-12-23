@@ -3,7 +3,7 @@ import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord } from '.
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCompanyAttendance, updateAttendance } from '../services/attendanceService';
 import { getCurrentWeekStart, getWeekDates, formatDateWithDay } from '../utils/dates';
-import StatsPanel from './StatsPanel';
+import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from '../utils/stats';
 
 interface CompanyRosterProps {
   company: Company;
@@ -14,7 +14,8 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [showStats, setShowStats] = useState(false);
+  const [statsViewMode, setStatsViewMode] = useState<'summary' | 'excused' | 'unexcused'>('summary');
+  const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'week'>('week');
   const weekStart = getCurrentWeekStart();
   const weekDates = getWeekDates();
 
@@ -40,40 +41,22 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
     }
   }
 
-  async function handleStatusClick(cadetId: string, day: DayOfWeek) {
-    // Cycle through: null -> present -> excused -> unexcused -> null
-    const record = attendanceMap.get(cadetId);
-    const currentStatus = record?.[day] ?? null;
-
-    let nextStatus: AttendanceStatus;
-    if (currentStatus === null) {
-      nextStatus = 'present';
-    } else if (currentStatus === 'present') {
-      nextStatus = 'excused';
-    } else if (currentStatus === 'excused') {
-      nextStatus = 'unexcused';
-    } else {
-      nextStatus = null;
-    }
-
-    await updateAttendance(cadetId, day, nextStatus, weekStart);
+  async function handleStatusChange(cadetId: string, day: DayOfWeek, status: AttendanceStatus) {
+    await updateAttendance(cadetId, day, status, weekStart);
     // Reload to refresh UI
     await loadData();
   }
 
-  function getStatusColor(status: AttendanceStatus): string {
-    if (status === 'present') return 'bg-present';
-    if (status === 'excused') return 'bg-excused';
-    if (status === 'unexcused') return 'bg-unexcused';
-    return 'bg-gray-200';
-  }
+  // Calculate stats
+  const records = Array.from(attendanceMap.values());
+  const cadetsMap = new Map(cadets.map(c => [c.id, c]));
+  const tuesdayStats = calculateDayStats(records, 'tuesday');
+  const wednesdayStats = calculateDayStats(records, 'wednesday');
+  const thursdayStats = calculateDayStats(records, 'thursday');
+  const weekStats = calculateWeekStats(records);
+  const excusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'excused');
+  const unexcusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'unexcused');
 
-  function getStatusText(status: AttendanceStatus): string {
-    if (status === 'present') return 'P';
-    if (status === 'excused') return 'E';
-    if (status === 'unexcused') return 'U';
-    return '';
-  }
 
   if (loading) {
     return (
@@ -90,22 +73,13 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
           <h1 className="text-xl font-bold text-gray-900">
             {company} {company !== 'Master' && 'Company'}
           </h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowStats(true)}
-              className="text-sm text-blue-600 font-medium touch-manipulation"
-              style={{ minHeight: '44px', minWidth: '44px' }}
-            >
-              Stats
-            </button>
-            <button
-              onClick={onBack}
-              className="text-sm text-blue-600 font-medium touch-manipulation"
-              style={{ minHeight: '44px', minWidth: '44px' }}
-            >
-              Change
-            </button>
-          </div>
+          <button
+            onClick={onBack}
+            className="text-sm text-blue-600 font-medium touch-manipulation"
+            style={{ minHeight: '44px', minWidth: '44px' }}
+          >
+            Change
+          </button>
         </div>
       </header>
 
@@ -135,9 +109,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
                 key={cadet.id}
                 cadet={cadet}
                 attendance={record}
-                onStatusClick={handleStatusClick}
-                getStatusColor={getStatusColor}
-                getStatusText={getStatusText}
+                onStatusChange={handleStatusChange}
               />
             );
           })}
@@ -148,17 +120,78 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
             No cadets found for {company} Company
           </div>
         )}
-      </main>
 
-      {showStats && (
-        <StatsPanel
-          attendanceMap={attendanceMap}
-          cadets={cadets}
-          weekDates={weekDates}
-          company={company}
-          onClose={() => setShowStats(false)}
-        />
-      )}
+        {/* Statistics Section */}
+        {cadets.length > 0 && (
+          <div className="mt-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Statistics</h2>
+            
+            {/* Tabs */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="flex border-b border-gray-200">
+                <button
+                  onClick={() => setStatsViewMode('summary')}
+                  className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+                    statsViewMode === 'summary'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  Summary
+                </button>
+                <button
+                  onClick={() => setStatsViewMode('excused')}
+                  className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+                    statsViewMode === 'excused'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  Excused
+                </button>
+                <button
+                  onClick={() => setStatsViewMode('unexcused')}
+                  className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+                    statsViewMode === 'unexcused'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  Unexcused
+                </button>
+              </div>
+
+              <div className="p-4">
+                {statsViewMode === 'summary' && (
+                  <SummaryStats
+                    tuesdayStats={tuesdayStats}
+                    wednesdayStats={wednesdayStats}
+                    thursdayStats={thursdayStats}
+                    weekStats={weekStats}
+                    weekDates={weekDates}
+                  />
+                )}
+                {statsViewMode === 'excused' && (
+                  <StatusList
+                    cadetsByLevel={excusedByLevel}
+                    status="Excused"
+                    selectedDay={selectedDay}
+                    onDayChange={setSelectedDay}
+                  />
+                )}
+                {statsViewMode === 'unexcused' && (
+                  <StatusList
+                    cadetsByLevel={unexcusedByLevel}
+                    status="Unexcused"
+                    selectedDay={selectedDay}
+                    onDayChange={setSelectedDay}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
@@ -166,21 +199,24 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
 interface CadetRowProps {
   cadet: Cadet;
   attendance: AttendanceRecord | undefined;
-  onStatusClick: (cadetId: string, day: DayOfWeek) => Promise<void>;
-  getStatusColor: (status: AttendanceStatus) => string;
-  getStatusText: (status: AttendanceStatus) => string;
+  onStatusChange: (cadetId: string, day: DayOfWeek, status: AttendanceStatus) => Promise<void>;
 }
 
 function CadetRow({ 
   cadet, 
   attendance,
-  onStatusClick,
-  getStatusColor,
-  getStatusText
+  onStatusChange
 }: CadetRowProps) {
   const tuesday = attendance?.tuesday ?? null;
   const wednesday = attendance?.wednesday ?? null;
   const thursday = attendance?.thursday ?? null;
+
+  function getStatusColor(status: AttendanceStatus): string {
+    if (status === 'present') return 'border-present text-present';
+    if (status === 'excused') return 'border-excused text-excused';
+    if (status === 'unexcused') return 'border-unexcused text-unexcused';
+    return 'border-gray-300 text-gray-600';
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -190,24 +226,36 @@ function CadetRow({
             {cadet.lastName}, {cadet.firstName}
           </span>
         </div>
-        <button
-          onClick={() => onStatusClick(cadet.id, 'tuesday')}
-          className={`${getStatusColor(tuesday)} rounded-md p-2 text-white font-semibold text-sm touch-manipulation min-h-[44px] flex items-center justify-center transition-opacity active:opacity-70`}
+        <select
+          value={tuesday || ''}
+          onChange={(e) => onStatusChange(cadet.id, 'tuesday', e.target.value as AttendanceStatus || null)}
+          className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(tuesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
-          {getStatusText(tuesday) || '—'}
-        </button>
-        <button
-          onClick={() => onStatusClick(cadet.id, 'wednesday')}
-          className={`${getStatusColor(wednesday)} rounded-md p-2 text-white font-semibold text-sm touch-manipulation min-h-[44px] flex items-center justify-center transition-opacity active:opacity-70`}
+          <option value="">—</option>
+          <option value="present">Present</option>
+          <option value="excused">Excused</option>
+          <option value="unexcused">Unexcused</option>
+        </select>
+        <select
+          value={wednesday || ''}
+          onChange={(e) => onStatusChange(cadet.id, 'wednesday', e.target.value as AttendanceStatus || null)}
+          className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(wednesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
-          {getStatusText(wednesday) || '—'}
-        </button>
-        <button
-          onClick={() => onStatusClick(cadet.id, 'thursday')}
-          className={`${getStatusColor(thursday)} rounded-md p-2 text-white font-semibold text-sm touch-manipulation min-h-[44px] flex items-center justify-center transition-opacity active:opacity-70`}
+          <option value="">—</option>
+          <option value="present">Present</option>
+          <option value="excused">Excused</option>
+          <option value="unexcused">Unexcused</option>
+        </select>
+        <select
+          value={thursday || ''}
+          onChange={(e) => onStatusChange(cadet.id, 'thursday', e.target.value as AttendanceStatus || null)}
+          className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(thursday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
-          {getStatusText(thursday) || '—'}
-        </button>
+          <option value="">—</option>
+          <option value="present">Present</option>
+          <option value="excused">Excused</option>
+          <option value="unexcused">Unexcused</option>
+        </select>
       </div>
     </div>
   );
