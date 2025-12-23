@@ -2,41 +2,38 @@
 
 ROTC Attendance Tracking System - A mobile-first web app for tracking cadet attendance across companies.
 
+**Live Site:** https://matteo101man.github.io/bulldog-co-manager/
+
 ## Features
 
 - Company selection (Alpha, Bravo, Charlie, Ranger, Master)
 - Attendance tracking for Tuesday, Wednesday, Thursday
 - Status marking: Present (Green), Excused (Yellow), Unexcused (Red)
-- Statistics and reporting
+- Statistics and reporting by day and week
+- Filtered lists by Military Science Level
 - PWA support for iPhone home screen installation
 
-## Setup
+## Development
 
-1. Install dependencies:
 ```bash
+# Install dependencies
 npm install
-```
 
-2. Configure Firebase:
-   - Create a Firebase project at https://console.firebase.google.com
-   - Copy your Firebase config to `src/firebase/config.ts`
-   - Set up Firestore database
-
-3. Run development server:
-```bash
+# Run development server
 npm run dev
-```
 
-4. Build for production:
-```bash
+# Build for production
 npm run build
+
+# Import cadets to Firestore
+npm run import-cadets
 ```
 
-## GitHub Pages Deployment
+## Deployment
 
-1. Update `homepage` in `package.json` with your GitHub username/repo
-2. Update `base` in `vite.config.ts` to match your repo name
-3. Deploy:
+Deployment to GitHub Pages happens automatically on every push to `main` branch via GitHub Actions.
+
+Manual deployment (if needed):
 ```bash
 npm run deploy
 ```
@@ -45,14 +42,7 @@ npm run deploy
 
 - React 18 + TypeScript
 - Vite
-- Firebase (Firestore)
+- Firebase Firestore
 - Tailwind CSS
 - PWA Support
-
-## Mobile Optimization
-
-- iOS safe area support
-- Touch-optimized (44px minimum targets)
-- Prevents double-tap zoom
-- Standalone PWA mode
 
