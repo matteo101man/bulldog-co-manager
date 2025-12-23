@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/bulldog-co-manager/sw.js', { scope: '/bulldog-co-manager/' })})}
