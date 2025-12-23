@@ -776,7 +776,7 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
               colorClass="text-unexcused"
             />
           </div>
-          {company !== 'Master' && companyStats.size > 0 && (
+          {company === 'Master' && companyStats.size > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-200">
               <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
               <div className="space-y-2">
