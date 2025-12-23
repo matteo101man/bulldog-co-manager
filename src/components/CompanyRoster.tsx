@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Cadet, Company, AttendanceStatus, DayOfWeek } from '../types';
+import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCompanyAttendance, updateAttendance } from '../services/attendanceService';
 import { getCurrentWeekStart, getWeekDates, formatDateWithDay } from '../utils/dates';
+import StatsPanel from './StatsPanel';
 
 interface CompanyRosterProps {
   company: Company;
@@ -13,6 +14,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [showStats, setShowStats] = useState(false);
   const weekStart = getCurrentWeekStart();
   const weekDates = getWeekDates();
 
@@ -86,13 +88,22 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
           <h1 className="text-xl font-bold text-gray-900">
             {company} {company !== 'Master' && 'Company'}
           </h1>
-          <button
-            onClick={onBack}
-            className="text-sm text-blue-600 font-medium touch-manipulation"
-            style={{ minHeight: '44px', minWidth: '44px' }}
-          >
-            Change
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowStats(true)}
+              className="text-sm text-blue-600 font-medium touch-manipulation"
+              style={{ minHeight: '44px', minWidth: '44px' }}
+            >
+              Stats
+            </button>
+            <button
+              onClick={onBack}
+              className="text-sm text-blue-600 font-medium touch-manipulation"
+              style={{ minHeight: '44px', minWidth: '44px' }}
+            >
+              Change
+            </button>
+          </div>
         </div>
       </header>
 
@@ -136,6 +147,16 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
           </div>
         )}
       </main>
+
+      {showStats && (
+        <StatsPanel
+          attendanceMap={attendanceMap}
+          cadets={cadets}
+          weekDates={weekDates}
+          company={company}
+          onClose={() => setShowStats(false)}
+        />
+      )}
     </div>
   );
 }
