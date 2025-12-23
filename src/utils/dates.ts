@@ -75,6 +75,49 @@ export function formatDate(dateString: string): string {
 }
 
 /**
+ * Get week start date (Monday) for a given week start date, offset by weeks
+ * @param weekStartDate - Current week start date (YYYY-MM-DD)
+ * @param weeksOffset - Number of weeks to offset (negative for past, positive for future)
+ * @returns Week start date string (YYYY-MM-DD)
+ */
+export function getWeekStartByOffset(weekStartDate: string, weeksOffset: number): string {
+  const [year, month, day] = weekStartDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + (weeksOffset * 7));
+  
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Get week dates for a specific week start date
+ * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format
+ */
+export function getWeekDatesForWeek(weekStartDate: string): { tuesday: string; wednesday: string; thursday: string } {
+  const [year, month, day] = weekStartDate.split('-').map(Number);
+  
+  // Tuesday = Monday + 1, Wednesday = Monday + 2, Thursday = Monday + 3
+  const tuesday = new Date(year, month - 1, day + 1);
+  const wednesday = new Date(year, month - 1, day + 2);
+  const thursday = new Date(year, month - 1, day + 3);
+
+  const formatDate = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  return {
+    tuesday: formatDate(tuesday),
+    wednesday: formatDate(wednesday),
+    thursday: formatDate(thursday),
+  };
+}
+
+/**
  * Format date with day name (e.g., "Tuesday, Jan 15")
  * Uses EST timezone for consistent display
  */

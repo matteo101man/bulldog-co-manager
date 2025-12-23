@@ -108,3 +108,60 @@ export async function getCompanyAttendance(
   return attendanceMap;
 }
 
+/**
+ * Get total unexcused absences for a cadet across all weeks
+ */
+export async function getTotalUnexcusedAbsences(cadetId: string): Promise<number> {
+  // Query all attendance records for this cadet
+  const q = query(
+    collection(db, ATTENDANCE_COLLECTION),
+    where('cadetId', '==', cadetId)
+  );
+  const querySnapshot = await getDocs(q);
+  
+  let totalUnexcused = 0;
+  querySnapshot.docs.forEach(doc => {
+    const record = doc.data() as AttendanceRecord;
+    if (record.tuesday === 'unexcused') totalUnexcused++;
+    if (record.wednesday === 'unexcused') totalUnexcused++;
+    if (record.thursday === 'unexcused') totalUnexcused++;
+  });
+  
+  return totalUnexcused;
+}
+
+/**
+ * Get total unexcused absences for multiple cadets
+ * Returns a map of cadetId -> total unexcused count
+ */
+export async function getTotalUnexcusedAbsencesForCadets(cadetIds: string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  
+  // Initialize all cadets with 0
+  cadetIds.forEach(id => result.set(id, 0));
+  
+  // Query all attendance records for these cadets
+  // Note: Firestore 'in' queries are limited to 10 items, so we'll need to batch
+  const batchSize = 10;
+  for (let i = 0; i < cadetIds.length; i += batchSize) {
+    const batch = cadetIds.slice(i, i + batchSize);
+    const q = query(
+      collection(db, ATTENDANCE_COLLECTION),
+      where('cadetId', 'in', batch)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    querySnapshot.docs.forEach(doc => {
+      const record = doc.data() as AttendanceRecord;
+      const currentCount = result.get(record.cadetId) || 0;
+      let unexcusedCount = 0;
+      if (record.tuesday === 'unexcused') unexcusedCount++;
+      if (record.wednesday === 'unexcused') unexcusedCount++;
+      if (record.thursday === 'unexcused') unexcusedCount++;
+      result.set(record.cadetId, currentCount + unexcusedCount);
+    });
+  }
+  
+  return result;
+}
+

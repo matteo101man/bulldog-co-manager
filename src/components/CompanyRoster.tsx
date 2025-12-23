@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCompanyAttendance, updateAttendance } from '../services/attendanceService';
-import { getCurrentWeekStart, getWeekDates, formatDateWithDay } from '../utils/dates';
+import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek } from '../utils/dates';
+import { getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
 import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from '../utils/stats';
 
 interface CompanyRosterProps {
@@ -17,19 +18,27 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'week'>('week');
-  const weekStart = getCurrentWeekStart();
-  const weekDates = getWeekDates();
+  const [currentWeekStart, setCurrentWeekStart] = useState<string>(getCurrentWeekStart());
+  const [unexcusedTotals, setUnexcusedTotals] = useState<Map<string, number>>(new Map());
+  const weekDates = getWeekDatesForWeek(currentWeekStart);
 
   useEffect(() => {
     loadData();
-  }, [company]);
+  }, [company, currentWeekStart]);
+
+  useEffect(() => {
+    // Load unexcused totals when cadets change
+    if (cadets.length > 0) {
+      loadUnexcusedTotals();
+    }
+  }, [cadets]);
 
   async function loadData() {
     setLoading(true);
     try {
       const [cadetList, attendance] = await Promise.all([
         getCadetsByCompany(company),
-        getCompanyAttendance(company, weekStart)
+        getCompanyAttendance(company, currentWeekStart)
       ]);
       setCadets(cadetList);
       setAttendanceMap(attendance);
@@ -40,6 +49,16 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
       alert(`Error loading data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check:\n1. Firestore is enabled in Firebase Console\n2. Internet connection is working\n3. Browser console for more details`);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadUnexcusedTotals() {
+    try {
+      const cadetIds = cadets.map(c => c.id);
+      const totals = await getTotalUnexcusedAbsencesForCadets(cadetIds);
+      setUnexcusedTotals(totals);
+    } catch (error) {
+      console.error('Error loading unexcused totals:', error);
     }
   }
 
@@ -57,7 +76,8 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
       
       const updatedRecord: AttendanceRecord = {
         ...existingRecord,
-        [day]: status || null
+        [day]: status || null,
+        weekStartDate: currentWeekStart
       };
       
       newMap.set(cadetId, updatedRecord);
@@ -100,12 +120,15 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
       // Save all changes
       await Promise.all(
         changes.map(({ cadetId, day, status }) =>
-          updateAttendance(cadetId, day, status, weekStart)
+          updateAttendance(cadetId, day, status, currentWeekStart)
         )
       );
 
       // Update the server attendance map to match local
       setAttendanceMap(new Map(localAttendanceMap));
+      
+      // Reload unexcused totals in case they changed
+      await loadUnexcusedTotals();
       
       // Show success feedback
       alert('Attendance saved successfully!');
@@ -228,6 +251,9 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
             unexcusedByLevel={unexcusedByLevel}
             selectedDay={selectedDay}
             onDayChange={setSelectedDay}
+            unexcusedTotals={unexcusedTotals}
+            currentWeekStart={currentWeekStart}
+            onWeekChange={setCurrentWeekStart}
           />
         )}
       </main>
@@ -324,6 +350,9 @@ interface StatisticsSectionProps {
   unexcusedByLevel: Map<string, Array<{ id: string; name: string; level: string }>>;
   selectedDay: DayOfWeek | 'week';
   onDayChange: (day: DayOfWeek | 'week') => void;
+  unexcusedTotals: Map<string, number>;
+  currentWeekStart: string;
+  onWeekChange: (weekStart: string) => void;
 }
 
 function StatisticsSection({
@@ -337,10 +366,30 @@ function StatisticsSection({
   excusedByLevel,
   unexcusedByLevel,
   selectedDay,
-  onDayChange
+  onDayChange,
+  unexcusedTotals,
+  currentWeekStart,
+  onWeekChange
 }: StatisticsSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [statsViewMode, setStatsViewMode] = useState<'summary' | 'excused' | 'unexcused'>('summary');
+  const currentWeek = getCurrentWeekStart();
+
+  function handlePreviousWeek() {
+    const previousWeek = getWeekStartByOffset(currentWeekStart, -1);
+    onWeekChange(previousWeek);
+  }
+
+  function handleNextWeek() {
+    const nextWeek = getWeekStartByOffset(currentWeekStart, 1);
+    onWeekChange(nextWeek);
+  }
+
+  function handleCurrentWeek() {
+    onWeekChange(currentWeek);
+  }
+
+  const isCurrentWeek = currentWeekStart === currentWeek;
 
   return (
     <div className="mt-6 space-y-4">
@@ -348,7 +397,7 @@ function StatisticsSection({
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4 hover:bg-gray-50 touch-manipulation"
       >
-        <h2 className="text-lg font-bold text-gray-900">Statistics</h2>
+        <h2 className="text-lg font-bold text-gray-900">Attendance Statistics</h2>
         <svg
           className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
@@ -360,8 +409,48 @@ function StatisticsSection({
       </button>
       
       {isExpanded && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {/* Tabs */}
+        <>
+          {/* Week Navigation */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handlePreviousWeek}
+                className="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-50 active:bg-gray-100 touch-manipulation transition-colors"
+                aria-label="Previous week"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <div className="flex-1 text-center px-4">
+                <div className="text-sm font-medium text-gray-900">
+                  {formatDateWithDay(weekDates.tuesday).split(',')[0]} - {formatDateWithDay(weekDates.thursday).split(',')[0]}
+                </div>
+                {!isCurrentWeek && (
+                  <button
+                    onClick={handleCurrentWeek}
+                    className="text-xs text-blue-600 hover:text-blue-700 mt-1 touch-manipulation"
+                  >
+                    Return to Current Week
+                  </button>
+                )}
+              </div>
+              
+              <button
+                onClick={handleNextWeek}
+                className="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-50 active:bg-gray-100 touch-manipulation transition-colors"
+                aria-label="Next week"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Tabs */}
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => setStatsViewMode('summary')}
@@ -405,6 +494,7 @@ function StatisticsSection({
                 thursdayStats={thursdayStats}
                 weekStats={weekStats}
                 weekDates={weekDates}
+                unexcusedTotals={unexcusedTotals}
               />
             )}
             {statsViewMode === 'excused' && (
@@ -425,6 +515,7 @@ function StatisticsSection({
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );
@@ -438,35 +529,52 @@ interface SummaryStatsProps {
   thursdayStats: { present: number; excused: number; unexcused: number };
   weekStats: { present: number; excused: number; unexcused: number };
   weekDates: { tuesday: string; wednesday: string; thursday: string };
+  unexcusedTotals: Map<string, number>;
 }
 
-function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates }: SummaryStatsProps) {
+function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates, unexcusedTotals }: SummaryStatsProps) {
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
 
   // Helper function to get cadet names for a specific day and status
-  const getCadetNames = (day: DayOfWeek, status: 'excused' | 'unexcused'): string[] => {
+  const getCadetNames = (day: DayOfWeek, status: 'excused' | 'unexcused'): Array<{ name: string; count?: number }> => {
     return records
       .filter(record => record[day] === status)
       .map(record => {
         const cadet = cadetsMap.get(record.cadetId);
-        return cadet ? `${cadet.lastName}, ${cadet.firstName}` : '';
+        if (!cadet) return null;
+        const name = `${cadet.lastName}, ${cadet.firstName}`;
+        // For unexcused, include total count
+        if (status === 'unexcused') {
+          const total = unexcusedTotals.get(record.cadetId) || 0;
+          return { name, count: total };
+        }
+        return { name };
       })
-      .filter(name => name !== '')
-      .sort();
+      .filter((item): item is { name: string; count?: number } => item !== null)
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
   // Helper function to get cadet names for week totals
-  const getWeekCadetNames = (status: 'excused' | 'unexcused'): string[] => {
-    const names = new Set<string>();
+  const getWeekCadetNames = (status: 'excused' | 'unexcused'): Array<{ name: string; count?: number }> => {
+    const nameMap = new Map<string, number>();
     records.forEach(record => {
       if (record.tuesday === status || record.wednesday === status || record.thursday === status) {
         const cadet = cadetsMap.get(record.cadetId);
         if (cadet) {
-          names.add(`${cadet.lastName}, ${cadet.firstName}`);
+          const name = `${cadet.lastName}, ${cadet.firstName}`;
+          // For unexcused, track total count
+          if (status === 'unexcused') {
+            const total = unexcusedTotals.get(record.cadetId) || 0;
+            nameMap.set(name, total);
+          } else {
+            nameMap.set(name, 0);
+          }
         }
       }
     });
-    return Array.from(names).sort();
+    return Array.from(nameMap.entries())
+      .map(([name, count]) => ({ name, count: status === 'unexcused' ? count : undefined }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
   return (
@@ -578,7 +686,7 @@ function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayS
 interface StatWithTooltipProps {
   count: number;
   label: string;
-  cadetNames: string[];
+  cadetNames: Array<{ name: string; count?: number }>;
   colorClass: string;
   size?: 'normal' | 'large';
 }
@@ -635,9 +743,9 @@ function StatWithTooltip({ count, label, cadetNames, colorClass, size = 'normal'
         <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
           <div className="font-semibold mb-2 text-white">{label} Cadets:</div>
           <div className="space-y-1">
-            {cadetNames.map((name, index) => (
+            {cadetNames.map((item, index) => (
               <div key={index} className="text-white/90">
-                {name}
+                {item.name}{item.count !== undefined ? ` (${item.count})` : ''}
               </div>
             ))}
           </div>
