@@ -75,6 +75,24 @@ export function formatDate(dateString: string): string {
 }
 
 /**
+ * Format date with ordinal suffix (e.g., "Dec 22nd")
+ */
+export function formatDateWithOrdinal(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+  
+  // Add ordinal suffix
+  const getOrdinal = (n: number): string => {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+  
+  return `${monthName} ${getOrdinal(day)}`;
+}
+
+/**
  * Get week start date (Monday) for a given week start date, offset by weeks
  * @param weekStartDate - Current week start date (YYYY-MM-DD)
  * @param weeksOffset - Number of weeks to offset (negative for past, positive for future)

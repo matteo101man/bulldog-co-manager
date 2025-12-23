@@ -5,7 +5,8 @@ import {
   setDoc,
   query,
   where,
-  getDocs
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { AttendanceRecord, AttendanceStatus, DayOfWeek, Company } from '../types';
@@ -163,5 +164,44 @@ export async function getTotalUnexcusedAbsencesForCadets(cadetIds: string[]): Pr
   }
   
   return result;
+}
+
+/**
+ * Get all attendance records for a specific week (for all companies)
+ */
+export async function getAllAttendanceForWeek(weekStartDate: string): Promise<Map<string, AttendanceRecord>> {
+  const attendanceMap = new Map<string, AttendanceRecord>();
+  
+  const q = query(
+    collection(db, ATTENDANCE_COLLECTION),
+    where('weekStartDate', '==', weekStartDate)
+  );
+  const querySnapshot = await getDocs(q);
+  
+  querySnapshot.docs.forEach(doc => {
+    const record = doc.data() as AttendanceRecord;
+    attendanceMap.set(record.cadetId, record);
+  });
+  
+  return attendanceMap;
+}
+
+/**
+ * Clear all attendance data (set all to null)
+ */
+export async function clearAllAttendance(): Promise<void> {
+  const querySnapshot = await getDocs(collection(db, ATTENDANCE_COLLECTION));
+  const batch = writeBatch(db);
+  
+  querySnapshot.docs.forEach(docSnap => {
+    const record = docSnap.data() as AttendanceRecord;
+    batch.update(docSnap.ref, {
+      tuesday: null,
+      wednesday: null,
+      thursday: null,
+    });
+  });
+  
+  await batch.commit();
 }
 

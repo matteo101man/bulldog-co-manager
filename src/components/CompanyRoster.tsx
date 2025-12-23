@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
-import { getCompanyAttendance, updateAttendance } from '../services/attendanceService';
-import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek } from '../utils/dates';
+import { getCompanyAttendance, updateAttendance, getAllAttendanceForWeek } from '../services/attendanceService';
+import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithOrdinal } from '../utils/dates';
 import { getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
 import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from '../utils/stats';
 
@@ -170,7 +170,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
         <div className="px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">
-            {company} {company !== 'Master' && 'Company'}
+            {company === 'Master' ? 'Master List' : `${company} Company`}
           </h1>
           <button
             onClick={onBack}
@@ -201,17 +201,60 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
 
         {/* Cadet list */}
         <div className="space-y-2">
-          {cadets.map((cadet) => {
-            const record = localAttendanceMap.get(cadet.id);
-            return (
-              <CadetRow
-                key={cadet.id}
-                cadet={cadet}
-                attendance={record}
-                onStatusChange={handleStatusChange}
-              />
-            );
-          })}
+          {company === 'Master' ? (
+            // Master List: Group by MS level
+            (() => {
+              const groupedByLevel = new Map<string, Cadet[]>();
+              cadets.forEach(cadet => {
+                const level = cadet.militaryScienceLevel;
+                if (!groupedByLevel.has(level)) {
+                  groupedByLevel.set(level, []);
+                }
+                groupedByLevel.get(level)!.push(cadet);
+              });
+              
+              // Sort levels (MS1, MS2, MS3, MS4)
+              const sortedLevels = Array.from(groupedByLevel.keys()).sort((a, b) => {
+                const aNum = parseInt(a.replace('MS', ''));
+                const bNum = parseInt(b.replace('MS', ''));
+                return aNum - bNum;
+              });
+              
+              return sortedLevels.map(level => (
+                <div key={level}>
+                  <div className="bg-gray-100 border-b-2 border-gray-300 px-4 py-2 mb-2 rounded-t-lg">
+                    <h3 className="font-bold text-gray-900 text-sm">{level}</h3>
+                  </div>
+                  <div className="space-y-2 mb-4">
+                    {groupedByLevel.get(level)!.map((cadet) => {
+                      const record = localAttendanceMap.get(cadet.id);
+                      return (
+                        <CadetRow
+                          key={cadet.id}
+                          cadet={cadet}
+                          attendance={record}
+                          onStatusChange={handleStatusChange}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()
+          ) : (
+            // Regular companies: Simple list
+            cadets.map((cadet) => {
+              const record = localAttendanceMap.get(cadet.id);
+              return (
+                <CadetRow
+                  key={cadet.id}
+                  cadet={cadet}
+                  attendance={record}
+                  onStatusChange={handleStatusChange}
+                />
+              );
+            })
+          )}
         </div>
 
         {cadets.length === 0 && (
@@ -237,9 +280,18 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
           </div>
         )}
 
+        {/* Week Navigation */}
+        {cadets.length > 0 && (
+          <WeekNavigation
+            currentWeekStart={currentWeekStart}
+            onWeekChange={setCurrentWeekStart}
+          />
+        )}
+
         {/* Statistics Section */}
         {cadets.length > 0 && (
           <StatisticsSection
+            company={company}
             cadets={cadets}
             records={records}
             tuesdayStats={tuesdayStats}
@@ -339,6 +391,7 @@ function CadetRow({
 }
 
 interface StatisticsSectionProps {
+  company: Company;
   cadets: Cadet[];
   records: AttendanceRecord[];
   tuesdayStats: { present: number; excused: number; unexcused: number };
@@ -356,6 +409,7 @@ interface StatisticsSectionProps {
 }
 
 function StatisticsSection({
+  company,
   cadets,
   records,
   tuesdayStats,
@@ -409,47 +463,7 @@ function StatisticsSection({
       </button>
       
       {isExpanded && (
-        <>
-          {/* Week Navigation */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={handlePreviousWeek}
-                className="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-50 active:bg-gray-100 touch-manipulation transition-colors"
-                aria-label="Previous week"
-              >
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              
-              <div className="flex-1 text-center px-4">
-                <div className="text-sm font-medium text-gray-900">
-                  {formatDateWithDay(weekDates.tuesday).split(',')[0]} - {formatDateWithDay(weekDates.thursday).split(',')[0]}
-                </div>
-                {!isCurrentWeek && (
-                  <button
-                    onClick={handleCurrentWeek}
-                    className="text-xs text-blue-600 hover:text-blue-700 mt-1 touch-manipulation"
-                  >
-                    Return to Current Week
-                  </button>
-                )}
-              </div>
-              
-              <button
-                onClick={handleNextWeek}
-                className="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-50 active:bg-gray-100 touch-manipulation transition-colors"
-                aria-label="Next week"
-              >
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {/* Tabs */}
           <div className="flex border-b border-gray-200">
             <button
@@ -487,6 +501,7 @@ function StatisticsSection({
           <div className="p-4">
             {statsViewMode === 'summary' && (
               <SummaryStats
+                company={company}
                 cadets={cadets}
                 records={records}
                 tuesdayStats={tuesdayStats}
@@ -495,6 +510,7 @@ function StatisticsSection({
                 weekStats={weekStats}
                 weekDates={weekDates}
                 unexcusedTotals={unexcusedTotals}
+                currentWeekStart={currentWeekStart}
               />
             )}
             {statsViewMode === 'excused' && (
@@ -515,13 +531,78 @@ function StatisticsSection({
             )}
           </div>
         </div>
-        </>
       )}
     </div>
   );
 }
 
+interface WeekNavigationProps {
+  currentWeekStart: string;
+  onWeekChange: (weekStart: string) => void;
+}
+
+function WeekNavigation({ currentWeekStart, onWeekChange }: WeekNavigationProps) {
+  const currentWeek = getCurrentWeekStart();
+
+  function handlePreviousWeek() {
+    const previousWeek = getWeekStartByOffset(currentWeekStart, -1);
+    onWeekChange(previousWeek);
+  }
+
+  function handleNextWeek() {
+    const nextWeek = getWeekStartByOffset(currentWeekStart, 1);
+    onWeekChange(nextWeek);
+  }
+
+  function handleCurrentWeek() {
+    onWeekChange(currentWeek);
+  }
+
+  const isCurrentWeek = currentWeekStart === currentWeek;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={handlePreviousWeek}
+          className="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-50 active:bg-gray-100 touch-manipulation transition-colors"
+          aria-label="Previous week"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        
+        <div className="flex-1 text-center px-4">
+          <div className="text-sm font-medium text-gray-900">
+            Week of {formatDateWithOrdinal(currentWeekStart)}
+          </div>
+          {!isCurrentWeek && (
+            <button
+              onClick={handleCurrentWeek}
+              className="text-xs text-blue-600 hover:text-blue-700 mt-1 touch-manipulation"
+            >
+              Return to Current Week
+            </button>
+          )}
+        </div>
+        
+        <button
+          onClick={handleNextWeek}
+          className="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-50 active:bg-gray-100 touch-manipulation transition-colors"
+          aria-label="Next week"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface SummaryStatsProps {
+  company: Company;
   cadets: Cadet[];
   records: AttendanceRecord[];
   tuesdayStats: { present: number; excused: number; unexcused: number };
@@ -530,10 +611,63 @@ interface SummaryStatsProps {
   weekStats: { present: number; excused: number; unexcused: number };
   weekDates: { tuesday: string; wednesday: string; thursday: string };
   unexcusedTotals: Map<string, number>;
+  currentWeekStart: string;
 }
 
-function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates, unexcusedTotals }: SummaryStatsProps) {
+function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates, unexcusedTotals, currentWeekStart }: SummaryStatsProps) {
+  const [companyStats, setCompanyStats] = useState<Map<Company, { tuesday: { present: number; excused: number; unexcused: number }; wednesday: { present: number; excused: number; unexcused: number }; thursday: { present: number; excused: number; unexcused: number } }>>(new Map());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
+
+  useEffect(() => {
+    if (company !== 'Master') {
+      loadCompanyStats();
+    }
+  }, [company, currentWeekStart]);
+
+  async function loadCompanyStats() {
+    try {
+      const allRecords = await getAllAttendanceForWeek(currentWeekStart);
+      const allCadets = await Promise.all([
+        getCadetsByCompany('Alpha'),
+        getCadetsByCompany('Bravo'),
+        getCadetsByCompany('Charlie'),
+        getCadetsByCompany('Ranger')
+      ]);
+      
+      const statsMap = new Map<Company, { tuesday: { present: number; excused: number; unexcused: number }; wednesday: { present: number; excused: number; unexcused: number }; thursday: { present: number; excused: number; unexcused: number } }>();
+      
+      (['Alpha', 'Bravo', 'Charlie', 'Ranger'] as Company[]).forEach((comp, idx) => {
+        const compCadets = allCadets[idx];
+        const compCadetIds = new Set(compCadets.map(c => c.id));
+        
+        const tuesday = { present: 0, excused: 0, unexcused: 0 };
+        const wednesday = { present: 0, excused: 0, unexcused: 0 };
+        const thursday = { present: 0, excused: 0, unexcused: 0 };
+        
+        allRecords.forEach((record, cadetId) => {
+          if (compCadetIds.has(cadetId)) {
+            if (record.tuesday === 'present') tuesday.present++;
+            else if (record.tuesday === 'excused') tuesday.excused++;
+            else if (record.tuesday === 'unexcused') tuesday.unexcused++;
+            
+            if (record.wednesday === 'present') wednesday.present++;
+            else if (record.wednesday === 'excused') wednesday.excused++;
+            else if (record.wednesday === 'unexcused') wednesday.unexcused++;
+            
+            if (record.thursday === 'present') thursday.present++;
+            else if (record.thursday === 'excused') thursday.excused++;
+            else if (record.thursday === 'unexcused') thursday.unexcused++;
+          }
+        });
+        
+        statsMap.set(comp, { tuesday, wednesday, thursday });
+      });
+      
+      setCompanyStats(statsMap);
+    } catch (error) {
+      console.error('Error loading company stats:', error);
+    }
+  }
 
   // Helper function to get cadet names for a specific day and status
   const getCadetNames = (day: DayOfWeek, status: 'excused' | 'unexcused'): Array<{ name: string; count?: number }> => {
@@ -586,7 +720,7 @@ function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayS
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="font-semibold text-gray-900 mb-2">Tuesday</div>
           <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.tuesday)}</div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 mb-3">
             <div className="text-center">
               <div className="text-lg font-bold text-present">{tuesdayStats.present}</div>
               <div className="text-xs text-gray-600">Present</div>
@@ -604,12 +738,27 @@ function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayS
               colorClass="text-unexcused"
             />
           </div>
+          {company !== 'Master' && companyStats.size > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
+              <div className="space-y-2">
+                {Array.from(companyStats.entries()).map(([comp, stats]) => (
+                  <div key={comp} className="flex justify-between text-xs">
+                    <span className="text-gray-600">{comp}:</span>
+                    <span className="text-gray-900">
+                      P:{stats.tuesday.present} E:{stats.tuesday.excused} U:{stats.tuesday.unexcused}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="font-semibold text-gray-900 mb-2">Wednesday</div>
           <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.wednesday)}</div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 mb-3">
             <div className="text-center">
               <div className="text-lg font-bold text-present">{wednesdayStats.present}</div>
               <div className="text-xs text-gray-600">Present</div>
@@ -627,12 +776,27 @@ function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayS
               colorClass="text-unexcused"
             />
           </div>
+          {company !== 'Master' && companyStats.size > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
+              <div className="space-y-2">
+                {Array.from(companyStats.entries()).map(([comp, stats]) => (
+                  <div key={comp} className="flex justify-between text-xs">
+                    <span className="text-gray-600">{comp}:</span>
+                    <span className="text-gray-900">
+                      P:{stats.wednesday.present} E:{stats.wednesday.excused} U:{stats.wednesday.unexcused}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="font-semibold text-gray-900 mb-2">Thursday</div>
           <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.thursday)}</div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 mb-3">
             <div className="text-center">
               <div className="text-lg font-bold text-present">{thursdayStats.present}</div>
               <div className="text-xs text-gray-600">Present</div>
@@ -650,6 +814,21 @@ function SummaryStats({ cadets, records, tuesdayStats, wednesdayStats, thursdayS
               colorClass="text-unexcused"
             />
           </div>
+          {company !== 'Master' && companyStats.size > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
+              <div className="space-y-2">
+                {Array.from(companyStats.entries()).map(([comp, stats]) => (
+                  <div key={comp} className="flex justify-between text-xs">
+                    <span className="text-gray-600">{comp}:</span>
+                    <span className="text-gray-900">
+                      P:{stats.thursday.present} E:{stats.thursday.excused} U:{stats.thursday.unexcused}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
