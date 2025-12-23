@@ -33,6 +33,8 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
       setAttendanceMap(attendance);
     } catch (error) {
       console.error('Error loading data:', error);
+      // Show user-friendly error message
+      alert(`Error loading data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check:\n1. Firestore is enabled in Firebase Console\n2. Internet connection is working\n3. Browser console for more details`);
     } finally {
       setLoading(false);
     }

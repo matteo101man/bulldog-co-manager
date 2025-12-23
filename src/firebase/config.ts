@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCK5hwv80v9xQcO7raHcrj4eibS3HGq45c",
@@ -10,5 +10,26 @@ const firebaseConfig = {
   appId: "1:773110288400:web:8539a42e8031382ba5ba95"
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+// Initialize Firebase (only if not already initialized)
+let app: FirebaseApp;
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApps()[0];
+}
+
+// Initialize Firestore with error handling
+let db: Firestore;
+try {
+  db = getFirestore(app);
+  // Verify Firestore is available
+  if (!db) {
+    throw new Error('Firestore initialization returned undefined. Please ensure Firestore is enabled in Firebase Console.');
+  }
+} catch (error) {
+  console.error('Error initializing Firestore:', error);
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  throw new Error(`Firestore initialization failed: ${errorMessage}\n\nPlease ensure:\n1. Firestore Database is enabled in Firebase Console\n2. You're using the correct Firebase project\n3. Your internet connection is working`);
+}
+
+export { db, app };
