@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Bulldog CO Manager - ROTC Attendance Tracking System",
   "private": true,
-  "homepage": "https://YOUR_USERNAME.github.io/bulldog-co-manager",
+  "homepage": "https://matteo101man.github.io/bulldog-co-manager",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
