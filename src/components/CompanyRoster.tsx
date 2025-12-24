@@ -117,7 +117,9 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
         }
       });
 
-      // Save all changes
+      // Save all changes to the database
+      // Master List has priority - changes made here will be reflected in all company views
+      // Individual company changes also update the same database, so they'll appear in Master List
       await Promise.all(
         changes.map(({ cadetId, day, status }) =>
           updateAttendance(cadetId, day, status, currentWeekStart)
@@ -136,7 +138,11 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
       }
       
       // Show success feedback
-      alert('Attendance saved successfully!');
+      if (company === 'Master') {
+        alert('Attendance saved successfully! Changes will be reflected in all company rosters.');
+      } else {
+        alert('Attendance saved successfully!');
+      }
     } catch (error) {
       console.error('Error saving attendance:', error);
       alert(`Error saving attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
