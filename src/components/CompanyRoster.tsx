@@ -507,7 +507,8 @@ function StatisticsSection({
   onDayChange,
   unexcusedTotals,
   currentWeekStart,
-  onWeekChange
+  onWeekChange,
+  attendanceType
 }: StatisticsSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [statsViewMode, setStatsViewMode] = useState<'summary' | 'excused' | 'unexcused'>('summary');
