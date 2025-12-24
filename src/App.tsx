@@ -3,13 +3,17 @@ import CompanySelector from './components/CompanySelector';
 import CompanyRoster from './components/CompanyRoster';
 import Settings from './components/Settings';
 import Issues from './components/Issues';
+import CadetsList from './components/CadetsList';
+import CadetProfile from './components/CadetProfile';
+import AddCadet from './components/AddCadet';
 import { Company } from './types';
 
-type View = 'companies' | 'issues' | 'settings';
+type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [currentView, setCurrentView] = useState<View>('companies');
+  const [selectedCadetId, setSelectedCadetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -29,7 +33,11 @@ function App() {
     return (
       <CompanyRoster 
         company={selectedCompany} 
-        onBack={() => setSelectedCompany(null)} 
+        onBack={() => setSelectedCompany(null)}
+        onSelectCadet={(cadetId) => {
+          setSelectedCadetId(cadetId);
+          setCurrentView('cadet-profile');
+        }}
       />
     );
   }
@@ -42,11 +50,50 @@ function App() {
     return <Issues onBack={() => setCurrentView('companies')} />;
   }
 
+  if (currentView === 'cadets') {
+    return (
+      <CadetsList
+        onSelectCadet={(cadetId) => {
+          setSelectedCadetId(cadetId);
+          setCurrentView('cadet-profile');
+        }}
+        onBack={() => setCurrentView('companies')}
+        onAddCadet={() => setCurrentView('add-cadet')}
+      />
+    );
+  }
+
+  if (currentView === 'add-cadet') {
+    return (
+      <AddCadet
+        onBack={() => setCurrentView('cadets')}
+        onSuccess={() => setCurrentView('cadets')}
+      />
+    );
+  }
+
+  if (currentView === 'cadet-profile' && selectedCadetId) {
+    return (
+      <CadetProfile
+        cadetId={selectedCadetId}
+        onBack={() => {
+          // If we came from cadets list, go back there, otherwise go to companies
+          setCurrentView('cadets');
+        }}
+        onDelete={() => {
+          setCurrentView('cadets');
+          setSelectedCadetId(null);
+        }}
+      />
+    );
+  }
+
   return (
     <CompanySelector 
       onSelect={setSelectedCompany} 
       onSettings={() => setCurrentView('settings')}
       onIssues={() => setCurrentView('issues')}
+      onCadets={() => setCurrentView('cadets')}
     />
   );
 }

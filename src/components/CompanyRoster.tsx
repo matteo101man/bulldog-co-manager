@@ -9,9 +9,10 @@ import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from
 interface CompanyRosterProps {
   company: Company;
   onBack: () => void;
+  onSelectCadet?: (cadetId: string) => void;
 }
 
-export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
+export default function CompanyRoster({ company, onBack, onSelectCadet }: CompanyRosterProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [localAttendanceMap, setLocalAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
@@ -245,6 +246,7 @@ export default function CompanyRoster({ company, onBack }: CompanyRosterProps) {
                           cadet={cadet}
                           attendance={record}
                           onStatusChange={handleStatusChange}
+                          onSelectCadet={onSelectCadet}
                         />
                       );
                     })}
@@ -350,9 +352,12 @@ function CadetRow({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="grid grid-cols-4 gap-2 p-3">
         <div className="flex items-center">
-          <span className="font-medium text-gray-900 text-sm">
+          <button
+            onClick={() => onSelectCadet?.(cadet.id)}
+            className="font-medium text-blue-600 hover:text-blue-800 text-sm text-left touch-manipulation"
+          >
             {cadet.lastName}, {cadet.firstName}
-          </span>
+          </button>
         </div>
         <select
           value={tuesday || ''}

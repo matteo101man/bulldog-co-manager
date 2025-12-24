@@ -8,6 +8,7 @@ import {
   addDoc,
   updateDoc,
   setDoc,
+  deleteDoc,
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -76,5 +77,13 @@ export async function addCadet(cadet: Omit<Cadet, 'id'>): Promise<string> {
 export async function updateCadet(cadetId: string, updates: Partial<Cadet>): Promise<void> {
   const docRef = doc(db, CADETS_COLLECTION, cadetId);
   await updateDoc(docRef, updates);
+}
+
+/**
+ * Delete a cadet from the database
+ */
+export async function deleteCadet(cadetId: string): Promise<void> {
+  const docRef = doc(db, CADETS_COLLECTION, cadetId);
+  await deleteDoc(docRef);
 }
 

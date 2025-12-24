@@ -5,12 +5,13 @@ interface CompanySelectorProps {
   onSelect: (company: Company) => void;
   onSettings: () => void;
   onIssues: () => void;
+  onCadets: () => void;
 }
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
 
-export default function CompanySelector({ onSelect, onSettings, onIssues }: CompanySelectorProps) {
-  const [activeTab, setActiveTab] = useState<'companies' | 'issues' | 'settings'>('companies');
+export default function CompanySelector({ onSelect, onSettings, onIssues, onCadets }: CompanySelectorProps) {
+  const [activeTab, setActiveTab] = useState<'companies' | 'issues' | 'cadets' | 'settings'>('companies');
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 safe-area-inset">
@@ -43,6 +44,19 @@ export default function CompanySelector({ onSelect, onSettings, onIssues }: Comp
             }`}
           >
             Issues
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('cadets');
+              onCadets();
+            }}
+            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+              activeTab === 'cadets'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600'
+            }`}
+          >
+            Cadets
           </button>
           <button
             onClick={() => {
