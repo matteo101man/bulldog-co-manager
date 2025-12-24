@@ -535,7 +535,7 @@ function StatisticsSection({
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4 hover:bg-gray-50 touch-manipulation"
       >
-        <h2 className="text-lg font-bold text-gray-900">Attendance Statistics</h2>
+        <h2 className="text-lg font-bold text-gray-900">{attendanceType} Attendance Statistics</h2>
         <svg
           className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
