@@ -828,81 +828,85 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
       <div className="space-y-3">
         <h3 className="font-semibold text-gray-900">Daily Statistics</h3>
         
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="font-semibold text-gray-900 mb-2">Tuesday</div>
-          <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.tuesday)}</div>
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <div className="text-center">
-              <div className="text-lg font-bold text-present">{tuesdayStats.present}</div>
-              <div className="text-xs text-gray-600">Present</div>
-            </div>
-            <StatWithTooltip
-              count={tuesdayStats.excused}
-              label="Excused"
-              cadetNames={getCadetNames('tuesday', 'excused')}
-              colorClass="text-excused"
-            />
-            <StatWithTooltip
-              count={tuesdayStats.unexcused}
-              label="Unexcused"
-              cadetNames={getCadetNames('tuesday', 'unexcused')}
-              colorClass="text-unexcused"
-            />
-          </div>
-          {company === 'Master' && companyStats.size > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
-              <div className="space-y-2">
-                {Array.from(companyStats.entries()).map(([comp, stats]) => (
-                  <div key={comp} className="flex justify-between text-xs">
-                    <span className="text-gray-600">{comp}:</span>
-                    <span className="text-gray-900">
-                      P:{stats.tuesday.present} E:{stats.tuesday.excused} U:{stats.tuesday.unexcused}
-                    </span>
-                  </div>
-                ))}
+        {attendanceType === 'PT' && (
+          <>
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="font-semibold text-gray-900 mb-2">Tuesday</div>
+              <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.tuesday)}</div>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-present">{tuesdayStats.present}</div>
+                  <div className="text-xs text-gray-600">Present</div>
+                </div>
+                <StatWithTooltip
+                  count={tuesdayStats.excused}
+                  label="Excused"
+                  cadetNames={getCadetNames('tuesday', 'excused')}
+                  colorClass="text-excused"
+                />
+                <StatWithTooltip
+                  count={tuesdayStats.unexcused}
+                  label="Unexcused"
+                  cadetNames={getCadetNames('tuesday', 'unexcused')}
+                  colorClass="text-unexcused"
+                />
               </div>
+              {company === 'Master' && companyStats.size > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
+                  <div className="space-y-2">
+                    {Array.from(companyStats.entries()).map(([comp, stats]) => (
+                      <div key={comp} className="flex justify-between text-xs">
+                        <span className="text-gray-600">{comp}:</span>
+                        <span className="text-gray-900">
+                          P:{stats.tuesday.present} E:{stats.tuesday.excused} U:{stats.tuesday.unexcused}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="font-semibold text-gray-900 mb-2">Wednesday</div>
-          <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.wednesday)}</div>
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <div className="text-center">
-              <div className="text-lg font-bold text-present">{wednesdayStats.present}</div>
-              <div className="text-xs text-gray-600">Present</div>
-            </div>
-            <StatWithTooltip
-              count={wednesdayStats.excused}
-              label="Excused"
-              cadetNames={getCadetNames('wednesday', 'excused')}
-              colorClass="text-excused"
-            />
-            <StatWithTooltip
-              count={wednesdayStats.unexcused}
-              label="Unexcused"
-              cadetNames={getCadetNames('wednesday', 'unexcused')}
-              colorClass="text-unexcused"
-            />
-          </div>
-          {company === 'Master' && companyStats.size > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
-              <div className="space-y-2">
-                {Array.from(companyStats.entries()).map(([comp, stats]) => (
-                  <div key={comp} className="flex justify-between text-xs">
-                    <span className="text-gray-600">{comp}:</span>
-                    <span className="text-gray-900">
-                      P:{stats.wednesday.present} E:{stats.wednesday.excused} U:{stats.wednesday.unexcused}
-                    </span>
-                  </div>
-                ))}
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="font-semibold text-gray-900 mb-2">Wednesday</div>
+              <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.wednesday)}</div>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-present">{wednesdayStats.present}</div>
+                  <div className="text-xs text-gray-600">Present</div>
+                </div>
+                <StatWithTooltip
+                  count={wednesdayStats.excused}
+                  label="Excused"
+                  cadetNames={getCadetNames('wednesday', 'excused')}
+                  colorClass="text-excused"
+                />
+                <StatWithTooltip
+                  count={wednesdayStats.unexcused}
+                  label="Unexcused"
+                  cadetNames={getCadetNames('wednesday', 'unexcused')}
+                  colorClass="text-unexcused"
+                />
               </div>
+              {company === 'Master' && companyStats.size > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="text-xs font-semibold text-gray-700 mb-2">By Company:</div>
+                  <div className="space-y-2">
+                    {Array.from(companyStats.entries()).map(([comp, stats]) => (
+                      <div key={comp} className="flex justify-between text-xs">
+                        <span className="text-gray-600">{comp}:</span>
+                        <span className="text-gray-900">
+                          P:{stats.wednesday.present} E:{stats.wednesday.excused} U:{stats.wednesday.unexcused}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="font-semibold text-gray-900 mb-2">Thursday</div>
