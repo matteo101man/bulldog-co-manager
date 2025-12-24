@@ -331,12 +331,14 @@ interface CadetRowProps {
   cadet: Cadet;
   attendance: AttendanceRecord | undefined;
   onStatusChange: (cadetId: string, day: DayOfWeek, status: AttendanceStatus) => void;
+  onSelectCadet?: (cadetId: string) => void;
 }
 
 function CadetRow({ 
   cadet, 
   attendance,
-  onStatusChange
+  onStatusChange,
+  onSelectCadet
 }: CadetRowProps) {
   const tuesday = attendance?.tuesday ?? null;
   const wednesday = attendance?.wednesday ?? null;

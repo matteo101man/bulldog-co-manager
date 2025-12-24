@@ -29,32 +29,7 @@ function App() {
     );
   }
 
-  // Handle cadet profile view even when coming from company roster
-  if (currentView === 'cadet-profile' && selectedCadetId) {
-    return (
-      <CadetProfile
-        cadetId={selectedCadetId}
-        onBack={() => {
-          // If we came from a company, go back to that company
-          if (selectedCompany) {
-            setCurrentView('companies');
-          } else {
-            setCurrentView('cadets');
-          }
-        }}
-        onDelete={() => {
-          if (selectedCompany) {
-            setCurrentView('companies');
-          } else {
-            setCurrentView('cadets');
-          }
-          setSelectedCadetId(null);
-        }}
-      />
-    );
-  }
-
-  if (selectedCompany) {
+  if (selectedCompany && currentView !== 'cadet-profile') {
     return (
       <CompanyRoster 
         company={selectedCompany} 
@@ -93,6 +68,32 @@ function App() {
       <AddCadet
         onBack={() => setCurrentView('cadets')}
         onSuccess={() => setCurrentView('cadets')}
+      />
+    );
+  }
+
+  if (currentView === 'cadet-profile' && selectedCadetId) {
+    return (
+      <CadetProfile
+        cadetId={selectedCadetId}
+        onBack={() => {
+          // If we came from a company, go back to that company
+          if (selectedCompany) {
+            setCurrentView('companies');
+            // Don't clear selectedCompany so we can return to it
+          } else {
+            setCurrentView('cadets');
+          }
+        }}
+        onDelete={() => {
+          if (selectedCompany) {
+            setSelectedCompany(null);
+            setCurrentView('companies');
+          } else {
+            setCurrentView('cadets');
+          }
+          setSelectedCadetId(null);
+        }}
       />
     );
   }
