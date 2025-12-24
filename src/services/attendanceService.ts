@@ -48,6 +48,8 @@ export async function getAttendanceRecord(
 
 /**
  * Update attendance for a specific cadet, day, and week
+ * This is the single source of truth - all changes (from Master List or individual companies) 
+ * are saved here and will be reflected everywhere since all views read from the same database.
  */
 export async function updateAttendance(
   cadetId: string,
@@ -60,6 +62,8 @@ export async function updateAttendance(
   
   const currentRecord = await getAttendanceRecord(cadetId, weekStartDate);
   
+  // Save the complete record - this will be the authoritative source
+  // All companies and Master List read from this same database
   await setDoc(docRef, {
     cadetId,
     weekStartDate,
