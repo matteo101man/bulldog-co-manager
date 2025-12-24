@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import CompanySelector from './components/CompanySelector';
 import CompanyRoster from './components/CompanyRoster';
 import Settings from './components/Settings';
+import Issues from './components/Issues';
 import { Company } from './types';
 
-type View = 'companies' | 'settings';
+type View = 'companies' | 'issues' | 'settings';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -37,7 +38,17 @@ function App() {
     return <Settings onBack={() => setCurrentView('companies')} />;
   }
 
-  return <CompanySelector onSelect={setSelectedCompany} onSettings={() => setCurrentView('settings')} />;
+  if (currentView === 'issues') {
+    return <Issues onBack={() => setCurrentView('companies')} />;
+  }
+
+  return (
+    <CompanySelector 
+      onSelect={setSelectedCompany} 
+      onSettings={() => setCurrentView('settings')}
+      onIssues={() => setCurrentView('issues')}
+    />
+  );
 }
 
 export default App;

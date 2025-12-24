@@ -4,12 +4,13 @@ import { Company } from '../types';
 interface CompanySelectorProps {
   onSelect: (company: Company) => void;
   onSettings: () => void;
+  onIssues: () => void;
 }
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
 
-export default function CompanySelector({ onSelect, onSettings }: CompanySelectorProps) {
-  const [activeTab, setActiveTab] = useState<'companies' | 'settings'>('companies');
+export default function CompanySelector({ onSelect, onSettings, onIssues }: CompanySelectorProps) {
+  const [activeTab, setActiveTab] = useState<'companies' | 'issues' | 'settings'>('companies');
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 safe-area-inset">
@@ -29,6 +30,19 @@ export default function CompanySelector({ onSelect, onSettings }: CompanySelecto
             }`}
           >
             Companies
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('issues');
+              onIssues();
+            }}
+            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+              activeTab === 'issues'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600'
+            }`}
+          >
+            Issues
           </button>
           <button
             onClick={() => {
