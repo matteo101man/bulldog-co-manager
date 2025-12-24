@@ -184,7 +184,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   // Calculate stats using localAttendanceMap for real-time updates
   const records = Array.from(localAttendanceMap.values());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
-  const tuesdayStats = calculateDayStats(records, 'tuesday', attendanceType);
+  const tuesdayStats = attendanceType === 'PT' ? calculateDayStats(records, 'tuesday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
   const wednesdayStats = attendanceType === 'PT' ? calculateDayStats(records, 'wednesday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
   const thursdayStats = calculateDayStats(records, 'thursday', attendanceType);
   const weekStats = calculateWeekStats(records, attendanceType);
@@ -598,6 +598,7 @@ function StatisticsSection({
                 weekDates={weekDates}
                 unexcusedTotals={unexcusedTotals}
                 currentWeekStart={currentWeekStart}
+                attendanceType={attendanceType}
                 onRecordsUpdate={async () => {
                   // Reload company stats when records are updated (for Master List)
                   if (company === 'Master') {
@@ -705,9 +706,10 @@ interface SummaryStatsProps {
   weekDates: { tuesday: string; wednesday: string; thursday: string };
   unexcusedTotals: Map<string, number>;
   currentWeekStart: string;
+  attendanceType: AttendanceType;
 }
 
-function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates, unexcusedTotals, currentWeekStart }: SummaryStatsProps) {
+function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates, unexcusedTotals, currentWeekStart, attendanceType }: SummaryStatsProps) {
   const [companyStats, setCompanyStats] = useState<Map<Company, { tuesday: { present: number; excused: number; unexcused: number }; wednesday: { present: number; excused: number; unexcused: number }; thursday: { present: number; excused: number; unexcused: number } }>>(new Map());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
 
@@ -715,7 +717,7 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
     if (company === 'Master') {
       loadCompanyStats();
     }
-  }, [company, currentWeekStart, records]);
+  }, [company, currentWeekStart, records, attendanceType]);
 
   async function loadCompanyStats() {
     try {
@@ -765,7 +767,16 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
   // Helper function to get cadet names for a specific day and status
   const getCadetNames = (day: DayOfWeek, status: 'excused' | 'unexcused'): Array<{ name: string; count?: number }> => {
     return records
-      .filter(record => record[day] === status)
+      .filter(record => {
+        if (attendanceType === 'PT') {
+          if (day === 'tuesday') return record.ptTuesday === status;
+          if (day === 'wednesday') return record.ptWednesday === status;
+          if (day === 'thursday') return record.ptThursday === status;
+        } else if (attendanceType === 'Lab' && day === 'thursday') {
+          return record.labThursday === status;
+        }
+        return false;
+      })
       .map(record => {
         const cadet = cadetsMap.get(record.cadetId);
         if (!cadet) return null;
@@ -785,7 +796,14 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
   const getWeekCadetNames = (status: 'excused' | 'unexcused'): Array<{ name: string; count?: number }> => {
     const nameMap = new Map<string, number>();
     records.forEach(record => {
-      if (record.tuesday === status || record.wednesday === status || record.thursday === status) {
+      let hasStatus = false;
+      if (attendanceType === 'PT') {
+        hasStatus = record.ptTuesday === status || record.ptWednesday === status || record.ptThursday === status;
+      } else if (attendanceType === 'Lab') {
+        hasStatus = record.labThursday === status;
+      }
+      
+      if (hasStatus) {
         const cadet = cadetsMap.get(record.cadetId);
         if (cadet) {
           const name = `${cadet.lastName}, ${cadet.firstName}`;
