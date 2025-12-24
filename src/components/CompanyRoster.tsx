@@ -613,6 +613,7 @@ function StatisticsSection({
                 status="Excused"
                 selectedDay={selectedDay}
                 onDayChange={onDayChange}
+                attendanceType={attendanceType}
               />
             )}
             {statsViewMode === 'unexcused' && (
@@ -621,6 +622,7 @@ function StatisticsSection({
                 status="Unexcused"
                 selectedDay={selectedDay}
                 onDayChange={onDayChange}
+                attendanceType={attendanceType}
               />
             )}
           </div>
@@ -1054,9 +1056,10 @@ interface StatusListProps {
   status: 'Excused' | 'Unexcused';
   selectedDay: DayOfWeek | 'week';
   onDayChange: (day: DayOfWeek | 'week') => void;
+  attendanceType: AttendanceType;
 }
 
-function StatusList({ cadetsByLevel, status, selectedDay, onDayChange }: StatusListProps) {
+function StatusList({ cadetsByLevel, status, selectedDay, onDayChange, attendanceType }: StatusListProps) {
   const levels = Array.from(cadetsByLevel.keys()).sort();
   const totalCount = Array.from(cadetsByLevel.values()).reduce((sum, list) => sum + list.length, 0);
 
@@ -1067,7 +1070,7 @@ function StatusList({ cadetsByLevel, status, selectedDay, onDayChange }: StatusL
         <label className="block text-sm font-medium text-gray-700 mb-2">
           View by Day/Week
         </label>
-        <div className="grid grid-cols-4 gap-2">
+        <div className={`grid gap-2 ${attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'}`}>
           <button
             onClick={() => onDayChange('week')}
             className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
@@ -1078,26 +1081,30 @@ function StatusList({ cadetsByLevel, status, selectedDay, onDayChange }: StatusL
           >
             Week
           </button>
-          <button
-            onClick={() => onDayChange('tuesday')}
-            className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
-              selectedDay === 'tuesday'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300'
-            }`}
-          >
-            Tue
-          </button>
-          <button
-            onClick={() => onDayChange('wednesday')}
-            className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
-              selectedDay === 'wednesday'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300'
-            }`}
-          >
-            Wed
-          </button>
+          {attendanceType === 'PT' && (
+            <>
+              <button
+                onClick={() => onDayChange('tuesday')}
+                className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+                  selectedDay === 'tuesday'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300'
+                }`}
+              >
+                Tue
+              </button>
+              <button
+                onClick={() => onDayChange('wednesday')}
+                className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+                  selectedDay === 'wednesday'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300'
+                }`}
+              >
+                Wed
+              </button>
+            </>
+          )}
           <button
             onClick={() => onDayChange('thursday')}
             className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
