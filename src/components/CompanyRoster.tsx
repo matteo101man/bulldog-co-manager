@@ -490,6 +490,7 @@ interface StatisticsSectionProps {
   unexcusedTotals: Map<string, number>;
   currentWeekStart: string;
   onWeekChange: (weekStart: string) => void;
+  attendanceType: AttendanceType;
 }
 
 function StatisticsSection({
