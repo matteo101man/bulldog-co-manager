@@ -923,13 +923,12 @@ function StatWithTooltip({ count, label, cadetNames, colorClass, size = 'normal'
       <div
         className={`${size === 'large' ? 'text-2xl' : 'text-lg'} font-bold ${colorClass} cursor-pointer touch-manipulation`}
         onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => {
-          // Add delay before hiding to allow moving to tooltip
-          setTimeout(() => {
-            if (!tooltipRef.current?.matches(':hover')) {
-              setShowTooltip(false);
-            }
-          }, 100);
+        onMouseLeave={(e) => {
+          // Only hide if mouse is not moving to tooltip
+          const relatedTarget = e.relatedTarget as HTMLElement;
+          if (!tooltipRef.current?.contains(relatedTarget)) {
+            setShowTooltip(false);
+          }
         }}
         onClick={() => setShowTooltip(!showTooltip)}
       >
@@ -938,10 +937,10 @@ function StatWithTooltip({ count, label, cadetNames, colorClass, size = 'normal'
       <div className={size === 'large' ? 'text-sm text-gray-600' : 'text-xs text-gray-600'}>{label}</div>
       {showTooltip && cadetNames.length > 0 && (
         <div 
-          className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto"
+          className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 w-72 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-4 max-h-64 overflow-y-auto"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          style={{ marginBottom: '8px', paddingTop: '12px', paddingBottom: '12px' }}
+          style={{ marginBottom: '12px' }}
         >
           <div className="font-semibold mb-2 text-white">{label} Cadets:</div>
           <div className="space-y-1">
