@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { getAllAttendanceForWeek } from '../services/attendanceService';
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCurrentWeekStart, getWeekDatesForWeek, formatDateWithOrdinal } from '../utils/dates';
-import { Cadet, AttendanceRecord, DayOfWeek } from '../types';
+import { Cadet, AttendanceRecord, DayOfWeek, AttendanceType } from '../types';
 
 interface Issue {
   cadetName: string;
   day: DayOfWeek;
   date: string;
+  attendanceType: AttendanceType;
 }
 
 interface IssuesProps {
@@ -39,23 +40,52 @@ export default function Issues({ onBack }: IssuesProps) {
       allCadetsList.forEach(cadet => {
         const record = attendanceMap.get(cadet.id);
         
-        // Check each day for missing attendance
+        // Check PT attendance (Tuesday, Wednesday, Thursday)
         const dayMap: Record<DayOfWeek, string> = {
           tuesday: weekDates.tuesday,
           wednesday: weekDates.wednesday,
           thursday: weekDates.thursday
         };
         
-        (['tuesday', 'wednesday', 'thursday'] as DayOfWeek[]).forEach(day => {
-          const status = record?.[day];
-          if (status === null || status === undefined) {
-            missingIssues.push({
-              cadetName: `${cadet.firstName} ${cadet.lastName}`,
-              day,
-              date: dayMap[day]
-            });
-          }
-        });
+        // Check PT Tuesday
+        if (record?.ptTuesday === null || record?.ptTuesday === undefined) {
+          missingIssues.push({
+            cadetName: `${cadet.firstName} ${cadet.lastName}`,
+            day: 'tuesday',
+            date: dayMap.tuesday,
+            attendanceType: 'PT'
+          });
+        }
+        
+        // Check PT Wednesday
+        if (record?.ptWednesday === null || record?.ptWednesday === undefined) {
+          missingIssues.push({
+            cadetName: `${cadet.firstName} ${cadet.lastName}`,
+            day: 'wednesday',
+            date: dayMap.wednesday,
+            attendanceType: 'PT'
+          });
+        }
+        
+        // Check PT Thursday
+        if (record?.ptThursday === null || record?.ptThursday === undefined) {
+          missingIssues.push({
+            cadetName: `${cadet.firstName} ${cadet.lastName}`,
+            day: 'thursday',
+            date: dayMap.thursday,
+            attendanceType: 'PT'
+          });
+        }
+        
+        // Check Lab Thursday
+        if (record?.labThursday === null || record?.labThursday === undefined) {
+          missingIssues.push({
+            cadetName: `${cadet.firstName} ${cadet.lastName}`,
+            day: 'thursday',
+            date: dayMap.thursday,
+            attendanceType: 'Lab'
+          });
+        }
       });
       
       // Sort by cadet name, then by day
@@ -108,10 +138,10 @@ export default function Issues({ onBack }: IssuesProps) {
                     const formattedDate = formatDateWithOrdinal(issue.date);
                     return (
                       <div 
-                        key={`${issue.cadetName}-${issue.day}-${index}`}
+                        key={`${issue.cadetName}-${issue.day}-${issue.attendanceType}-${index}`}
                         className="text-red-600 text-sm py-2 border-b border-gray-100 last:border-b-0"
                       >
-                        {issue.cadetName} is missing attendance for {formattedDate}
+                        {issue.cadetName} is missing {issue.attendanceType} attendance for {formattedDate}
                       </div>
                     );
                   })}

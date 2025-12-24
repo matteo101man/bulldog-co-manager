@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord } from '../types';
+import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord, AttendanceType } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCompanyAttendance, updateAttendance, getAllAttendanceForWeek } from '../services/attendanceService';
 import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithOrdinal } from '../utils/dates';
@@ -20,7 +20,9 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'week'>('week');
   const [currentWeekStart, setCurrentWeekStart] = useState<string>(getCurrentWeekStart());
-  const [unexcusedTotals, setUnexcusedTotals] = useState<Map<string, number>>(new Map());
+  const [attendanceType, setAttendanceType] = useState<AttendanceType>('PT');
+  const [unexcusedTotalsPT, setUnexcusedTotalsPT] = useState<Map<string, number>>(new Map());
+  const [unexcusedTotalsLab, setUnexcusedTotalsLab] = useState<Map<string, number>>(new Map());
   const weekDates = getWeekDatesForWeek(currentWeekStart);
 
   useEffect(() => {
@@ -56,30 +58,42 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   async function loadUnexcusedTotals() {
     try {
       const cadetIds = cadets.map(c => c.id);
-      const totals = await getTotalUnexcusedAbsencesForCadets(cadetIds);
-      setUnexcusedTotals(totals);
+      const [totalsPT, totalsLab] = await Promise.all([
+        getTotalUnexcusedAbsencesForCadets(cadetIds, 'PT'),
+        getTotalUnexcusedAbsencesForCadets(cadetIds, 'Lab')
+      ]);
+      setUnexcusedTotalsPT(totalsPT);
+      setUnexcusedTotalsLab(totalsLab);
     } catch (error) {
       console.error('Error loading unexcused totals:', error);
     }
   }
 
-  function handleStatusChange(cadetId: string, day: DayOfWeek, status: AttendanceStatus) {
+  function handleStatusChange(cadetId: string, day: DayOfWeek, status: AttendanceStatus, type: AttendanceType) {
     // Update local state immediately for real-time UI update
     setLocalAttendanceMap(prev => {
       const newMap = new Map(prev);
       const existingRecord = newMap.get(cadetId) || {
         cadetId,
-        tuesday: null,
-        wednesday: null,
-        thursday: null,
-        weekStartDate: weekStart
+        ptTuesday: null,
+        ptWednesday: null,
+        ptThursday: null,
+        labThursday: null,
+        weekStartDate: currentWeekStart
       };
       
       const updatedRecord: AttendanceRecord = {
         ...existingRecord,
-        [day]: status || null,
         weekStartDate: currentWeekStart
       };
+      
+      if (type === 'PT') {
+        if (day === 'tuesday') updatedRecord.ptTuesday = status || null;
+        else if (day === 'wednesday') updatedRecord.ptWednesday = status || null;
+        else if (day === 'thursday') updatedRecord.ptThursday = status || null;
+      } else if (type === 'Lab' && day === 'thursday') {
+        updatedRecord.labThursday = status || null;
+      }
       
       newMap.set(cadetId, updatedRecord);
       return newMap;
@@ -90,31 +104,44 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
     setSaving(true);
     try {
       // Get all changes (compare localAttendanceMap with attendanceMap)
-      const changes: Array<{ cadetId: string; day: DayOfWeek; status: AttendanceStatus }> = [];
+      const changes: Array<{ cadetId: string; day: DayOfWeek; status: AttendanceStatus; type: AttendanceType }> = [];
       
       localAttendanceMap.forEach((localRecord, cadetId) => {
         const serverRecord = attendanceMap.get(cadetId);
         
-        // Check each day for changes
-        (['tuesday', 'wednesday', 'thursday'] as DayOfWeek[]).forEach(day => {
-          const localStatus = localRecord[day];
-          const serverStatus = serverRecord?.[day] ?? null;
-          
-          if (localStatus !== serverStatus) {
-            changes.push({ cadetId, day, status: localStatus });
-          }
-        });
+        // Check PT changes
+        if (localRecord.ptTuesday !== (serverRecord?.ptTuesday ?? null)) {
+          changes.push({ cadetId, day: 'tuesday', status: localRecord.ptTuesday, type: 'PT' });
+        }
+        if (localRecord.ptWednesday !== (serverRecord?.ptWednesday ?? null)) {
+          changes.push({ cadetId, day: 'wednesday', status: localRecord.ptWednesday, type: 'PT' });
+        }
+        if (localRecord.ptThursday !== (serverRecord?.ptThursday ?? null)) {
+          changes.push({ cadetId, day: 'thursday', status: localRecord.ptThursday, type: 'PT' });
+        }
+        
+        // Check Lab changes
+        if (localRecord.labThursday !== (serverRecord?.labThursday ?? null)) {
+          changes.push({ cadetId, day: 'thursday', status: localRecord.labThursday, type: 'Lab' });
+        }
       });
 
       // Also check for records that exist in server but not in local (shouldn't happen, but be safe)
       attendanceMap.forEach((serverRecord, cadetId) => {
         if (!localAttendanceMap.has(cadetId)) {
           // This shouldn't happen, but handle it
-          (['tuesday', 'wednesday', 'thursday'] as DayOfWeek[]).forEach(day => {
-            if (serverRecord[day] !== null) {
-              changes.push({ cadetId, day, status: null });
-            }
-          });
+          if (serverRecord.ptTuesday !== null) {
+            changes.push({ cadetId, day: 'tuesday', status: null, type: 'PT' });
+          }
+          if (serverRecord.ptWednesday !== null) {
+            changes.push({ cadetId, day: 'wednesday', status: null, type: 'PT' });
+          }
+          if (serverRecord.ptThursday !== null) {
+            changes.push({ cadetId, day: 'thursday', status: null, type: 'PT' });
+          }
+          if (serverRecord.labThursday !== null) {
+            changes.push({ cadetId, day: 'thursday', status: null, type: 'Lab' });
+          }
         }
       });
 
@@ -122,8 +149,8 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       // Master List has priority - changes made here will be reflected in all company views
       // Individual company changes also update the same database, so they'll appear in Master List
       await Promise.all(
-        changes.map(({ cadetId, day, status }) =>
-          updateAttendance(cadetId, day, status, currentWeekStart)
+        changes.map(({ cadetId, day, status, type }) =>
+          updateAttendance(cadetId, day, status, currentWeekStart, type)
         )
       );
 
@@ -157,12 +184,13 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   // Calculate stats using localAttendanceMap for real-time updates
   const records = Array.from(localAttendanceMap.values());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
-  const tuesdayStats = calculateDayStats(records, 'tuesday');
-  const wednesdayStats = calculateDayStats(records, 'wednesday');
-  const thursdayStats = calculateDayStats(records, 'thursday');
-  const weekStats = calculateWeekStats(records);
-  const excusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'excused');
-  const unexcusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'unexcused');
+  const tuesdayStats = calculateDayStats(records, 'tuesday', attendanceType);
+  const wednesdayStats = attendanceType === 'PT' ? calculateDayStats(records, 'wednesday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
+  const thursdayStats = calculateDayStats(records, 'thursday', attendanceType);
+  const weekStats = calculateWeekStats(records, attendanceType);
+  const excusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'excused', attendanceType);
+  const unexcusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'unexcused', attendanceType);
+  const unexcusedTotals = attendanceType === 'PT' ? unexcusedTotalsPT : unexcusedTotalsLab;
   
   // Check if there are unsaved changes
   const hasUnsavedChanges = JSON.stringify(Array.from(attendanceMap.entries()).sort()) !== 
@@ -195,16 +223,44 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       </header>
 
       <main className="px-4 py-4">
+        {/* PT/Lab Tabs */}
+        <div className="flex border-b border-gray-200 mb-4 bg-white rounded-t-lg">
+          <button
+            onClick={() => setAttendanceType('PT')}
+            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+              attendanceType === 'PT'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-600'
+            }`}
+          >
+            PT
+          </button>
+          <button
+            onClick={() => setAttendanceType('Lab')}
+            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+              attendanceType === 'Lab'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-600'
+            }`}
+          >
+            Lab
+          </button>
+        </div>
+
         {/* Week dates header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-          <div className="grid grid-cols-4 gap-2 text-center">
+          <div className={`grid gap-2 text-center ${attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'}`}>
             <div className="font-semibold text-gray-700">Name</div>
-            <div className="font-semibold text-gray-700 text-sm">
-              {formatDateWithDay(weekDates.tuesday)}
-            </div>
-            <div className="font-semibold text-gray-700 text-sm">
-              {formatDateWithDay(weekDates.wednesday)}
-            </div>
+            {attendanceType === 'PT' && (
+              <>
+                <div className="font-semibold text-gray-700 text-sm">
+                  {formatDateWithDay(weekDates.tuesday)}
+                </div>
+                <div className="font-semibold text-gray-700 text-sm">
+                  {formatDateWithDay(weekDates.wednesday)}
+                </div>
+              </>
+            )}
             <div className="font-semibold text-gray-700 text-sm">
               {formatDateWithDay(weekDates.thursday)}
             </div>
@@ -247,6 +303,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
                           attendance={record}
                           onStatusChange={handleStatusChange}
                           onSelectCadet={onSelectCadet}
+                          attendanceType={attendanceType}
                         />
                       );
                     })}
@@ -320,6 +377,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
             unexcusedTotals={unexcusedTotals}
             currentWeekStart={currentWeekStart}
             onWeekChange={setCurrentWeekStart}
+            attendanceType={attendanceType}
           />
         )}
       </main>
@@ -330,19 +388,22 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
 interface CadetRowProps {
   cadet: Cadet;
   attendance: AttendanceRecord | undefined;
-  onStatusChange: (cadetId: string, day: DayOfWeek, status: AttendanceStatus) => void;
+  onStatusChange: (cadetId: string, day: DayOfWeek, status: AttendanceStatus, type: AttendanceType) => void;
   onSelectCadet?: (cadetId: string) => void;
+  attendanceType: AttendanceType;
 }
 
 function CadetRow({ 
   cadet, 
   attendance,
   onStatusChange,
-  onSelectCadet
+  onSelectCadet,
+  attendanceType
 }: CadetRowProps) {
-  const tuesday = attendance?.tuesday ?? null;
-  const wednesday = attendance?.wednesday ?? null;
-  const thursday = attendance?.thursday ?? null;
+  const ptTuesday = attendance?.ptTuesday ?? null;
+  const ptWednesday = attendance?.ptWednesday ?? null;
+  const ptThursday = attendance?.ptThursday ?? null;
+  const labThursday = attendance?.labThursday ?? null;
 
   function getStatusColor(status: AttendanceStatus): string {
     if (status === 'present') return 'border-present text-present';
@@ -353,7 +414,7 @@ function CadetRow({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="grid grid-cols-4 gap-2 p-3">
+      <div className={`grid gap-2 p-3 ${attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'}`}>
         <div className="flex items-center">
           <button
             onClick={() => onSelectCadet?.(cadet.id)}
@@ -362,42 +423,46 @@ function CadetRow({
             {cadet.lastName}, {cadet.firstName}
           </button>
         </div>
+        {attendanceType === 'PT' && (
+          <>
+            <select
+              value={ptTuesday || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                onStatusChange(cadet.id, 'tuesday', value === '' ? null : (value as AttendanceStatus), 'PT');
+              }}
+              aria-label={`${cadet.firstName} ${cadet.lastName} Tuesday PT attendance`}
+              className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(ptTuesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            >
+              <option value="">—</option>
+              <option value="present">Present</option>
+              <option value="excused">Excused</option>
+              <option value="unexcused">Unexcused</option>
+            </select>
+            <select
+              value={ptWednesday || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                onStatusChange(cadet.id, 'wednesday', value === '' ? null : (value as AttendanceStatus), 'PT');
+              }}
+              aria-label={`${cadet.firstName} ${cadet.lastName} Wednesday PT attendance`}
+              className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(ptWednesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            >
+              <option value="">—</option>
+              <option value="present">Present</option>
+              <option value="excused">Excused</option>
+              <option value="unexcused">Unexcused</option>
+            </select>
+          </>
+        )}
         <select
-          value={tuesday || ''}
+          value={(attendanceType === 'PT' ? ptThursday : labThursday) || ''}
           onChange={(e) => {
             const value = e.target.value;
-            onStatusChange(cadet.id, 'tuesday', value === '' ? null : (value as AttendanceStatus));
+            onStatusChange(cadet.id, 'thursday', value === '' ? null : (value as AttendanceStatus), attendanceType);
           }}
-          aria-label={`${cadet.firstName} ${cadet.lastName} Tuesday attendance`}
-          className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(tuesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-        >
-          <option value="">—</option>
-          <option value="present">Present</option>
-          <option value="excused">Excused</option>
-          <option value="unexcused">Unexcused</option>
-        </select>
-        <select
-          value={wednesday || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            onStatusChange(cadet.id, 'wednesday', value === '' ? null : (value as AttendanceStatus));
-          }}
-          aria-label={`${cadet.firstName} ${cadet.lastName} Wednesday attendance`}
-          className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(wednesday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-        >
-          <option value="">—</option>
-          <option value="present">Present</option>
-          <option value="excused">Excused</option>
-          <option value="unexcused">Unexcused</option>
-        </select>
-        <select
-          value={thursday || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            onStatusChange(cadet.id, 'thursday', value === '' ? null : (value as AttendanceStatus));
-          }}
-          aria-label={`${cadet.firstName} ${cadet.lastName} Thursday attendance`}
-          className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(thursday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          aria-label={`${cadet.firstName} ${cadet.lastName} Thursday ${attendanceType} attendance`}
+          className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(attendanceType === 'PT' ? ptThursday : labThursday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
           <option value="">—</option>
           <option value="present">Present</option>

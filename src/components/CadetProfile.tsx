@@ -14,7 +14,8 @@ const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
 
 export default function CadetProfile({ cadetId, onBack, onDelete }: CadetProfileProps) {
   const [cadet, setCadet] = useState<Cadet | null>(null);
-  const [unexcusedCount, setUnexcusedCount] = useState<number>(0);
+  const [unexcusedCountPT, setUnexcusedCountPT] = useState<number>(0);
+  const [unexcusedCountLab, setUnexcusedCountLab] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -41,9 +42,13 @@ export default function CadetProfile({ cadetId, onBack, onDelete }: CadetProfile
           email: cadetData.email || ''
         });
         
-        // Load unexcused absences
-        const count = await getTotalUnexcusedAbsences(cadetId);
-        setUnexcusedCount(count);
+        // Load unexcused absences for PT and Lab separately
+        const [countPT, countLab] = await Promise.all([
+          getTotalUnexcusedAbsences(cadetId, 'PT'),
+          getTotalUnexcusedAbsences(cadetId, 'Lab')
+        ]);
+        setUnexcusedCountPT(countPT);
+        setUnexcusedCountLab(countLab);
       }
     } catch (error) {
       console.error('Error loading cadet:', error);
@@ -257,8 +262,17 @@ export default function CadetProfile({ cadetId, onBack, onDelete }: CadetProfile
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Unexcused Absences</label>
-              <div className="text-gray-900 font-semibold">{unexcusedCount}</div>
-              <div className="text-xs text-gray-500 mt-1">This is calculated automatically from attendance records</div>
+              <div className="space-y-2">
+                <div>
+                  <div className="text-sm text-gray-600">PT (Physical Training):</div>
+                  <div className="text-gray-900 font-semibold">{unexcusedCountPT}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Lab:</div>
+                  <div className="text-gray-900 font-semibold">{unexcusedCountLab}</div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">These are calculated automatically from attendance records</div>
             </div>
           </div>
 

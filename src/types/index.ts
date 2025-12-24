@@ -3,6 +3,7 @@ export type Company = 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' | 'Master';
 export type AttendanceStatus = 'present' | 'excused' | 'unexcused' | null;
 
 export type DayOfWeek = 'tuesday' | 'wednesday' | 'thursday';
+export type AttendanceType = 'PT' | 'Lab';
 
 export interface Cadet {
   id: string;
@@ -18,9 +19,12 @@ export interface Cadet {
 
 export interface AttendanceRecord {
   cadetId: string;
-  tuesday: AttendanceStatus;
-  wednesday: AttendanceStatus;
-  thursday: AttendanceStatus;
+  // PT (Physical Training) - Tuesday, Wednesday, Thursday
+  ptTuesday: AttendanceStatus;
+  ptWednesday: AttendanceStatus;
+  ptThursday: AttendanceStatus;
+  // Lab - Thursday only
+  labThursday: AttendanceStatus;
   weekStartDate: string; // ISO date string for the Monday of the week
 }
 

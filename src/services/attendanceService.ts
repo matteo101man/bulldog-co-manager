@@ -9,7 +9,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { AttendanceRecord, AttendanceStatus, DayOfWeek, Company } from '../types';
+import { AttendanceRecord, AttendanceStatus, DayOfWeek, Company, AttendanceType } from '../types';
 import { getCadetsByCompany } from './cadetService';
 
 const ATTENDANCE_COLLECTION = 'attendance';
@@ -39,9 +39,10 @@ export async function getAttendanceRecord(
   // Return default record if none exists
   return {
     cadetId,
-    tuesday: null,
-    wednesday: null,
-    thursday: null,
+    ptTuesday: null,
+    ptWednesday: null,
+    ptThursday: null,
+    labThursday: null,
     weekStartDate
   };
 }
@@ -55,7 +56,8 @@ export async function updateAttendance(
   cadetId: string,
   day: DayOfWeek,
   status: AttendanceStatus,
-  weekStartDate: string
+  weekStartDate: string,
+  attendanceType: AttendanceType = 'PT'
 ): Promise<void> {
   const docId = getAttendanceDocId(cadetId, weekStartDate);
   const docRef = doc(db, ATTENDANCE_COLLECTION, docId);
@@ -64,13 +66,24 @@ export async function updateAttendance(
   
   // Save the complete record - this will be the authoritative source
   // All companies and Master List read from this same database
-  await setDoc(docRef, {
+  const updateData: any = {
     cadetId,
     weekStartDate,
-    tuesday: day === 'tuesday' ? status : (currentRecord?.tuesday ?? null),
-    wednesday: day === 'wednesday' ? status : (currentRecord?.wednesday ?? null),
-    thursday: day === 'thursday' ? status : (currentRecord?.thursday ?? null),
-  }, { merge: true });
+    ptTuesday: currentRecord?.ptTuesday ?? null,
+    ptWednesday: currentRecord?.ptWednesday ?? null,
+    ptThursday: currentRecord?.ptThursday ?? null,
+    labThursday: currentRecord?.labThursday ?? null,
+  };
+  
+  if (attendanceType === 'PT') {
+    if (day === 'tuesday') updateData.ptTuesday = status;
+    else if (day === 'wednesday') updateData.ptWednesday = status;
+    else if (day === 'thursday') updateData.ptThursday = status;
+  } else if (attendanceType === 'Lab' && day === 'thursday') {
+    updateData.labThursday = status;
+  }
+  
+  await setDoc(docRef, updateData, { merge: true });
 }
 
 /**
@@ -107,11 +120,27 @@ export async function getCompanyAttendance(
     if (!attendanceMap.has(cadet.id)) {
       attendanceMap.set(cadet.id, {
         cadetId: cadet.id,
-        tuesday: null,
-        wednesday: null,
-        thursday: null,
+        ptTuesday: null,
+        ptWednesday: null,
+        ptThursday: null,
+        labThursday: null,
         weekStartDate
       });
+    } else {
+      // Ensure existing records have all fields
+      const record = attendanceMap.get(cadet.id)!;
+      if (!('ptTuesday' in record)) {
+        // Migrate old records - check for old field names
+        const oldRecord = record as any;
+        attendanceMap.set(cadet.id, {
+          cadetId: cadet.id,
+          ptTuesday: oldRecord.tuesday ?? null,
+          ptWednesday: oldRecord.wednesday ?? null,
+          ptThursday: oldRecord.thursday ?? null,
+          labThursday: null,
+          weekStartDate
+        });
+      }
     }
   });
 
@@ -120,8 +149,12 @@ export async function getCompanyAttendance(
 
 /**
  * Get total unexcused absences for a cadet across all weeks
+ * @param attendanceType - 'PT' for Physical Training, 'Lab' for Lab, or undefined for both combined
  */
-export async function getTotalUnexcusedAbsences(cadetId: string): Promise<number> {
+export async function getTotalUnexcusedAbsences(
+  cadetId: string,
+  attendanceType?: AttendanceType
+): Promise<number> {
   // Query all attendance records for this cadet
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
@@ -131,10 +164,20 @@ export async function getTotalUnexcusedAbsences(cadetId: string): Promise<number
   
   let totalUnexcused = 0;
   querySnapshot.docs.forEach(doc => {
-    const record = doc.data() as AttendanceRecord;
-    if (record.tuesday === 'unexcused') totalUnexcused++;
-    if (record.wednesday === 'unexcused') totalUnexcused++;
-    if (record.thursday === 'unexcused') totalUnexcused++;
+    const record = doc.data() as any;
+    // Handle migration from old format
+    if (attendanceType === 'PT' || !attendanceType) {
+      if (record.ptTuesday === 'unexcused') totalUnexcused++;
+      if (record.ptWednesday === 'unexcused') totalUnexcused++;
+      if (record.ptThursday === 'unexcused') totalUnexcused++;
+      // Legacy support
+      if (record.tuesday === 'unexcused' && !record.ptTuesday) totalUnexcused++;
+      if (record.wednesday === 'unexcused' && !record.ptWednesday) totalUnexcused++;
+      if (record.thursday === 'unexcused' && !record.ptThursday && !record.labThursday) totalUnexcused++;
+    }
+    if (attendanceType === 'Lab' || !attendanceType) {
+      if (record.labThursday === 'unexcused') totalUnexcused++;
+    }
   });
   
   return totalUnexcused;
@@ -143,8 +186,12 @@ export async function getTotalUnexcusedAbsences(cadetId: string): Promise<number
 /**
  * Get total unexcused absences for multiple cadets
  * Returns a map of cadetId -> total unexcused count
+ * @param attendanceType - 'PT' for Physical Training, 'Lab' for Lab, or undefined for both combined
  */
-export async function getTotalUnexcusedAbsencesForCadets(cadetIds: string[]): Promise<Map<string, number>> {
+export async function getTotalUnexcusedAbsencesForCadets(
+  cadetIds: string[],
+  attendanceType?: AttendanceType
+): Promise<Map<string, number>> {
   const result = new Map<string, number>();
   
   // Initialize all cadets with 0
@@ -162,12 +209,23 @@ export async function getTotalUnexcusedAbsencesForCadets(cadetIds: string[]): Pr
     const querySnapshot = await getDocs(q);
     
     querySnapshot.docs.forEach(doc => {
-      const record = doc.data() as AttendanceRecord;
+      const record = doc.data() as any;
       const currentCount = result.get(record.cadetId) || 0;
       let unexcusedCount = 0;
-      if (record.tuesday === 'unexcused') unexcusedCount++;
-      if (record.wednesday === 'unexcused') unexcusedCount++;
-      if (record.thursday === 'unexcused') unexcusedCount++;
+      
+      if (attendanceType === 'PT' || !attendanceType) {
+        if (record.ptTuesday === 'unexcused') unexcusedCount++;
+        if (record.ptWednesday === 'unexcused') unexcusedCount++;
+        if (record.ptThursday === 'unexcused') unexcusedCount++;
+        // Legacy support
+        if (record.tuesday === 'unexcused' && !record.ptTuesday) unexcusedCount++;
+        if (record.wednesday === 'unexcused' && !record.ptWednesday) unexcusedCount++;
+        if (record.thursday === 'unexcused' && !record.ptThursday && !record.labThursday) unexcusedCount++;
+      }
+      if (attendanceType === 'Lab' || !attendanceType) {
+        if (record.labThursday === 'unexcused') unexcusedCount++;
+      }
+      
       result.set(record.cadetId, currentCount + unexcusedCount);
     });
   }
@@ -188,8 +246,20 @@ export async function getAllAttendanceForWeek(weekStartDate: string): Promise<Ma
   const querySnapshot = await getDocs(q);
   
   querySnapshot.docs.forEach(doc => {
-    const record = doc.data() as AttendanceRecord;
-    attendanceMap.set(record.cadetId, record);
+    const record = doc.data() as any;
+    // Migrate old records
+    if (!('ptTuesday' in record)) {
+      attendanceMap.set(record.cadetId, {
+        cadetId: record.cadetId,
+        ptTuesday: record.tuesday ?? null,
+        ptWednesday: record.wednesday ?? null,
+        ptThursday: record.thursday ?? null,
+        labThursday: null,
+        weekStartDate: record.weekStartDate
+      });
+    } else {
+      attendanceMap.set(record.cadetId, record as AttendanceRecord);
+    }
   });
   
   return attendanceMap;
@@ -203,11 +273,11 @@ export async function clearAllAttendance(): Promise<void> {
   const batch = writeBatch(db);
   
   querySnapshot.docs.forEach(docSnap => {
-    const record = docSnap.data() as AttendanceRecord;
     batch.update(docSnap.ref, {
-      tuesday: null,
-      wednesday: null,
-      thursday: null,
+      ptTuesday: null,
+      ptWednesday: null,
+      ptThursday: null,
+      labThursday: null,
     });
   });
   
