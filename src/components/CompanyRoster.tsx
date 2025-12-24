@@ -264,6 +264,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
                   cadet={cadet}
                   attendance={record}
                   onStatusChange={handleStatusChange}
+                  onSelectCadet={onSelectCadet}
                 />
               );
             })
