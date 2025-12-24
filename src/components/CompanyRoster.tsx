@@ -899,7 +899,7 @@ function StatWithTooltip({ count, label, cadetNames, colorClass, size = 'normal'
     }
 
     if (showTooltip) {
-      // Use a small delay to avoid immediate closure on click
+      // Add click outside listener to close tooltip when clicking elsewhere
       const timeoutId = setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
         document.addEventListener('touchstart', handleClickOutside);
@@ -928,26 +928,13 @@ function StatWithTooltip({ count, label, cadetNames, colorClass, size = 'normal'
     <div className="text-center relative" ref={tooltipRef}>
       <div
         className={`${size === 'large' ? 'text-2xl' : 'text-lg'} font-bold ${colorClass} cursor-pointer touch-manipulation`}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={(e) => {
-          // Only hide if mouse is not moving to tooltip
-          const relatedTarget = e.relatedTarget as HTMLElement;
-          if (!tooltipRef.current?.contains(relatedTarget)) {
-            setShowTooltip(false);
-          }
-        }}
         onClick={() => setShowTooltip(!showTooltip)}
       >
         {count}
       </div>
       <div className={size === 'large' ? 'text-sm text-gray-600' : 'text-xs text-gray-600'}>{label}</div>
       {showTooltip && cadetNames.length > 0 && (
-        <div 
-          className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 w-72 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-4 max-h-64 overflow-y-auto"
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
-          style={{ marginBottom: '12px' }}
-        >
+        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
           <div className="font-semibold mb-2 text-white">{label} Cadets:</div>
           <div className="space-y-1">
             {cadetNames.map((item, index) => (
