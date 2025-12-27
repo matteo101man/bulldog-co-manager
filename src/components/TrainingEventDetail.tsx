@@ -397,11 +397,34 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
     });
   }
 
-  function updateWeeklyTask(week: string, value: string) {
+  function updateWeeklyTaskStatus(week: string, status: PlanningStatus) {
     updateConop('weeklyTasks', {
       ...conop.weeklyTasks,
-      [week]: value
+      [week]: {
+        ...conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks],
+        status
+      }
     });
+  }
+
+  function updateWeeklyTaskDescription(week: string, description: string) {
+    updateConop('weeklyTasks', {
+      ...conop.weeklyTasks,
+      [week]: {
+        ...conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks],
+        description
+      }
+    });
+  }
+
+  function getStatusColor(status?: PlanningStatus): string {
+    switch (status) {
+      case 'complete': return 'bg-green-500';
+      case 'in-progress': return 'bg-yellow-500';
+      case 'issues': return 'bg-orange-500';
+      case 'not-started': return 'bg-red-500';
+      default: return 'bg-red-500';
+    }
   }
 
   return (
@@ -947,27 +970,92 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
        <div className="bg-white rounded-lg border border-gray-200 p-4">
          <h3 className="font-bold text-gray-900 mb-4">KEY TASKS FOR EACH WEEK</h3>
          <div className="overflow-x-auto">
-           <div className="grid grid-cols-7 gap-2">
-             {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => (
-               <div key={week} className="space-y-2">
-                 <div className="text-center text-xs font-bold text-gray-700 bg-gray-100 py-2 rounded">
-                   {week.toUpperCase()}
-                 </div>
-                 {isEditing ? (
-                   <textarea
-                     value={conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks] || ''}
-                     onChange={(e) => updateWeeklyTask(week, e.target.value)}
-                     rows={6}
-                     className="w-full px-2 py-2 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 resize-none"
-                     placeholder="Enter tasks..."
-                   />
-                 ) : (
-                   <div className="w-full px-2 py-2 text-xs border border-gray-300 rounded bg-gray-50 min-h-[120px] whitespace-pre-wrap">
-                     {conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks] || ''}
-                   </div>
-                 )}
-               </div>
-             ))}
+           <table className="w-full border-collapse">
+             <thead>
+               <tr>
+                 <th className="border border-gray-300 px-2 py-2 text-left text-xs font-bold bg-gray-100">DESCRIPTION</th>
+                 {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => (
+                   <th key={week} className="border border-gray-300 px-2 py-2 text-center text-xs font-bold bg-gray-100">
+                     {week.toUpperCase()}
+                   </th>
+                 ))}
+               </tr>
+             </thead>
+             <tbody>
+               {[
+                 { key: 'missionGear', label: 'MISSION GEAR' },
+                 { key: 'finance', label: 'FINANCE' },
+                 { key: 'riskAssessment', label: 'RISK ASSESSMENT & SAFETY PLAN' }
+               ].map(resource => (
+                 <tr key={resource.key}>
+                   <td className="border border-gray-300 px-2 py-2 text-xs font-medium">{resource.label}</td>
+                   {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => {
+                     const weekData = conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks];
+                     const status = (typeof weekData === 'object' && weekData?.status) ? weekData.status : (weekData ? 'not-started' : 'not-started');
+                     const description = (typeof weekData === 'object' && weekData?.description) ? weekData.description : '';
+                     return (
+                       <td key={week} className="border border-gray-300 px-2 py-2">
+                         <div className="space-y-1">
+                           {isEditing ? (
+                             <>
+                               <select
+                                 value={status}
+                                 onChange={(e) => updateWeeklyTaskStatus(week, e.target.value as PlanningStatus)}
+                                 className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                               >
+                                 <option value="complete">✓</option>
+                                 <option value="in-progress">◐</option>
+                                 <option value="issues">!</option>
+                                 <option value="not-started">-</option>
+                               </select>
+                               <textarea
+                                 value={description}
+                                 onChange={(e) => updateWeeklyTaskDescription(week, e.target.value)}
+                                 rows={3}
+                                 className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 resize-none"
+                                 placeholder="Task description..."
+                               />
+                             </>
+                           ) : (
+                             <>
+                               <div className={`h-6 w-full rounded ${getStatusColor(status)} flex items-center justify-center text-white text-xs font-bold`}>
+                                 {status === 'complete' && '✓'}
+                                 {status === 'in-progress' && '◐'}
+                                 {status === 'issues' && '!'}
+                                 {status === 'not-started' && '-'}
+                               </div>
+                               {description && (
+                                 <div className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">
+                                   {description}
+                                 </div>
+                               )}
+                             </>
+                           )}
+                         </div>
+                       </td>
+                     );
+                   })}
+                 </tr>
+               ))}
+             </tbody>
+           </table>
+         </div>
+         <div className="flex flex-wrap gap-3 text-xs text-gray-600 mt-4">
+           <div className="flex items-center gap-1">
+             <div className="w-4 h-4 rounded bg-green-500"></div>
+             <span className="font-medium">COMPLETE</span>
+           </div>
+           <div className="flex items-center gap-1">
+             <div className="w-4 h-4 rounded bg-yellow-500"></div>
+             <span className="font-medium">WORKING</span>
+           </div>
+           <div className="flex items-center gap-1">
+             <div className="w-4 h-4 rounded bg-orange-500"></div>
+             <span className="font-medium">ISSUES</span>
+           </div>
+           <div className="flex items-center gap-1">
+             <div className="w-4 h-4 rounded bg-red-500"></div>
+             <span className="font-medium">NOT STARTED</span>
            </div>
          </div>
        </div>
