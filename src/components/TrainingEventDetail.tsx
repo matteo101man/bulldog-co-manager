@@ -376,6 +376,13 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
     });
   }
 
+  function updateAttachedAppendix(appendix: string, value: string) {
+    updateConop('attachedAppendices', {
+      ...conop.attachedAppendices,
+      [appendix]: value
+    });
+  }
+
   function updateResourceStatus(resource: string, status: PlanningStatus) {
     updateConop('resourceStatus', {
       ...conop.resourceStatus,
@@ -402,21 +409,25 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
 
   return (
     <div className="space-y-4">
-      {/* Purpose */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">PURPOSE (WHY?)</h3>
-        {isEditing ? (
-          <textarea
-            value={conop.purpose || ''}
-            onChange={(e) => updateConop('purpose', e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter purpose..."
-          />
-        ) : (
-          <div className="text-gray-700 min-h-[60px]">{conop.purpose || ''}</div>
-        )}
-      </div>
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left Column */}
+        <div className="space-y-4">
+          {/* Purpose */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">PURPOSE (WHY?)</h3>
+            {isEditing ? (
+              <textarea
+                value={conop.purpose || ''}
+                onChange={(e) => updateConop('purpose', e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter purpose..."
+              />
+            ) : (
+              <div className="text-gray-700 min-h-[60px]">{conop.purpose || ''}</div>
+            )}
+          </div>
 
       {/* Mission */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -520,337 +531,427 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
         </div>
       </div>
 
-      {/* End State */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">END STATE</h3>
-        {isEditing ? (
-          <textarea
-            value={conop.endState || ''}
-            onChange={(e) => updateConop('endState', e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter end state..."
-          />
-        ) : (
-          <div className="text-gray-700 min-h-[60px]">{conop.endState || ''}</div>
-        )}
-      </div>
+          {/* End State */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">END STATE</h3>
+            {isEditing ? (
+              <textarea
+                value={conop.endState || ''}
+                onChange={(e) => updateConop('endState', e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter end state..."
+              />
+            ) : (
+              <div className="text-gray-700 min-h-[60px]">{conop.endState || ''}</div>
+            )}
+          </div>
 
-      {/* Concept of Operation */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">CONCEPT OF THE OPERATION</h3>
-        <div className="space-y-2">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">PHASE I (Location Prep):</label>
+          {/* Image - AO View */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">AREA OF OPERATIONS</h3>
             {isEditing ? (
-              <input
-                type="text"
-                value={conop.conceptOfOperation?.phase1 || ''}
-                onChange={(e) => updateConceptPhase('phase1', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase1 || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">PHASE II (Arrival):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.conceptOfOperation?.phase2 || ''}
-                onChange={(e) => updateConceptPhase('phase2', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase2 || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">PHASE III (Mentorship):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.conceptOfOperation?.phase3 || ''}
-                onChange={(e) => updateConceptPhase('phase3', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase3 || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">PHASE IV (Dismissal):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.conceptOfOperation?.phase4 || ''}
-                onChange={(e) => updateConceptPhase('phase4', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase4 || ''}</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Resources & Supply */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">RESOURCES & SUPPLY (SUPPLY REQUEST)</h3>
-        <div className="space-y-2">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">CLASS I (Food, Rations, Water):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.resources?.class1 || ''}
-                onChange={(e) => updateResources('class1', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.resources?.class1 || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">CLASS II (Clothing & Equipment):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.resources?.class2 || ''}
-                onChange={(e) => updateResources('class2', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.resources?.class2 || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">CLASS V (Ammunition):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.resources?.class5 || ''}
-                onChange={(e) => updateResources('class5', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.resources?.class5 || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">CLASS VI (Personal Demand Items):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.resources?.class6 || ''}
-                onChange={(e) => updateResources('class6', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.resources?.class6 || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">CLASS VIII (Medical Supplies & Equipment):</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.resources?.class8 || ''}
-                onChange={(e) => updateResources('class8', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.resources?.class8 || ''}</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Key Dates */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">KEY DATES AND TIMELINE</h3>
-        {isEditing ? (
-          <textarea
-            value={conop.keyDates?.join('\n') || ''}
-            onChange={(e) => updateConop('keyDates', e.target.value.split('\n').filter(l => l.trim()))}
-            rows={4}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-            placeholder="One date per line"
-          />
-        ) : (
-          <div className="text-sm text-gray-700 space-y-1">
-            {conop.keyDates?.map((date, i) => <div key={i}>{date}</div>) || ''}
-          </div>
-        )}
-      </div>
-
-      {/* Comms PACE Plan */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">COMMS PACE Plan</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">P:</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.commsPace?.primary || ''}
-                onChange={(e) => updateCommsPace('primary', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.commsPace?.primary || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">A:</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.commsPace?.alternate || ''}
-                onChange={(e) => updateCommsPace('alternate', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.commsPace?.alternate || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">C:</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.commsPace?.contingency || ''}
-                onChange={(e) => updateCommsPace('contingency', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.commsPace?.contingency || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">E:</label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={conop.commsPace?.emergency || ''}
-                onChange={(e) => updateCommsPace('emergency', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <div className="text-sm text-gray-700">{conop.commsPace?.emergency || ''}</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Tasks to Subs */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">TASKS TO SUBS</h3>
-        {isEditing ? (
-          <textarea
-            value={conop.tasksToSubs || ''}
-            onChange={(e) => updateConop('tasksToSubs', e.target.value)}
-            rows={3}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-            placeholder="E.g. - Pre-/post-lab, ruck WP/SP/Pacers, MSIV instructors for lab, etc."
-          />
-        ) : (
-          <div className="text-sm text-gray-700">{conop.tasksToSubs || ''}</div>
-        )}
-      </div>
-
-      {/* Staff Section Duties */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">STAFF SECTION DUTIES & RESPONSIBILITIES</h3>
-        <div className="space-y-2">
-          {['s1', 's2', 's3', 's4', 's5', 's6'].map(section => (
-            <div key={section}>
-              <label className="block text-xs text-gray-600 mb-1">{section.toUpperCase()}:</label>
-              {isEditing ? (
+              <div className="space-y-2">
                 <input
-                  type="text"
-                  value={conop.staffDuties?.[section as keyof typeof conop.staffDuties] || ''}
-                  onChange={(e) => updateStaffDuty(section, e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  type="url"
+                  value={conop.imageUrl || ''}
+                  onChange={(e) => updateConop('imageUrl', e.target.value)}
+                  placeholder="Enter image URL..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
-              ) : (
-                <div className="text-sm text-gray-700">{conop.staffDuties?.[section as keyof typeof conop.staffDuties] || ''}</div>
-              )}
+                {conop.imageUrl && (
+                  <img 
+                    src={conop.imageUrl} 
+                    alt="Area of Operations" 
+                    className="w-full h-auto rounded border border-gray-200 max-h-64 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div>
+                {conop.imageUrl ? (
+                  <img 
+                    src={conop.imageUrl} 
+                    alt="Area of Operations" 
+                    className="w-full h-auto rounded border border-gray-200 max-h-64 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-48 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                    No image provided
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-4">
+              {/* Concept of Operation */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">CONCEPT OF THE OPERATION</h3>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">PHASE I (Location Prep):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.conceptOfOperation?.phase1 || ''}
+                    onChange={(e) => updateConceptPhase('phase1', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase1 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">PHASE II (Arrival):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.conceptOfOperation?.phase2 || ''}
+                    onChange={(e) => updateConceptPhase('phase2', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase2 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">PHASE III (Mentorship):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.conceptOfOperation?.phase3 || ''}
+                    onChange={(e) => updateConceptPhase('phase3', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase3 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">PHASE IV (Dismissal):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.conceptOfOperation?.phase4 || ''}
+                    onChange={(e) => updateConceptPhase('phase4', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.conceptOfOperation?.phase4 || ''}</div>
+                )}
+              </div>
             </div>
-          ))}
+          </div>
+
+              {/* Resources & Supply */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">RESOURCES & SUPPLY (SUPPLY REQUEST)</h3>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">CLASS I (Food, Rations, Water):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.resources?.class1 || ''}
+                    onChange={(e) => updateResources('class1', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.resources?.class1 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">CLASS II (Clothing & Equipment):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.resources?.class2 || ''}
+                    onChange={(e) => updateResources('class2', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.resources?.class2 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">CLASS V (Ammunition):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.resources?.class5 || ''}
+                    onChange={(e) => updateResources('class5', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.resources?.class5 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">CLASS VI (Personal Demand Items):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.resources?.class6 || ''}
+                    onChange={(e) => updateResources('class6', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.resources?.class6 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">CLASS VIII (Medical Supplies & Equipment):</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.resources?.class8 || ''}
+                    onChange={(e) => updateResources('class8', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.resources?.class8 || ''}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Key Dates */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">KEY DATES AND TIMELINE</h3>
+            {isEditing ? (
+              <textarea
+                value={conop.keyDates?.join('\n') || ''}
+                onChange={(e) => updateConop('keyDates', e.target.value.split('\n').filter(l => l.trim()))}
+                rows={4}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                placeholder="One date per line"
+              />
+            ) : (
+              <div className="text-sm text-gray-700 space-y-1">
+                {conop.keyDates?.map((date, i) => <div key={i}>{date}</div>) || ''}
+              </div>
+            )}
+          </div>
+
+          {/* Attached Appendices */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">ATTACHED APPENDICIES</h3>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">APPENDIX 1:</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.attachedAppendices?.appendix1 || ''}
+                    onChange={(e) => updateAttachedAppendix('appendix1', e.target.value)}
+                    placeholder="e.g., Medivac Plan"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.attachedAppendices?.appendix1 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">APPENDIX 2:</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.attachedAppendices?.appendix2 || ''}
+                    onChange={(e) => updateAttachedAppendix('appendix2', e.target.value)}
+                    placeholder="e.g., Packing List & Add. Items"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.attachedAppendices?.appendix2 || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">APPENDIX 3:</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.attachedAppendices?.appendix3 || ''}
+                    onChange={(e) => updateAttachedAppendix('appendix3', e.target.value)}
+                    placeholder="e.g., Task Org. (If needed, for larger events like CWST)"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.attachedAppendices?.appendix3 || ''}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Staff Section Duties */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">STAFF SECTION DUTIES & RESPONSIBILITIES</h3>
+            <div className="space-y-2">
+              {['s1', 's2', 's3', 's4', 's5', 's6'].map(section => (
+                <div key={section}>
+                  <label className="block text-xs text-gray-600 mb-1">{section.toUpperCase()}:</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={conop.staffDuties?.[section as keyof typeof conop.staffDuties] || ''}
+                      onChange={(e) => updateStaffDuty(section, e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <div className="text-sm text-gray-700">{conop.staffDuties?.[section as keyof typeof conop.staffDuties] || ''}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+              {/* Comms PACE Plan */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">COMMS PACE Plan</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">P:</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.commsPace?.primary || ''}
+                    onChange={(e) => updateCommsPace('primary', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.commsPace?.primary || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">A:</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.commsPace?.alternate || ''}
+                    onChange={(e) => updateCommsPace('alternate', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.commsPace?.alternate || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">C:</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.commsPace?.contingency || ''}
+                    onChange={(e) => updateCommsPace('contingency', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.commsPace?.contingency || ''}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">E:</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={conop.commsPace?.emergency || ''}
+                    onChange={(e) => updateCommsPace('emergency', e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-sm text-gray-700">{conop.commsPace?.emergency || ''}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Tasks to Subs */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">TASKS TO SUBS</h3>
+            {isEditing ? (
+              <textarea
+                value={conop.tasksToSubs || ''}
+                onChange={(e) => updateConop('tasksToSubs', e.target.value)}
+                rows={3}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                placeholder="E.g. - Pre-/post-lab, ruck WP/SP/Pacers, MSIV instructors for lab, etc."
+              />
+            ) : (
+              <div className="text-sm text-gray-700">{conop.tasksToSubs || ''}</div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Resource Status */}
+      {/* Planning Status Grid - Bottom Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">RESOURCES STATUS</h3>
-        <div className="space-y-2">
-          {[
-            { key: 'missionGear', label: 'MISSION GEAR' },
-            { key: 'finance', label: 'FINANCE' },
-            { key: 'riskAssessment', label: 'RISK ASSESSMENT & SAFETY PLAN' }
-          ].map(resource => (
-            <div key={resource.key} className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">{resource.label}</span>
-              {isEditing ? (
-                <select
-                  value={conop.resourceStatus?.[resource.key as keyof typeof conop.resourceStatus] || 'not-started'}
-                  onChange={(e) => updateResourceStatus(resource.key, e.target.value as PlanningStatus)}
-                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="complete">Complete</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="issues">Issues</option>
-                </select>
-              ) : (
-                <div className={`w-6 h-6 rounded ${getStatusColor(conop.resourceStatus?.[resource.key as keyof typeof conop.resourceStatus])}`}></div>
-              )}
-            </div>
-          ))}
+        <h3 className="font-bold text-gray-900 mb-4">KEY TASKS FOR EACH WEEK</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 px-2 py-2 text-left text-xs font-bold bg-gray-100">RESOURCES</th>
+                {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => (
+                  <th key={week} className="border border-gray-300 px-2 py-2 text-center text-xs font-bold bg-gray-100">
+                    {week.toUpperCase()}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { key: 'missionGear', label: 'MISSION GEAR' },
+                { key: 'finance', label: 'FINANCE' },
+                { key: 'riskAssessment', label: 'RISK ASSESSMENT & SAFETY PLAN' }
+              ].map(resource => (
+                <tr key={resource.key}>
+                  <td className="border border-gray-300 px-2 py-2 text-xs font-medium">{resource.label}</td>
+                  {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => (
+                    <td key={week} className="border border-gray-300 px-2 py-2 text-center">
+                      {isEditing ? (
+                        <select
+                          value={conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks] || 'not-started'}
+                          onChange={(e) => updateWeeklyTask(week, e.target.value as PlanningStatus)}
+                          className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="complete">✓</option>
+                          <option value="in-progress">◐</option>
+                          <option value="issues">!</option>
+                          <option value="not-started">-</option>
+                        </select>
+                      ) : (
+                        <div className={`h-8 w-full rounded ${getStatusColor(conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks])}`}></div>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
-
-      {/* Weekly Tasks Timeline */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-bold text-gray-900 mb-2">KEY TASKS FOR EACH WEEK</h3>
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => (
-            <div key={week} className="text-center">
-              <div className="text-xs font-medium text-gray-700 mb-1">{week.toUpperCase()}</div>
-              {isEditing ? (
-                <select
-                  value={conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks] || 'not-started'}
-                  onChange={(e) => updateWeeklyTask(week, e.target.value as PlanningStatus)}
-                  className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="complete">✓</option>
-                  <option value="in-progress">◐</option>
-                  <option value="issues">!</option>
-                  <option value="not-started">-</option>
-                </select>
-              ) : (
-                <div className={`h-8 rounded ${getStatusColor(conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks])}`}></div>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs text-gray-600 mt-2">
+        <div className="flex flex-wrap gap-3 text-xs text-gray-600 mt-4">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-green-500"></div>
-            <span>COMPLETE</span>
+            <div className="w-4 h-4 rounded bg-green-500"></div>
+            <span className="font-medium">COMPLETE</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-yellow-500"></div>
-            <span>WORKING</span>
+            <div className="w-4 h-4 rounded bg-yellow-500"></div>
+            <span className="font-medium">WORKING</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-orange-500"></div>
-            <span>ISSUES</span>
+            <div className="w-4 h-4 rounded bg-orange-500"></div>
+            <span className="font-medium">ISSUES</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-500"></div>
-            <span>NOT STARTED</span>
+            <div className="w-4 h-4 rounded bg-red-500"></div>
+            <span className="font-medium">NOT STARTED</span>
           </div>
         </div>
       </div>

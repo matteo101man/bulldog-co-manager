@@ -56,6 +56,7 @@ export interface TrainingEvent {
 }
 
 export interface ConopData {
+  imageUrl?: string; // URL for the AO image
   purpose?: string;
   mission?: string;
   situation?: {
@@ -80,13 +81,11 @@ export interface ConopData {
     class8?: string;
   };
   keyDates?: string[];
-  commsPace?: {
-    primary?: string;
-    alternate?: string;
-    contingency?: string;
-    emergency?: string;
+  attachedAppendices?: {
+    appendix1?: string;
+    appendix2?: string;
+    appendix3?: string;
   };
-  tasksToSubs?: string;
   staffDuties?: {
     s1?: string;
     s2?: string;
@@ -95,6 +94,13 @@ export interface ConopData {
     s5?: string;
     s6?: string;
   };
+  commsPace?: {
+    primary?: string;
+    alternate?: string;
+    contingency?: string;
+    emergency?: string;
+  };
+  tasksToSubs?: string;
   resourceStatus?: {
     missionGear?: PlanningStatus;
     finance?: PlanningStatus;
