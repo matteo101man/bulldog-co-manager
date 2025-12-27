@@ -111,14 +111,13 @@ export interface ConopData {
     riskAssessment?: PlanningStatus;
   };
   weeklyTasks?: {
-    t6?: PlanningStatus;
-    t5?: PlanningStatus;
-    t4?: PlanningStatus;
-    t3?: PlanningStatus;
-    t2?: PlanningStatus;
-    t1?: PlanningStatus;
-    tWeek?: PlanningStatus;
+    t6?: string;
+    t5?: string;
+    t4?: string;
+    t3?: string;
+    t2?: string;
+    t1?: string;
+    tWeek?: string;
   };
-  weeklyTasksDescription?: string; // Description for the weekly tasks grid rows
 }
 
