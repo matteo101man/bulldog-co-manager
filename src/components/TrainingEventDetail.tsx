@@ -981,60 +981,54 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
                </tr>
              </thead>
              <tbody>
-               {[
-                 { key: 'missionGear', label: 'MISSION GEAR' },
-                 { key: 'finance', label: 'FINANCE' },
-                 { key: 'riskAssessment', label: 'RISK ASSESSMENT & SAFETY PLAN' }
-               ].map(resource => (
-                 <tr key={resource.key}>
-                   {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => {
-                     const weekData = conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks];
-                     const status = (typeof weekData === 'object' && weekData?.status) ? weekData.status : (weekData ? 'not-started' : 'not-started');
-                     const description = (typeof weekData === 'object' && weekData?.description) ? weekData.description : '';
-                     return (
-                       <td key={week} className="border border-gray-300 px-2 py-2">
-                         <div className="space-y-1">
-                           {isEditing ? (
-                             <>
-                               <select
-                                 value={status}
-                                 onChange={(e) => updateWeeklyTaskStatus(week, e.target.value as PlanningStatus)}
-                                 className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                               >
-                                 <option value="complete">✓</option>
-                                 <option value="in-progress">◐</option>
-                                 <option value="issues">!</option>
-                                 <option value="not-started">-</option>
-                               </select>
-                               <textarea
-                                 value={description}
-                                 onChange={(e) => updateWeeklyTaskDescription(week, e.target.value)}
-                                 rows={3}
-                                 className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 resize-none"
-                                 placeholder="Task description..."
-                               />
-                             </>
-                           ) : (
-                             <>
-                               <div className={`h-6 w-full rounded ${getStatusColor(status)} flex items-center justify-center text-white text-xs font-bold`}>
-                                 {status === 'complete' && '✓'}
-                                 {status === 'in-progress' && '◐'}
-                                 {status === 'issues' && '!'}
-                                 {status === 'not-started' && '-'}
+               <tr>
+                 {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => {
+                   const weekData = conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks];
+                   const status = (typeof weekData === 'object' && weekData?.status) ? weekData.status : (weekData ? 'not-started' : 'not-started');
+                   const description = (typeof weekData === 'object' && weekData?.description) ? weekData.description : '';
+                   return (
+                     <td key={week} className="border border-gray-300 px-2 py-2">
+                       <div className="space-y-1">
+                         {isEditing ? (
+                           <>
+                             <select
+                               value={status}
+                               onChange={(e) => updateWeeklyTaskStatus(week, e.target.value as PlanningStatus)}
+                               className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                             >
+                               <option value="complete">✓</option>
+                               <option value="in-progress">◐</option>
+                               <option value="issues">!</option>
+                               <option value="not-started">-</option>
+                             </select>
+                             <textarea
+                               value={description}
+                               onChange={(e) => updateWeeklyTaskDescription(week, e.target.value)}
+                               rows={3}
+                               className="w-full px-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 resize-none"
+                               placeholder="Task description..."
+                             />
+                           </>
+                         ) : (
+                           <>
+                             <div className={`h-6 w-full rounded ${getStatusColor(status)} flex items-center justify-center text-white text-xs font-bold`}>
+                               {status === 'complete' && '✓'}
+                               {status === 'in-progress' && '◐'}
+                               {status === 'issues' && '!'}
+                               {status === 'not-started' && '-'}
+                             </div>
+                             {description && (
+                               <div className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">
+                                 {description}
                                </div>
-                               {description && (
-                                 <div className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">
-                                   {description}
-                                 </div>
-                               )}
-                             </>
-                           )}
-                         </div>
-                       </td>
-                     );
-                   })}
-                 </tr>
-               ))}
+                             )}
+                           </>
+                         )}
+                       </div>
+                     </td>
+                   );
+                 })}
+               </tr>
              </tbody>
            </table>
          </div>
