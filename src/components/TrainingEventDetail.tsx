@@ -973,7 +973,6 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
            <table className="w-full border-collapse">
              <thead>
                <tr>
-                 <th className="border border-gray-300 px-2 py-2 text-left text-xs font-bold bg-gray-100"></th>
                  {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => (
                    <th key={week} className="border border-gray-300 px-2 py-2 text-center text-xs font-bold bg-gray-100">
                      {week.toUpperCase()}
@@ -988,7 +987,6 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
                  { key: 'riskAssessment', label: 'RISK ASSESSMENT & SAFETY PLAN' }
                ].map(resource => (
                  <tr key={resource.key}>
-                   <td className="border border-gray-300 px-2 py-2 text-xs font-medium bg-gray-100">{resource.label}</td>
                    {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => {
                      const weekData = conop.weeklyTasks?.[week as keyof typeof conop.weeklyTasks];
                      const status = (typeof weekData === 'object' && weekData?.status) ? weekData.status : (weekData ? 'not-started' : 'not-started');
