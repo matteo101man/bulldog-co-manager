@@ -81,7 +81,8 @@ export default function TrainingSchedule({
   function groupByDate(eventList: TrainingEvent[]) {
     const grouped = new Map<string, TrainingEvent[]>();
     eventList.forEach(event => {
-      const dateKey = format(parseISO(event.date), 'yyyy-MM-dd');
+      // Date is already in YYYY-MM-DD format, use it directly
+      const dateKey = event.date;
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, []);
       }
