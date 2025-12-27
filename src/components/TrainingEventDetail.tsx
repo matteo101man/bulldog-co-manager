@@ -960,7 +960,19 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="border border-gray-300 px-2 py-2 text-left text-xs font-bold bg-gray-100">RESOURCES</th>
+                <th className="border border-gray-300 px-2 py-2 text-left text-xs font-bold bg-gray-100">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={conop.weeklyTasksDescription || 'DESCRIPTION'}
+                      onChange={(e) => updateConop('weeklyTasksDescription', e.target.value)}
+                      className="w-full px-1 py-0 border-b border-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs font-bold bg-transparent"
+                      placeholder="DESCRIPTION"
+                    />
+                  ) : (
+                    <span>{conop.weeklyTasksDescription || 'DESCRIPTION'}</span>
+                  )}
+                </th>
                 {['t6', 't5', 't4', 't3', 't2', 't1', 'tWeek'].map(week => (
                   <th key={week} className="border border-gray-300 px-2 py-2 text-center text-xs font-bold bg-gray-100">
                     {week.toUpperCase()}

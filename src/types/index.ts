@@ -119,5 +119,6 @@ export interface ConopData {
     t1?: PlanningStatus;
     tWeek?: PlanningStatus;
   };
+  weeklyTasksDescription?: string; // Description for the weekly tasks grid rows
 }
 
