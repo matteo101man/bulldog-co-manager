@@ -6,16 +6,21 @@ import Issues from './components/Issues';
 import CadetsList from './components/CadetsList';
 import CadetProfile from './components/CadetProfile';
 import AddCadet from './components/AddCadet';
+import TrainingSchedule from './components/TrainingSchedule';
+import TrainingEventDetail from './components/TrainingEventDetail';
+import AddTrainingEvent from './components/AddTrainingEvent';
 import { Company } from './types';
 
-type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet';
+type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-schedule' | 'training-event-detail' | 'add-training-event';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [currentView, setCurrentView] = useState<View>('companies');
   const [selectedCadetId, setSelectedCadetId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [rosterRefreshKey, setRosterRefreshKey] = useState(0);
+  const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
 
   useEffect(() => {
     // Small delay to ensure DOM is ready
@@ -74,6 +79,47 @@ function App() {
     );
   }
 
+  if (currentView === 'training-schedule') {
+    return (
+      <TrainingSchedule
+        key={scheduleRefreshKey}
+        onSelectEvent={(eventId) => {
+          setSelectedEventId(eventId);
+          setCurrentView('training-event-detail');
+        }}
+        onAddEvent={() => setCurrentView('add-training-event')}
+        onBack={() => setCurrentView('companies')}
+      />
+    );
+  }
+
+  if (currentView === 'add-training-event') {
+    return (
+      <AddTrainingEvent
+        onBack={() => setCurrentView('training-schedule')}
+        onSuccess={() => {
+          setScheduleRefreshKey(prev => prev + 1);
+          setCurrentView('training-schedule');
+        }}
+      />
+    );
+  }
+
+  if (currentView === 'training-event-detail' && selectedEventId) {
+    return (
+      <TrainingEventDetail
+        eventId={selectedEventId}
+        onBack={() => {
+          setSelectedEventId(null);
+          setCurrentView('training-schedule');
+        }}
+        onRefresh={() => {
+          setScheduleRefreshKey(prev => prev + 1);
+        }}
+      />
+    );
+  }
+
   if (currentView === 'cadet-profile' && selectedCadetId) {
     return (
       <CadetProfile
@@ -112,6 +158,7 @@ function App() {
       onSettings={() => setCurrentView('settings')}
       onIssues={() => setCurrentView('issues')}
       onCadets={() => setCurrentView('cadets')}
+      onTrainingSchedule={() => setCurrentView('training-schedule')}
     />
   );
 }

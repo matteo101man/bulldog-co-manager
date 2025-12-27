@@ -40,3 +40,74 @@ export interface DayStats {
   unexcused: number;
 }
 
+export type PlanningStatus = 'complete' | 'in-progress' | 'issues' | 'not-started';
+
+export interface TrainingEvent {
+  id: string;
+  name: string;
+  date: string; // ISO date string
+  oicId?: string; // Cadet ID
+  ncoicId?: string; // Cadet ID
+  ao?: string; // Area of Operations
+  uniform?: string;
+  mission?: string;
+  planningStatus: PlanningStatus;
+  conop?: ConopData;
+}
+
+export interface ConopData {
+  purpose?: string;
+  mission?: string;
+  situation?: {
+    oic?: string;
+    ncoic?: string;
+    date?: string;
+    ao?: string;
+    uniform?: string;
+  };
+  endState?: string;
+  conceptOfOperation?: {
+    phase1?: string;
+    phase2?: string;
+    phase3?: string;
+    phase4?: string;
+  };
+  resources?: {
+    class1?: string;
+    class2?: string;
+    class5?: string;
+    class6?: string;
+    class8?: string;
+  };
+  keyDates?: string[];
+  commsPace?: {
+    primary?: string;
+    alternate?: string;
+    contingency?: string;
+    emergency?: string;
+  };
+  tasksToSubs?: string;
+  staffDuties?: {
+    s1?: string;
+    s2?: string;
+    s3?: string;
+    s4?: string;
+    s5?: string;
+    s6?: string;
+  };
+  resourceStatus?: {
+    missionGear?: PlanningStatus;
+    finance?: PlanningStatus;
+    riskAssessment?: PlanningStatus;
+  };
+  weeklyTasks?: {
+    t6?: PlanningStatus;
+    t5?: PlanningStatus;
+    t4?: PlanningStatus;
+    t3?: PlanningStatus;
+    t2?: PlanningStatus;
+    t1?: PlanningStatus;
+    tWeek?: PlanningStatus;
+  };
+}
+

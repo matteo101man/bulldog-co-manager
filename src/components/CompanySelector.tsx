@@ -6,12 +6,13 @@ interface CompanySelectorProps {
   onSettings: () => void;
   onIssues: () => void;
   onCadets: () => void;
+  onTrainingSchedule: () => void;
 }
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
 
-export default function CompanySelector({ onSelect, onSettings, onIssues, onCadets }: CompanySelectorProps) {
-  const [activeTab, setActiveTab] = useState<'companies' | 'issues' | 'cadets' | 'settings'>('companies');
+export default function CompanySelector({ onSelect, onSettings, onIssues, onCadets, onTrainingSchedule }: CompanySelectorProps) {
+  const [activeTab, setActiveTab] = useState<'companies' | 'issues' | 'cadets' | 'settings' | 'training-schedule'>('companies');
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 safe-area-inset">
@@ -21,10 +22,10 @@ export default function CompanySelector({ onSelect, onSettings, onIssues, onCade
         </h1>
         
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
+        <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('companies')}
-            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+            className={`flex-1 min-w-[80px] py-3 text-sm font-medium touch-manipulation ${
               activeTab === 'companies'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600'
@@ -37,7 +38,7 @@ export default function CompanySelector({ onSelect, onSettings, onIssues, onCade
               setActiveTab('issues');
               onIssues();
             }}
-            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+            className={`flex-1 min-w-[80px] py-3 text-sm font-medium touch-manipulation ${
               activeTab === 'issues'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600'
@@ -50,7 +51,7 @@ export default function CompanySelector({ onSelect, onSettings, onIssues, onCade
               setActiveTab('cadets');
               onCadets();
             }}
-            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+            className={`flex-1 min-w-[80px] py-3 text-sm font-medium touch-manipulation ${
               activeTab === 'cadets'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600'
@@ -60,10 +61,23 @@ export default function CompanySelector({ onSelect, onSettings, onIssues, onCade
           </button>
           <button
             onClick={() => {
+              setActiveTab('training-schedule');
+              onTrainingSchedule();
+            }}
+            className={`flex-1 min-w-[80px] py-3 text-sm font-medium touch-manipulation ${
+              activeTab === 'training-schedule'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600'
+            }`}
+          >
+            Training
+          </button>
+          <button
+            onClick={() => {
               setActiveTab('settings');
               onSettings();
             }}
-            className={`flex-1 py-3 text-sm font-medium touch-manipulation ${
+            className={`flex-1 min-w-[80px] py-3 text-sm font-medium touch-manipulation ${
               activeTab === 'settings'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600'
