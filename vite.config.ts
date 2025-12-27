@@ -7,7 +7,39 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      // Disable service worker in development mode
+      devOptions: {
+        enabled: false,
+        type: 'module'
+      },
+      // Better update strategy for production
+      workbox: {
+        // Skip waiting and claim clients immediately on update
+        skipWaiting: true,
+        clientsClaim: true,
+        // Use network-first strategy for HTML to always get latest
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.html$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/.*\.(js|css)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'static-resources'
+            }
+          }
+        ]
+      },
+      includeAssets: ['favicon.ico', 'favicon-96x96.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Bulldog CO Manager',
         short_name: 'CO Manager',
@@ -18,12 +50,12 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'web-app-manifest-192x192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'web-app-manifest-512x512.png',
             sizes: '512x512',
             type: 'image/png'
           },

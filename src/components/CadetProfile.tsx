@@ -7,12 +7,13 @@ interface CadetProfileProps {
   cadetId: string;
   onBack: () => void;
   onDelete: () => void;
+  onCompanyChange?: (oldCompany: Company, newCompany: Company) => void;
 }
 
 const MS_LEVELS = ['MS1', 'MS2', 'MS3', 'MS4'];
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
 
-export default function CadetProfile({ cadetId, onBack, onDelete }: CadetProfileProps) {
+export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChange }: CadetProfileProps) {
   const [cadet, setCadet] = useState<Cadet | null>(null);
   const [unexcusedCountPT, setUnexcusedCountPT] = useState<number>(0);
   const [unexcusedCountLab, setUnexcusedCountLab] = useState<number>(0);
@@ -63,7 +64,16 @@ export default function CadetProfile({ cadetId, onBack, onDelete }: CadetProfile
     
     setSaving(true);
     try {
+      const oldCompany = cadet.company;
+      const newCompany = formData.company;
+      
       await updateCadet(cadetId, formData);
+      
+      // If company changed, notify parent component
+      if (oldCompany && newCompany && oldCompany !== newCompany && onCompanyChange) {
+        onCompanyChange(oldCompany, newCompany);
+      }
+      
       await loadCadet(); // Reload to get updated data
       setIsEditing(false);
       alert('Cadet profile updated successfully!');

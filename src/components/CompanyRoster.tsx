@@ -741,21 +741,32 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
         const wednesday = { present: 0, excused: 0, unexcused: 0 };
         const thursday = { present: 0, excused: 0, unexcused: 0 };
         
-        allRecords.forEach((record, cadetId) => {
+        // Iterate over all records - Map.entries() gives [key, value] pairs
+        // The key is the cadetId (set in getAllAttendanceForWeek)
+        for (const [cadetId, record] of allRecords.entries()) {
+          // Use the Map key (cadetId) directly since that's what we set it to
           if (compCadetIds.has(cadetId)) {
-            if (record.tuesday === 'present') tuesday.present++;
-            else if (record.tuesday === 'excused') tuesday.excused++;
-            else if (record.tuesday === 'unexcused') tuesday.unexcused++;
-            
-            if (record.wednesday === 'present') wednesday.present++;
-            else if (record.wednesday === 'excused') wednesday.excused++;
-            else if (record.wednesday === 'unexcused') wednesday.unexcused++;
-            
-            if (record.thursday === 'present') thursday.present++;
-            else if (record.thursday === 'excused') thursday.excused++;
-            else if (record.thursday === 'unexcused') thursday.unexcused++;
+            if (attendanceType === 'PT') {
+              // Use PT fields for Tuesday, Wednesday, Thursday PT attendance
+              if (record.ptTuesday === 'present') tuesday.present++;
+              else if (record.ptTuesday === 'excused') tuesday.excused++;
+              else if (record.ptTuesday === 'unexcused') tuesday.unexcused++;
+              
+              if (record.ptWednesday === 'present') wednesday.present++;
+              else if (record.ptWednesday === 'excused') wednesday.excused++;
+              else if (record.ptWednesday === 'unexcused') wednesday.unexcused++;
+              
+              if (record.ptThursday === 'present') thursday.present++;
+              else if (record.ptThursday === 'excused') thursday.excused++;
+              else if (record.ptThursday === 'unexcused') thursday.unexcused++;
+            } else if (attendanceType === 'Lab') {
+              // Lab is only on Thursday
+              if (record.labThursday === 'present') thursday.present++;
+              else if (record.labThursday === 'excused') thursday.excused++;
+              else if (record.labThursday === 'unexcused') thursday.unexcused++;
+            }
           }
-        });
+        }
         
         statsMap.set(comp, { tuesday, wednesday, thursday });
       });

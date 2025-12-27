@@ -15,6 +15,7 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('companies');
   const [selectedCadetId, setSelectedCadetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [rosterRefreshKey, setRosterRefreshKey] = useState(0);
 
   useEffect(() => {
     // Small delay to ensure DOM is ready
@@ -32,6 +33,7 @@ function App() {
   if (selectedCompany && currentView !== 'cadet-profile') {
     return (
       <CompanyRoster 
+        key={`${selectedCompany}-${rosterRefreshKey}`}
         company={selectedCompany} 
         onBack={() => setSelectedCompany(null)}
         onSelectCadet={(cadetId) => {
@@ -93,6 +95,12 @@ function App() {
             setCurrentView('cadets');
           }
           setSelectedCadetId(null);
+        }}
+        onCompanyChange={(oldCompany, newCompany) => {
+          // Refresh the roster if we're viewing the old or new company
+          if (selectedCompany === oldCompany || selectedCompany === newCompany) {
+            setRosterRefreshKey(prev => prev + 1);
+          }
         }}
       />
     );
