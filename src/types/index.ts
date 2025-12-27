@@ -69,9 +69,13 @@ export interface ConopData {
   endState?: string;
   conceptOfOperation?: {
     phase1?: string;
+    phase1Label?: string; // e.g., "Location Prep"
     phase2?: string;
+    phase2Label?: string; // e.g., "Arrival"
     phase3?: string;
+    phase3Label?: string; // e.g., "Mentorship"
     phase4?: string;
+    phase4Label?: string; // e.g., "Dismissal"
   };
   resources?: {
     class1?: string;

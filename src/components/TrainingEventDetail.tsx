@@ -355,6 +355,13 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
     });
   }
 
+  function updateConceptPhaseLabel(phaseLabel: string, value: string) {
+    updateConop('conceptOfOperation', {
+      ...conop.conceptOfOperation,
+      [phaseLabel]: value
+    });
+  }
+
   function updateResources(classNum: string, value: string) {
     updateConop('resources', {
       ...conop.resources,
@@ -413,6 +420,49 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column */}
         <div className="space-y-4">
+          {/* Image - AO View */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-900 mb-2">AREA OF OPERATIONS</h3>
+            {isEditing ? (
+              <div className="space-y-2">
+                <input
+                  type="url"
+                  value={conop.imageUrl || ''}
+                  onChange={(e) => updateConop('imageUrl', e.target.value)}
+                  placeholder="Enter image URL..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+                {conop.imageUrl && (
+                  <img 
+                    src={conop.imageUrl} 
+                    alt="Area of Operations" 
+                    className="w-full h-auto rounded border border-gray-200 max-h-64 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div>
+                {conop.imageUrl ? (
+                  <img 
+                    src={conop.imageUrl} 
+                    alt="Area of Operations" 
+                    className="w-full h-auto rounded border border-gray-200 max-h-64 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-48 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                    No image provided
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Purpose */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <h3 className="font-bold text-gray-900 mb-2">PURPOSE (WHY?)</h3>
@@ -546,49 +596,6 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
               <div className="text-gray-700 min-h-[60px]">{conop.endState || ''}</div>
             )}
           </div>
-
-          {/* Image - AO View */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 className="font-bold text-gray-900 mb-2">AREA OF OPERATIONS</h3>
-            {isEditing ? (
-              <div className="space-y-2">
-                <input
-                  type="url"
-                  value={conop.imageUrl || ''}
-                  onChange={(e) => updateConop('imageUrl', e.target.value)}
-                  placeholder="Enter image URL..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-                {conop.imageUrl && (
-                  <img 
-                    src={conop.imageUrl} 
-                    alt="Area of Operations" 
-                    className="w-full h-auto rounded border border-gray-200 max-h-64 object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                )}
-              </div>
-            ) : (
-              <div>
-                {conop.imageUrl ? (
-                  <img 
-                    src={conop.imageUrl} 
-                    alt="Area of Operations" 
-                    className="w-full h-auto rounded border border-gray-200 max-h-64 object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-48 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-gray-400 text-sm">
-                    No image provided
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Right Column */}
@@ -596,9 +603,23 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
               {/* Concept of Operation */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <h3 className="font-bold text-gray-900 mb-2">CONCEPT OF THE OPERATION</h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-600 mb-1">PHASE I (Location Prep):</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  PHASE I {isEditing ? (
+                    <span className="text-gray-400">
+                      (<input
+                        type="text"
+                        value={conop.conceptOfOperation?.phase1Label || 'Location Prep'}
+                        onChange={(e) => updateConceptPhaseLabel('phase1Label', e.target.value)}
+                        className="inline w-32 px-1 py-0 border-b border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                        placeholder="Label"
+                      />):
+                    </span>
+                  ) : (
+                    <span>({conop.conceptOfOperation?.phase1Label || 'Location Prep'}):</span>
+                  )}
+                </label>
                 {isEditing ? (
                   <input
                     type="text"
@@ -611,7 +632,21 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
                 )}
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">PHASE II (Arrival):</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  PHASE II {isEditing ? (
+                    <span className="text-gray-400">
+                      (<input
+                        type="text"
+                        value={conop.conceptOfOperation?.phase2Label || 'Arrival'}
+                        onChange={(e) => updateConceptPhaseLabel('phase2Label', e.target.value)}
+                        className="inline w-32 px-1 py-0 border-b border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                        placeholder="Label"
+                      />):
+                    </span>
+                  ) : (
+                    <span>({conop.conceptOfOperation?.phase2Label || 'Arrival'}):</span>
+                  )}
+                </label>
                 {isEditing ? (
                   <input
                     type="text"
@@ -624,7 +659,21 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
                 )}
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">PHASE III (Mentorship):</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  PHASE III {isEditing ? (
+                    <span className="text-gray-400">
+                      (<input
+                        type="text"
+                        value={conop.conceptOfOperation?.phase3Label || 'Mentorship'}
+                        onChange={(e) => updateConceptPhaseLabel('phase3Label', e.target.value)}
+                        className="inline w-32 px-1 py-0 border-b border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                        placeholder="Label"
+                      />):
+                    </span>
+                  ) : (
+                    <span>({conop.conceptOfOperation?.phase3Label || 'Mentorship'}):</span>
+                  )}
+                </label>
                 {isEditing ? (
                   <input
                     type="text"
@@ -637,7 +686,21 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
                 )}
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">PHASE IV (Dismissal):</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  PHASE IV {isEditing ? (
+                    <span className="text-gray-400">
+                      (<input
+                        type="text"
+                        value={conop.conceptOfOperation?.phase4Label || 'Dismissal'}
+                        onChange={(e) => updateConceptPhaseLabel('phase4Label', e.target.value)}
+                        className="inline w-32 px-1 py-0 border-b border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                        placeholder="Label"
+                      />):
+                    </span>
+                  ) : (
+                    <span>({conop.conceptOfOperation?.phase4Label || 'Dismissal'}):</span>
+                  )}
+                </label>
                 {isEditing ? (
                   <input
                     type="text"
