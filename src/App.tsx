@@ -9,7 +9,14 @@ import AddCadet from './components/AddCadet';
 import TrainingSchedule from './components/TrainingSchedule';
 import TrainingEventDetail from './components/TrainingEventDetail';
 import AddTrainingEvent from './components/AddTrainingEvent';
+import NotificationPrompt from './components/NotificationPrompt';
 import { Company } from './types';
+import { 
+  requestNotificationPermission, 
+  isNotificationSupported,
+  getNotificationPermission,
+  onMessageListener 
+} from './services/notificationService';
 
 type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-schedule' | 'training-event-detail' | 'add-training-event';
 
@@ -25,7 +32,52 @@ function App() {
   useEffect(() => {
     // Small delay to ensure DOM is ready
     setIsLoading(false);
+    
+    // Initialize notifications on app load
+    initializeNotifications();
   }, []);
+
+  async function initializeNotifications() {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+    
+    // Check if notifications are supported
+    if (!isNotificationSupported()) {
+      console.log('Notifications not supported in this browser');
+      return;
+    }
+
+    // If permission is already granted, register the token automatically
+    const permission = getNotificationPermission();
+    if (permission === 'granted') {
+      try {
+        // Request token to register this device
+        await requestNotificationPermission();
+        console.log('Notification token registered');
+        
+        // Set up listener for foreground messages
+        onMessageListener()
+          .then((payload) => {
+            if (payload) {
+              console.log('Foreground message received:', payload);
+              // Show notification even when app is in foreground
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(payload.notification?.title || 'Bulldog CO Manager', {
+                  body: payload.notification?.body || payload.data?.message,
+                  icon: '/web-app-manifest-192x192.png',
+                  tag: 'bulldog-notification'
+                });
+              }
+            }
+          })
+          .catch((err) => {
+            console.error('Error setting up message listener:', err);
+          });
+      } catch (error) {
+        console.error('Error initializing notifications:', error);
+      }
+    }
+  }
 
   if (isLoading) {
     return (
@@ -153,13 +205,16 @@ function App() {
   }
 
   return (
-    <CompanySelector 
-      onSelect={setSelectedCompany} 
-      onSettings={() => setCurrentView('settings')}
-      onIssues={() => setCurrentView('issues')}
-      onCadets={() => setCurrentView('cadets')}
-      onTrainingSchedule={() => setCurrentView('training-schedule')}
-    />
+    <>
+      <CompanySelector 
+        onSelect={setSelectedCompany} 
+        onSettings={() => setCurrentView('settings')}
+        onIssues={() => setCurrentView('issues')}
+        onCadets={() => setCurrentView('cadets')}
+        onTrainingSchedule={() => setCurrentView('training-schedule')}
+      />
+      <NotificationPrompt />
+    </>
   );
 }
 

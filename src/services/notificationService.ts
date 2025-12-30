@@ -53,30 +53,30 @@ async function getFCMToken(): Promise<string | null> {
     throw new Error('Firebase Messaging is not available');
   }
 
-  try {
-    // Get the service worker registration (use existing if available, otherwise register)
-    let registration;
     try {
-      // Try to get existing registration first
-      registration = await navigator.serviceWorker.ready;
+      // Get the service worker registration for Firebase Messaging
+      // We need to register the firebase-messaging-sw.js service worker
+      const basePath = '/bulldog-co-manager';
+      let registration;
       
-      // Check if we need to register the Firebase messaging service worker
-      // The VitePWA plugin creates a service worker, so we'll use that
-      // The firebase-messaging-sw.js will be loaded by the main service worker if needed
-    } catch (swError) {
-      console.warn('Service worker not ready, attempting to register:', swError);
-      // Try to register the Firebase messaging service worker as fallback
-      try {
-        const basePath = '/bulldog-co-manager';
+      // Check if there's already a service worker registered
+      const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+      const firebaseSW = existingRegistrations.find(reg => 
+        reg.scope.includes(basePath) && reg.active?.scriptURL?.includes('firebase-messaging-sw')
+      );
+      
+      if (firebaseSW) {
+        // Use existing Firebase messaging service worker
+        registration = firebaseSW;
+        await registration.update(); // Update if needed
+      } else {
+        // Register the Firebase messaging service worker
         registration = await navigator.serviceWorker.register(`${basePath}/firebase-messaging-sw.js`, {
           scope: `${basePath}/`
         });
+        // Wait for it to be ready
         await navigator.serviceWorker.ready;
-      } catch (regError) {
-        console.warn('Could not register Firebase messaging service worker:', regError);
-        throw new Error('Service worker registration failed');
       }
-    }
     
     // Get FCM token with VAPID key
     let token: string | null = null;
