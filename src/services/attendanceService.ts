@@ -202,6 +202,77 @@ export async function getTotalUnexcusedAbsences(
 }
 
 /**
+ * Get specific dates of unexcused absences for a cadet
+ * @param cadetId - The cadet ID
+ * @param attendanceType - 'PT' for Physical Training, 'Lab' for Lab
+ * @returns Array of date strings in YYYY-MM-DD format
+ */
+export async function getUnexcusedAbsenceDates(
+  cadetId: string,
+  attendanceType: AttendanceType
+): Promise<string[]> {
+  // Query all attendance records for this cadet
+  const q = query(
+    collection(db, ATTENDANCE_COLLECTION),
+    where('cadetId', '==', cadetId)
+  );
+  const querySnapshot = await getDocs(q);
+  
+  const dates: string[] = [];
+  
+  querySnapshot.docs.forEach(doc => {
+    const record = doc.data() as any;
+    const weekStartDate = record.weekStartDate;
+    
+    if (!weekStartDate) return;
+    
+    // Calculate dates for Tuesday, Wednesday, Thursday based on week start (Monday)
+    const [year, month, day] = weekStartDate.split('-').map(Number);
+    const tuesday = new Date(year, month - 1, day + 1);
+    const wednesday = new Date(year, month - 1, day + 2);
+    const thursday = new Date(year, month - 1, day + 3);
+    
+    const formatDate = (date: Date): string => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+    
+    if (attendanceType === 'PT') {
+      // Check PT days
+      if (record.ptTuesday === 'unexcused') {
+        dates.push(formatDate(tuesday));
+      }
+      if (record.ptWednesday === 'unexcused') {
+        dates.push(formatDate(wednesday));
+      }
+      if (record.ptThursday === 'unexcused') {
+        dates.push(formatDate(thursday));
+      }
+      // Legacy support
+      if (record.tuesday === 'unexcused' && !record.ptTuesday) {
+        dates.push(formatDate(tuesday));
+      }
+      if (record.wednesday === 'unexcused' && !record.ptWednesday) {
+        dates.push(formatDate(wednesday));
+      }
+      if (record.thursday === 'unexcused' && !record.ptThursday && !record.labThursday) {
+        dates.push(formatDate(thursday));
+      }
+    } else if (attendanceType === 'Lab') {
+      // Check Lab day (Thursday only)
+      if (record.labThursday === 'unexcused') {
+        dates.push(formatDate(thursday));
+      }
+    }
+  });
+  
+  // Sort dates chronologically (newest first)
+  return dates.sort((a, b) => b.localeCompare(a));
+}
+
+/**
  * Get total unexcused absences for multiple cadets
  * Returns a map of cadetId -> total unexcused count
  * @param attendanceType - 'PT' for Physical Training, 'Lab' for Lab, or undefined for both combined

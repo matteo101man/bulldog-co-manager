@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getCadetById, updateCadet, deleteCadet } from '../services/cadetService';
-import { getTotalUnexcusedAbsences } from '../services/attendanceService';
+import { getTotalUnexcusedAbsences, getUnexcusedAbsenceDates } from '../services/attendanceService';
+import { formatDateWithDay } from '../utils/dates';
 import { Cadet, Company } from '../types';
 
 interface CadetProfileProps {
@@ -22,10 +23,36 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Cadet>>({});
+  const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | null>(null);
+  const [tooltipDates, setTooltipDates] = useState<string[]>([]);
+  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
+  const ptRef = useRef<HTMLDivElement>(null);
+  const labRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCadet();
   }, [cadetId]);
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tooltipType && 
+          ptRef.current && !ptRef.current.contains(event.target as Node) &&
+          labRef.current && !labRef.current.contains(event.target as Node) &&
+          !(event.target as HTMLElement).closest('.fixed.z-50')) {
+        setTooltipType(null);
+        setTooltipDates([]);
+        setTooltipPosition(null);
+      }
+    }
+
+    if (tooltipType) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [tooltipType]);
 
   async function loadCadet() {
     setLoading(true);
@@ -331,15 +358,85 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
               <div className="space-y-2">
                 <div>
                   <div className="text-sm text-gray-600">PT (Physical Training):</div>
-                  <div className="text-gray-900 font-semibold">{unexcusedCountPT}</div>
+                  <div 
+                    ref={ptRef}
+                    onClick={async () => {
+                      if (unexcusedCountPT > 0) {
+                        const dates = await getUnexcusedAbsenceDates(cadetId, 'PT');
+                        setTooltipDates(dates);
+                        setTooltipType('PT');
+                        if (ptRef.current) {
+                          const rect = ptRef.current.getBoundingClientRect();
+                          setTooltipPosition({ top: rect.bottom + 8, left: rect.left });
+                        }
+                      }
+                    }}
+                    className={`text-gray-900 font-semibold ${unexcusedCountPT > 0 ? 'cursor-pointer hover:text-blue-600 underline' : ''}`}
+                  >
+                    {unexcusedCountPT}
+                  </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Lab:</div>
-                  <div className="text-gray-900 font-semibold">{unexcusedCountLab}</div>
+                  <div 
+                    ref={labRef}
+                    onClick={async () => {
+                      if (unexcusedCountLab > 0) {
+                        const dates = await getUnexcusedAbsenceDates(cadetId, 'Lab');
+                        setTooltipDates(dates);
+                        setTooltipType('Lab');
+                        if (labRef.current) {
+                          const rect = labRef.current.getBoundingClientRect();
+                          setTooltipPosition({ top: rect.bottom + 8, left: rect.left });
+                        }
+                      }
+                    }}
+                    className={`text-gray-900 font-semibold ${unexcusedCountLab > 0 ? 'cursor-pointer hover:text-blue-600 underline' : ''}`}
+                  >
+                    {unexcusedCountLab}
+                  </div>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">These are calculated automatically from attendance records</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {unexcusedCountPT > 0 || unexcusedCountLab > 0 
+                  ? 'Click on a number to see specific dates' 
+                  : 'These are calculated automatically from attendance records'}
+              </div>
             </div>
+            
+            {/* Tooltip */}
+            {tooltipType && tooltipPosition && tooltipDates.length > 0 && (
+              <div 
+                className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-xs"
+                style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px` }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-semibold text-gray-900 text-sm">
+                    Unexcused {tooltipType} Dates:
+                  </h4>
+                  <button
+                    onClick={() => {
+                      setTooltipType(null);
+                      setTooltipDates([]);
+                      setTooltipPosition(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  <ul className="space-y-1 text-sm text-gray-700">
+                    {tooltipDates.map((date, index) => (
+                      <li key={index} className="py-1 border-b border-gray-100 last:border-b-0">
+                        {formatDateWithDay(date)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
 
           {isEditing && (
