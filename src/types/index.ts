@@ -16,6 +16,7 @@ export interface Cadet {
   phoneNumber: string;
   email: string;
   contracted?: 'Y' | 'N';
+  profilePicture?: string;
 }
 
 export interface AttendanceRecord {

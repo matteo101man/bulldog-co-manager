@@ -93,13 +93,19 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
         ) : (
           <>
             <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Search by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full py-3 px-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 mb-3"
-              />
+              <div className="mb-3">
+                <label htmlFor="cadet-search" className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Cadets
+                </label>
+                <input
+                  id="cadet-search"
+                  type="text"
+                  placeholder="Type a name to search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full py-3 px-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 bg-white"
+                />
+              </div>
               <button
                 onClick={() => onAddCadet?.()}
                 className="w-full py-3 px-4 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 touch-manipulation min-h-[44px]"

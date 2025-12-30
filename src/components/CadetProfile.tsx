@@ -12,6 +12,7 @@ interface CadetProfileProps {
 
 const MS_LEVELS = ['MS1', 'MS2', 'MS3', 'MS4'];
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
+const DEFAULT_PROFILE_PICTURE = 'https://t3.ftcdn.net/jpg/00/57/04/58/360_F_57045887_HHJml6DJVxNBMqMeDqVJ0ZQDnotp5rGD.jpg';
 
 export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChange }: CadetProfileProps) {
   const [cadet, setCadet] = useState<Cadet | null>(null);
@@ -41,7 +42,8 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
           militaryScienceLevel: cadetData.militaryScienceLevel || 'MS1',
           phoneNumber: cadetData.phoneNumber || '',
           email: cadetData.email || '',
-          contracted: cadetData.contracted || 'N'
+          contracted: cadetData.contracted || 'N',
+          profilePicture: cadetData.profilePicture || ''
         });
         
         // Load unexcused absences for PT and Lab separately
@@ -149,6 +151,43 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
               >
                 Edit
               </button>
+            )}
+          </div>
+
+          {/* Profile Picture */}
+          <div className="mb-4">
+            {isEditing ? (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Profile Picture URL</label>
+                <input
+                  type="url"
+                  value={formData.profilePicture || ''}
+                  onChange={(e) => setFormData({ ...formData, profilePicture: e.target.value })}
+                  placeholder="Enter image URL..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+                <div className="flex justify-center">
+                  <img 
+                    src={formData.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                    alt={`${cadet.firstName} ${cadet.lastName}`} 
+                    className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <img 
+                  src={cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                  alt={`${cadet.firstName} ${cadet.lastName}`} 
+                  className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
+                  }}
+                />
+              </div>
             )}
           </div>
 
