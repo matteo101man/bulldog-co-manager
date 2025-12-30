@@ -25,7 +25,6 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   const [formData, setFormData] = useState<Partial<Cadet>>({});
   const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | null>(null);
   const [tooltipDates, setTooltipDates] = useState<string[]>([]);
-  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
   const ptRef = useRef<HTMLDivElement>(null);
   const labRef = useRef<HTMLDivElement>(null);
 
@@ -39,10 +38,9 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
       if (tooltipType && 
           ptRef.current && !ptRef.current.contains(event.target as Node) &&
           labRef.current && !labRef.current.contains(event.target as Node) &&
-          !(event.target as HTMLElement).closest('.fixed.z-50')) {
+          !(event.target as HTMLElement).closest('.absolute.z-50')) {
         setTooltipType(null);
         setTooltipDates([]);
-        setTooltipPosition(null);
       }
     }
 
@@ -358,42 +356,78 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
               <div className="space-y-2">
                 <div>
                   <div className="text-sm text-gray-600">PT (Physical Training):</div>
-                  <div 
-                    ref={ptRef}
-                    onClick={async () => {
-                      if (unexcusedCountPT > 0) {
-                        const dates = await getUnexcusedAbsenceDates(cadetId, 'PT');
-                        setTooltipDates(dates);
-                        setTooltipType('PT');
-                        if (ptRef.current) {
-                          const rect = ptRef.current.getBoundingClientRect();
-                          setTooltipPosition({ top: rect.bottom + 8, left: rect.left });
+                  <div className="relative" ref={ptRef}>
+                    <div 
+                      onClick={async () => {
+                        if (unexcusedCountPT > 0) {
+                          if (tooltipType === 'PT') {
+                            // Toggle off if already showing PT tooltip
+                            setTooltipType(null);
+                            setTooltipDates([]);
+                          } else {
+                            // Show PT tooltip
+                            const dates = await getUnexcusedAbsenceDates(cadetId, 'PT');
+                            setTooltipDates(dates);
+                            setTooltipType('PT');
+                          }
                         }
-                      }
-                    }}
-                    className={`text-gray-900 font-semibold ${unexcusedCountPT > 0 ? 'cursor-pointer hover:text-blue-600 underline' : ''}`}
-                  >
-                    {unexcusedCountPT}
+                      }}
+                      className={`text-gray-900 font-semibold ${unexcusedCountPT > 0 ? 'cursor-pointer hover:text-blue-600 underline' : ''}`}
+                    >
+                      {unexcusedCountPT}
+                    </div>
+                    {tooltipType === 'PT' && tooltipDates.length > 0 && (
+                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
+                        <div className="font-semibold mb-2 text-white">Unexcused PT Dates:</div>
+                        <div className="space-y-1">
+                          {tooltipDates.map((date, index) => (
+                            <div key={index} className="text-white/90">
+                              {formatDateWithDay(date)}
+                            </div>
+                          ))}
+                        </div>
+                        {/* Arrow pointing down */}
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Lab:</div>
-                  <div 
-                    ref={labRef}
-                    onClick={async () => {
-                      if (unexcusedCountLab > 0) {
-                        const dates = await getUnexcusedAbsenceDates(cadetId, 'Lab');
-                        setTooltipDates(dates);
-                        setTooltipType('Lab');
-                        if (labRef.current) {
-                          const rect = labRef.current.getBoundingClientRect();
-                          setTooltipPosition({ top: rect.bottom + 8, left: rect.left });
+                  <div className="relative" ref={labRef}>
+                    <div 
+                      onClick={async () => {
+                        if (unexcusedCountLab > 0) {
+                          if (tooltipType === 'Lab') {
+                            // Toggle off if already showing Lab tooltip
+                            setTooltipType(null);
+                            setTooltipDates([]);
+                          } else {
+                            // Show Lab tooltip
+                            const dates = await getUnexcusedAbsenceDates(cadetId, 'Lab');
+                            setTooltipDates(dates);
+                            setTooltipType('Lab');
+                          }
                         }
-                      }
-                    }}
-                    className={`text-gray-900 font-semibold ${unexcusedCountLab > 0 ? 'cursor-pointer hover:text-blue-600 underline' : ''}`}
-                  >
-                    {unexcusedCountLab}
+                      }}
+                      className={`text-gray-900 font-semibold ${unexcusedCountLab > 0 ? 'cursor-pointer hover:text-blue-600 underline' : ''}`}
+                    >
+                      {unexcusedCountLab}
+                    </div>
+                    {tooltipType === 'Lab' && tooltipDates.length > 0 && (
+                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
+                        <div className="font-semibold mb-2 text-white">Unexcused Lab Dates:</div>
+                        <div className="space-y-1">
+                          {tooltipDates.map((date, index) => (
+                            <div key={index} className="text-white/90">
+                              {formatDateWithDay(date)}
+                            </div>
+                          ))}
+                        </div>
+                        {/* Arrow pointing down */}
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -403,40 +437,6 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                   : 'These are calculated automatically from attendance records'}
               </div>
             </div>
-            
-            {/* Tooltip */}
-            {tooltipType && tooltipPosition && tooltipDates.length > 0 && (
-              <div 
-                className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-xs"
-                style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px` }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-semibold text-gray-900 text-sm">
-                    Unexcused {tooltipType} Dates:
-                  </h4>
-                  <button
-                    onClick={() => {
-                      setTooltipType(null);
-                      setTooltipDates([]);
-                      setTooltipPosition(null);
-                    }}
-                    className="text-gray-400 hover:text-gray-600 text-lg leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    {tooltipDates.map((date, index) => (
-                      <li key={index} className="py-1 border-b border-gray-100 last:border-b-0">
-                        {formatDateWithDay(date)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
           </div>
 
           {isEditing && (
