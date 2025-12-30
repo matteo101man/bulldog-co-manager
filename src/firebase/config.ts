@@ -1,5 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getMessaging, Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCK5hwv80v9xQcO7raHcrj4eibS3HGq45c",
@@ -32,4 +33,14 @@ try {
   throw new Error(`Firestore initialization failed: ${errorMessage}\n\nPlease ensure:\n1. Firestore Database is enabled in Firebase Console\n2. You're using the correct Firebase project\n3. Your internet connection is working`);
 }
 
-export { db, app };
+// Initialize Messaging (only in browser environment)
+let messaging: Messaging | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    messaging = getMessaging(app);
+  } catch (error) {
+    console.warn('Firebase Messaging initialization failed:', error);
+  }
+}
+
+export { db, app, messaging };
