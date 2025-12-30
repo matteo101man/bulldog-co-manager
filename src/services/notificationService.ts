@@ -165,7 +165,7 @@ export async function sendNotificationToAll(message: string): Promise<void> {
     const subscriptions = await getAllSubscriptions();
     
     // Store notification request in Firestore
-    // The Cloud Function will automatically trigger and send push notifications to all registered devices
+    // A Cloud Function or backend service should listen to this and send the actual push notifications
     await addDoc(collection(db, 'notificationRequests'), {
       message,
       subscriptionsCount: subscriptions.length,
@@ -173,10 +173,29 @@ export async function sendNotificationToAll(message: string): Promise<void> {
       status: 'pending'
     });
 
-    // Note: We don't show an immediate notification here because:
-    // 1. The Cloud Function will send notifications to ALL devices (including users on the page)
-    // 2. Showing an immediate notification would cause duplicates
-    // 3. The service worker will handle displaying notifications from FCM
+    // Show notification to users currently on the page (immediate feedback)
+    if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification('Bulldog CO Manager', {
+          body: message,
+          icon: '/web-app-manifest-192x192.png',
+          badge: '/web-app-manifest-192x192.png',
+          tag: 'bulldog-notification',
+          requireInteraction: false
+        });
+      } catch (swError) {
+        console.warn('Could not show notification via service worker:', swError);
+        // Fallback to browser notification API
+        if (Notification.permission === 'granted') {
+          new Notification('Bulldog CO Manager', {
+            body: message,
+            icon: '/web-app-manifest-192x192.png',
+            tag: 'bulldog-notification'
+          });
+        }
+      }
+    }
 
     if (subscriptions.length === 0) {
       console.warn('No active subscriptions found. Notification request saved, but no users will receive it until they enable notifications.');
