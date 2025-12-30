@@ -87,6 +87,24 @@ export async function updateAttendance(
 }
 
 /**
+ * Update attendance record for a cadet with all days at once
+ * This prevents race conditions when updating multiple days
+ */
+export async function updateAttendanceRecord(record: AttendanceRecord): Promise<void> {
+  const docId = getAttendanceDocId(record.cadetId, record.weekStartDate);
+  const docRef = doc(db, ATTENDANCE_COLLECTION, docId);
+  
+  await setDoc(docRef, {
+    cadetId: record.cadetId,
+    weekStartDate: record.weekStartDate,
+    ptTuesday: record.ptTuesday ?? null,
+    ptWednesday: record.ptWednesday ?? null,
+    ptThursday: record.ptThursday ?? null,
+    labThursday: record.labThursday ?? null,
+  }, { merge: true });
+}
+
+/**
  * Get all attendance records for a company for a specific week
  */
 export async function getCompanyAttendance(

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord, AttendanceType } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
-import { getCompanyAttendance, updateAttendance, getAllAttendanceForWeek } from '../services/attendanceService';
+import { getCompanyAttendance, updateAttendance, updateAttendanceRecord, getAllAttendanceForWeek } from '../services/attendanceService';
 import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithOrdinal } from '../utils/dates';
 import { getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
 import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from '../utils/stats';
@@ -145,12 +145,34 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         }
       });
 
-      // Save all changes to the database
-      // Master List has priority - changes made here will be reflected in all company views
-      // Individual company changes also update the same database, so they'll appear in Master List
+      // Group changes by cadet to update each cadet's record once
+      const changesByCadet = new Map<string, AttendanceRecord>();
+      
+      // Initialize with current local state for each cadet that has changes
+      changes.forEach(({ cadetId }) => {
+        if (!changesByCadet.has(cadetId)) {
+          const localRecord = localAttendanceMap.get(cadetId);
+          if (localRecord) {
+            changesByCadet.set(cadetId, { ...localRecord });
+          } else {
+            // Create new record if it doesn't exist locally
+            changesByCadet.set(cadetId, {
+              cadetId,
+              weekStartDate: currentWeekStart,
+              ptTuesday: null,
+              ptWednesday: null,
+              ptThursday: null,
+              labThursday: null
+            });
+          }
+        }
+      });
+      
+      // Save all changes to the database - update each cadet's complete record at once
+      // This prevents race conditions when updating multiple days for the same cadet
       await Promise.all(
-        changes.map(({ cadetId, day, status, type }) =>
-          updateAttendance(cadetId, day, status, currentWeekStart, type)
+        Array.from(changesByCadet.values()).map(record =>
+          updateAttendanceRecord(record)
         )
       );
 
