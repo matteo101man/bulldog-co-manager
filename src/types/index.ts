@@ -15,6 +15,7 @@ export interface Cadet {
   militaryScienceLevel: string; // e.g., "MS1", "MS2", "MS3", "MS4"
   phoneNumber: string;
   email: string;
+  contracted?: 'Y' | 'N';
 }
 
 export interface AttendanceRecord {

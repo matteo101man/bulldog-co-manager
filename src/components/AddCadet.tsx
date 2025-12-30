@@ -19,7 +19,8 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
     company: 'Alpha' as Company,
     militaryScienceLevel: 'MS1' as string,
     phoneNumber: '',
-    email: ''
+    email: '',
+    contracted: 'N' as 'Y' | 'N'
   });
   const [saving, setSaving] = useState(false);
 
@@ -43,7 +44,8 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
         company: formData.company,
         militaryScienceLevel: formData.militaryScienceLevel,
         phoneNumber: formData.phoneNumber,
-        email: formData.email
+        email: formData.email,
+        contracted: formData.contracted
       });
       alert('Cadet added successfully!');
       onSuccess();
@@ -164,6 +166,19 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contracted *</label>
+            <select
+              required
+              value={formData.contracted}
+              onChange={(e) => setFormData({ ...formData, contracted: e.target.value as 'Y' | 'N' })}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            >
+              <option value="Y">Y</option>
+              <option value="N">N</option>
+            </select>
           </div>
 
           <div className="flex gap-3 mt-6">

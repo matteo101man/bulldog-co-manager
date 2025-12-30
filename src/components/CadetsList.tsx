@@ -5,6 +5,7 @@ import { Cadet } from '../types';
 interface CadetsListProps {
   onSelectCadet: (cadetId: string) => void;
   onBack: () => void;
+  onAddCadet?: () => void;
 }
 
 export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: CadetsListProps) {
@@ -108,6 +109,29 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
                 </div>
               );
             })}
+            </div>
+            
+            {/* Summary Statistics */}
+            <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Summary</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Total Cadets:</span>
+                  <span className="text-sm font-semibold text-gray-900">{cadets.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Total Contracted:</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {cadets.filter(c => c.contracted === 'Y').length}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Total Uncontracted:</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {cadets.filter(c => c.contracted !== 'Y').length}
+                  </span>
+                </div>
+              </div>
             </div>
           </>
         )}
