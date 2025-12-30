@@ -56,18 +56,14 @@ function App() {
         console.log('Notification token registered');
         
         // Set up listener for foreground messages
+        // Note: FCM automatically shows notifications via the service worker,
+        // so we don't need to manually show them here to avoid duplicates
         onMessageListener()
           .then((payload) => {
             if (payload) {
               console.log('Foreground message received:', payload);
-              // Show notification even when app is in foreground
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(payload.notification?.title || 'Bulldog CO Manager', {
-                  body: payload.notification?.body || payload.data?.message,
-                  icon: '/web-app-manifest-192x192.png',
-                  tag: 'bulldog-notification'
-                });
-              }
+              // FCM will automatically show the notification via the service worker
+              // We don't need to manually show it here
             }
           })
           .catch((err) => {
