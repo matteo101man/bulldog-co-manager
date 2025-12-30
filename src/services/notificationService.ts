@@ -3,15 +3,17 @@ import {
   getDocs, 
   addDoc,
   query,
-  where,
-  deleteDoc,
-  doc
+  where
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 import { app } from '../firebase/config';
 
 const SUBSCRIPTIONS_COLLECTION = 'pushSubscriptions';
+
+// VAPID Key from Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
+// Generate a key pair in Firebase Console and paste it here
+const VAPID_KEY = 'BAbKf71jkqDJ3-30AGiKo3pzbDkPWQPYgPRqJTTrIPOPbtRid8HXr9cKBDmb-bP6IetkHsNEujfsKxEFsjcNvbE'; // Replace with your VAPID key from Firebase Console
 
 // Initialize messaging (only in browser environment)
 let messaging: Messaging | null = null;
@@ -76,26 +78,22 @@ async function getFCMToken(): Promise<string | null> {
       }
     }
     
-    // Get FCM token
-    // Note: VAPID key should be generated in Firebase Console > Project Settings > Cloud Messaging
-    // For now, we'll try without it first (some configurations don't require it)
+    // Get FCM token with VAPID key
     let token: string | null = null;
+    
+    // Validate VAPID key is configured
+    if (!VAPID_KEY || VAPID_KEY.trim().length === 0) {
+      throw new Error('VAPID key not configured. Please generate a key pair in Firebase Console > Project Settings > Cloud Messaging > Web Push certificates and update VAPID_KEY in notificationService.ts');
+    }
+    
     try {
       token = await getToken(messaging, {
         serviceWorkerRegistration: registration,
-        vapidKey: undefined // Will use default if not provided
+        vapidKey: VAPID_KEY
       });
-    } catch (vapidError) {
-      console.warn('Error getting token with default VAPID key, trying without:', vapidError);
-      // Try without VAPID key (for testing)
-      try {
-        token = await getToken(messaging, {
-          serviceWorkerRegistration: registration
-        });
-      } catch (error2) {
-        console.error('Error getting FCM token:', error2);
-        throw new Error('Failed to get FCM token. Please ensure Firebase Cloud Messaging is properly configured.');
-      }
+    } catch (error) {
+      console.error('Error getting FCM token:', error);
+      throw new Error(`Failed to get FCM token: ${error instanceof Error ? error.message : 'Unknown error'}. Please ensure your VAPID key is correct.`);
     }
 
     if (token) {
