@@ -31,16 +31,12 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
     }
 
     try {
+      // Build event data object with only required fields
+      // Optional fields are omitted (not set to undefined) since Firestore doesn't accept undefined
       const eventData: Omit<TrainingEvent, 'id'> = {
         name: name.trim(),
         date,
-        planningStatus,
-        oicId: undefined,
-        ncoicId: undefined,
-        ao: undefined,
-        uniform: undefined,
-        mission: undefined,
-        conop: undefined
+        planningStatus
       };
 
       if (eventId) {

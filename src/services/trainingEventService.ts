@@ -47,10 +47,21 @@ export async function getTrainingEventById(eventId: string): Promise<TrainingEve
 }
 
 /**
+ * Helper function to remove undefined values from an object
+ * Firestore doesn't accept undefined values
+ */
+function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
+/**
  * Add a new training event
  */
 export async function addTrainingEvent(event: Omit<TrainingEvent, 'id'>): Promise<string> {
-  const docRef = await addDoc(collection(db, TRAINING_EVENTS_COLLECTION), event);
+  const cleanEvent = removeUndefined(event);
+  const docRef = await addDoc(collection(db, TRAINING_EVENTS_COLLECTION), cleanEvent);
   return docRef.id;
 }
 
@@ -59,7 +70,8 @@ export async function addTrainingEvent(event: Omit<TrainingEvent, 'id'>): Promis
  */
 export async function updateTrainingEvent(eventId: string, updates: Partial<TrainingEvent>): Promise<void> {
   const docRef = doc(db, TRAINING_EVENTS_COLLECTION, eventId);
-  await updateDoc(docRef, updates);
+  const cleanUpdates = removeUndefined(updates);
+  await updateDoc(docRef, cleanUpdates);
 }
 
 /**
