@@ -64,8 +64,7 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           <h1 className="text-xl font-bold text-gray-900">Add Cadet</h1>
           <button
             onClick={onBack}
-            className="text-sm text-blue-600 font-medium touch-manipulation"
-            style={{ minHeight: '44px', minWidth: '44px' }}
+            className="text-sm text-blue-600 font-medium touch-manipulation min-h-[44px] min-w-[44px]"
           >
             Back
           </button>
@@ -75,8 +74,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
       <main className="px-4 py-4">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
             <input
+              id="firstName"
               type="text"
               required
               value={formData.firstName}
@@ -86,8 +86,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
             <input
+              id="lastName"
               type="text"
               required
               value={formData.lastName}
@@ -97,8 +98,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
+            <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
             <input
+              id="age"
               type="number"
               required
               value={formData.age}
@@ -108,8 +110,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+            <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
             <select
+              id="company"
               required
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value as Company })}
@@ -122,8 +125,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Position *</label>
+            <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">Position *</label>
             <input
+              id="position"
               type="text"
               required
               value={formData.position}
@@ -133,8 +137,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">MS Level *</label>
+            <label htmlFor="militaryScienceLevel" className="block text-sm font-medium text-gray-700 mb-1">MS Level *</label>
             <select
+              id="militaryScienceLevel"
               required
               value={formData.militaryScienceLevel}
               onChange={(e) => setFormData({ ...formData, militaryScienceLevel: e.target.value })}
@@ -147,8 +152,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
             <input
+              id="phoneNumber"
               type="tel"
               required
               value={formData.phoneNumber}
@@ -158,8 +164,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
             <input
+              id="email"
               type="email"
               required
               value={formData.email}
@@ -169,8 +176,9 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contracted *</label>
+            <label htmlFor="contracted" className="block text-sm font-medium text-gray-700 mb-1">Contracted *</label>
             <select
+              id="contracted"
               required
               value={formData.contracted}
               onChange={(e) => setFormData({ ...formData, contracted: e.target.value as 'Y' | 'N' })}
