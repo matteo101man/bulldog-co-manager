@@ -2,7 +2,7 @@ export type Company = 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' | 'Master';
 
 export type AttendanceStatus = 'present' | 'excused' | 'unexcused' | null;
 
-export type DayOfWeek = 'tuesday' | 'wednesday' | 'thursday';
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 export type AttendanceType = 'PT' | 'Lab';
 
 export interface Cadet {

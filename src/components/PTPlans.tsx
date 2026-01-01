@@ -10,7 +10,13 @@ interface PTPlansProps {
 }
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
-const DAYS: DayOfWeek[] = ['tuesday', 'wednesday', 'thursday'];
+
+function getDaysForCompany(company: Company): DayOfWeek[] {
+  if (company === 'Ranger') {
+    return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  }
+  return ['tuesday', 'wednesday', 'thursday'];
+}
 
 export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PTPlansProps) {
   const [currentCompany, setCurrentCompany] = useState<Company | null>(selectedCompany || null);
@@ -189,7 +195,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
           <div className="text-center py-8 text-gray-600">Loading...</div>
         ) : (
           <div className="flex flex-col md:flex-row gap-4">
-            {DAYS.map((day) => {
+            {getDaysForCompany(currentCompany).map((day) => {
               const plan = plans.get(day);
               const date = weekDates[day];
               return (
@@ -214,6 +220,18 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                     setEditingPlan(null);
                   }}
                   onCancel={() => setEditingPlan(null)}
+                  onNoPT={async () => {
+                    await savePTPlan({
+                      company: currentCompany,
+                      weekStartDate: currentWeekStart,
+                      day,
+                      title: 'No PT',
+                      firstFormation: '',
+                      workouts: '',
+                      location: '',
+                    });
+                    await loadPlans();
+                  }}
                   onDelete={async () => {
                     if (!plan) return;
                     if (!confirm('Are you sure you want to delete this plan?')) return;
@@ -284,7 +302,7 @@ interface PTPlanCardProps {
   onToggleExpand?: () => void;
 }
 
-function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, isEditing, isExpanded = false, onToggleExpand }: PTPlanCardProps) {
+function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, onNoPT, isEditing, isExpanded = false, onToggleExpand }: PTPlanCardProps) {
   const [title, setTitle] = useState(plan?.title || '');
   const [firstFormation, setFirstFormation] = useState(plan?.firstFormation || '0600');
   const [workouts, setWorkouts] = useState(plan?.workouts || '');
@@ -600,6 +618,12 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, isEdi
               className="w-full py-2 px-4 rounded-md text-sm font-medium text-blue-600 border border-blue-600 hover:bg-blue-50 active:bg-blue-100 touch-manipulation"
             >
               {plan ? 'Edit Plan' : 'Create Plan'}
+            </button>
+            <button
+              onClick={onNoPT}
+              className="w-full py-2 px-4 rounded-md text-sm font-medium text-red-600 border border-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation"
+            >
+              No PT
             </button>
             {plan && (
               <button

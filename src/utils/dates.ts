@@ -40,7 +40,7 @@ export function getWeekDates(): { tuesday: string; wednesday: string; thursday: 
   const [year, month, day] = mondayStr.split('-').map(Number);
   
   // Create dates in EST by parsing as local dates (since we're calculating from EST)
-  const monday = new Date(year, month - 1, day);
+  // Note: monday date is already in mondayStr, no need to create a new Date object
   
   // Tuesday = Monday + 1 day
   const tuesday = new Date(year, month - 1, day + 1);
@@ -113,13 +113,15 @@ export function getWeekStartByOffset(weekStartDate: string, weeksOffset: number)
  * Get week dates for a specific week start date
  * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format
  */
-export function getWeekDatesForWeek(weekStartDate: string): { tuesday: string; wednesday: string; thursday: string } {
+export function getWeekDatesForWeek(weekStartDate: string): { monday: string; tuesday: string; wednesday: string; thursday: string; friday: string } {
   const [year, month, day] = weekStartDate.split('-').map(Number);
   
-  // Tuesday = Monday + 1, Wednesday = Monday + 2, Thursday = Monday + 3
+  // Monday = weekStartDate, Tuesday = Monday + 1, Wednesday = Monday + 2, Thursday = Monday + 3, Friday = Monday + 4
+  const monday = new Date(year, month - 1, day);
   const tuesday = new Date(year, month - 1, day + 1);
   const wednesday = new Date(year, month - 1, day + 2);
   const thursday = new Date(year, month - 1, day + 3);
+  const friday = new Date(year, month - 1, day + 4);
 
   const formatDate = (date: Date): string => {
     const y = date.getFullYear();
@@ -129,9 +131,11 @@ export function getWeekDatesForWeek(weekStartDate: string): { tuesday: string; w
   };
 
   return {
+    monday: formatDate(monday),
     tuesday: formatDate(tuesday),
     wednesday: formatDate(wednesday),
     thursday: formatDate(thursday),
+    friday: formatDate(friday),
   };
 }
 
