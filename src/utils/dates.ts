@@ -142,6 +142,50 @@ export function getWeekDatesForWeek(weekStartDate: string): { monday: string; tu
 }
 
 /**
+ * Get all 7 days of the week (Monday through Sunday) for a specific week start date
+ * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format
+ */
+export function getFullWeekDates(weekStartDate: string): { monday: string; tuesday: string; wednesday: string; thursday: string; friday: string; saturday: string; sunday: string } {
+  const [year, month, day] = weekStartDate.split('-').map(Number);
+  
+  const monday = new Date(year, month - 1, day);
+  const tuesday = new Date(year, month - 1, day + 1);
+  const wednesday = new Date(year, month - 1, day + 2);
+  const thursday = new Date(year, month - 1, day + 3);
+  const friday = new Date(year, month - 1, day + 4);
+  const saturday = new Date(year, month - 1, day + 5);
+  const sunday = new Date(year, month - 1, day + 6);
+
+  const formatDate = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  return {
+    monday: formatDate(monday),
+    tuesday: formatDate(tuesday),
+    wednesday: formatDate(wednesday),
+    thursday: formatDate(thursday),
+    friday: formatDate(friday),
+    saturday: formatDate(saturday),
+    sunday: formatDate(sunday),
+  };
+}
+
+/**
+ * Format date as "Mon Nov 17" style
+ */
+export function formatDateShort(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+  const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+  return `${dayName} ${monthName} ${day}`;
+}
+
+/**
  * Format date with day name (e.g., "Tuesday, Jan 15")
  * Uses EST timezone for consistent display
  */

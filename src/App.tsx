@@ -6,12 +6,14 @@ import Issues from './components/Issues';
 import CadetsList from './components/CadetsList';
 import CadetProfile from './components/CadetProfile';
 import AddCadet from './components/AddCadet';
+import TrainingLanding from './components/TrainingLanding';
 import TrainingSchedule from './components/TrainingSchedule';
 import TrainingEventDetail from './components/TrainingEventDetail';
 import AddTrainingEvent from './components/AddTrainingEvent';
 import Attendance from './components/Attendance';
 import TacticsAttendance from './components/TacticsAttendance';
 import PTPlans from './components/PTPlans';
+import WeatherData from './components/WeatherData';
 import NotificationPrompt from './components/NotificationPrompt';
 import { Company } from './types';
 import { 
@@ -21,7 +23,7 @@ import {
   onMessageListener 
 } from './services/notificationService';
 
-type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans';
+type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-landing' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans' | 'weather-data';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -129,7 +131,7 @@ function App() {
   }
 
   if (currentView === 'issues') {
-    return <Issues onBack={() => setCurrentView('companies')} />;
+    return <Issues onBack={() => setCurrentView('attendance')} />;
   }
 
   if (currentView === 'cadets') {
@@ -154,6 +156,16 @@ function App() {
     );
   }
 
+  if (currentView === 'training-landing') {
+    return (
+      <TrainingLanding
+        onTrainingSchedule={() => setCurrentView('training-schedule')}
+        onWeatherData={() => setCurrentView('weather-data')}
+        onBack={() => setCurrentView('companies')}
+      />
+    );
+  }
+
   if (currentView === 'training-schedule') {
     return (
       <TrainingSchedule
@@ -163,7 +175,7 @@ function App() {
           setCurrentView('training-event-detail');
         }}
         onAddEvent={() => setCurrentView('add-training-event')}
-        onBack={() => setCurrentView('companies')}
+        onBack={() => setCurrentView('training-landing')}
       />
     );
   }
@@ -176,6 +188,14 @@ function App() {
           setScheduleRefreshKey(prev => prev + 1);
           setCurrentView('training-schedule');
         }}
+      />
+    );
+  }
+
+  if (currentView === 'weather-data') {
+    return (
+      <WeatherData
+        onBack={() => setCurrentView('training-landing')}
       />
     );
   }
@@ -204,6 +224,7 @@ function App() {
           setCurrentView('attendance-company');
         }}
         onTactics={() => setCurrentView('tactics-attendance')}
+        onIssues={() => setCurrentView('issues')}
       />
     );
   }
@@ -286,9 +307,8 @@ function App() {
           setCurrentView('companies');
         }}
         onSettings={() => setCurrentView('settings')}
-        onIssues={() => setCurrentView('issues')}
         onCadets={() => setCurrentView('cadets')}
-        onTrainingSchedule={() => setCurrentView('training-schedule')}
+        onTrainingSchedule={() => setCurrentView('training-landing')}
         onAttendance={() => setCurrentView('attendance')}
         onPT={() => setCurrentView('pt-plans')}
       />
