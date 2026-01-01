@@ -157,3 +157,21 @@ export function formatDateWithDay(dateString: string): string {
   });
 }
 
+/**
+ * Format date with full month name and ordinal (e.g., "January 1st, 2026")
+ */
+export function formatDateFullWithOrdinal(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+  
+  // Add ordinal suffix
+  const getOrdinal = (n: number): string => {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+  
+  return `${monthName} ${getOrdinal(day)}, ${year}`;
+}
+

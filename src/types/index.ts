@@ -125,12 +125,13 @@ export interface ConopData {
 
 export interface PTPlan {
   id: string;
-  company: Company;
-  weekStartDate: string; // ISO date string for the Monday of the week
-  day: DayOfWeek; // 'tuesday' | 'wednesday' | 'thursday'
+  company?: Company; // Optional for generic plans
+  weekStartDate?: string; // ISO date string for the Monday of the week, optional for generic plans
+  day?: DayOfWeek; // 'tuesday' | 'wednesday' | 'thursday', optional for generic plans
   title: string; // Workout title
   firstFormation: string; // Default "0600"
   workouts: string; // Actual workout description
   location: string;
+  isGeneric?: boolean; // Flag to indicate if this is a generic plan (not tied to specific company/date)
 }
 

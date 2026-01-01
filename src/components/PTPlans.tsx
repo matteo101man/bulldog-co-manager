@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Company, DayOfWeek, PTPlan } from '../types';
-import { getPTPlansForWeek, savePTPlan, getAllPTPlans } from '../services/ptPlanService';
-import { getCurrentWeekStart, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithDay, formatDateWithOrdinal } from '../utils/dates';
+import { getPTPlansForWeek, savePTPlan, getAllPTPlans, getGenericPTPlans, deleteGenericPTPlan } from '../services/ptPlanService';
+import { getCurrentWeekStart, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithDay, formatDateWithOrdinal, formatDateFullWithOrdinal } from '../utils/dates';
 
 interface PTPlansProps {
   onBack: () => void;
@@ -18,6 +18,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
   const [plans, setPlans] = useState<Map<DayOfWeek, PTPlan>>(new Map());
   const [loading, setLoading] = useState(false);
   const [editingPlan, setEditingPlan] = useState<{ company: Company; weekStartDate: string; day: DayOfWeek } | null>(null);
+  const [showGenericPlans, setShowGenericPlans] = useState(false);
 
   useEffect(() => {
     if (selectedCompany && selectedCompany !== currentCompany) {
@@ -59,6 +60,14 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
     setCurrentWeekStart(getCurrentWeekStart());
   }
 
+  if (showGenericPlans) {
+    return (
+      <GenericPlansView
+        onBack={() => setShowGenericPlans(false)}
+      />
+    );
+  }
+
   if (!currentCompany) {
     return (
       <div className="min-h-screen bg-gray-50 pb-safe-area-inset-bottom">
@@ -78,6 +87,15 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
         </header>
 
         <main className="px-4 py-4">
+          <button
+            onClick={() => setShowGenericPlans(true)}
+            className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation mb-4"
+            style={{ minHeight: '44px' }}
+          >
+            <span className="text-lg font-semibold text-gray-900">
+              Plans
+            </span>
+          </button>
           <p className="text-center text-gray-600 mb-6">
             Select a company to view PT plans
           </p>
@@ -252,10 +270,19 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
     try {
       const plans = await getAllPTPlans();
       // Sort by weekStartDate descending (most recent first), then by company
+      // Generic plans (without weekStartDate) go to the end
       plans.sort((a, b) => {
-        const dateCompare = b.weekStartDate.localeCompare(a.weekStartDate);
+        // Generic plans go to the end
+        if (a.isGeneric && !b.isGeneric) return 1;
+        if (!a.isGeneric && b.isGeneric) return -1;
+        if (a.isGeneric && b.isGeneric) {
+          // Both generic - sort by title
+          return a.title.localeCompare(b.title);
+        }
+        // Both non-generic - sort by date then company
+        const dateCompare = (b.weekStartDate || '').localeCompare(a.weekStartDate || '');
         if (dateCompare !== 0) return dateCompare;
-        return a.company.localeCompare(b.company);
+        return (a.company || '').localeCompare(b.company || '');
       });
       setAllPlans(plans);
     } catch (error) {
@@ -372,11 +399,24 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">Select a plan to load...</option>
-                {allPlans.map((plan) => (
-                  <option key={plan.id} value={plan.id}>
-                    {plan.title} - {plan.company} ({plan.day}) - Week of {formatDateWithOrdinal(plan.weekStartDate)}
-                  </option>
-                ))}
+                {allPlans
+                  .filter(plan => !plan.isGeneric && plan.company && plan.weekStartDate && plan.day) // Only show non-generic plans with all required fields
+                  .map((plan) => {
+                    const weekDates = getWeekDatesForWeek(plan.weekStartDate!);
+                    const planDate = weekDates[plan.day!];
+                    return (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.title} ({plan.company}/{formatDateFullWithOrdinal(planDate)})
+                      </option>
+                    );
+                  })}
+                {allPlans
+                  .filter(plan => plan.isGeneric)
+                  .map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.title} (Generic Plan)
+                    </option>
+                  ))}
               </select>
             )}
           </div>
@@ -437,6 +477,274 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+interface GenericPlansViewProps {
+  onBack: () => void;
+}
+
+function GenericPlansView({ onBack }: GenericPlansViewProps) {
+  const [plans, setPlans] = useState<PTPlan[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<PTPlan | null>(null);
+  const [title, setTitle] = useState('');
+  const [firstFormation, setFirstFormation] = useState('0600');
+  const [workouts, setWorkouts] = useState('');
+  const [location, setLocation] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadPlans();
+  }, []);
+
+  async function loadPlans() {
+    setLoading(true);
+    try {
+      const genericPlans = await getGenericPTPlans();
+      setPlans(genericPlans);
+    } catch (error) {
+      console.error('Error loading generic plans:', error);
+      alert(`Error loading plans: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleEdit(plan: PTPlan) {
+    setEditingPlan(plan);
+    setTitle(plan.title);
+    setFirstFormation(plan.firstFormation);
+    setWorkouts(plan.workouts);
+    setLocation(plan.location);
+    setShowAddForm(true);
+  }
+
+  function handleCancel() {
+    setShowAddForm(false);
+    setEditingPlan(null);
+    setTitle('');
+    setFirstFormation('0600');
+    setWorkouts('');
+    setLocation('');
+  }
+
+  async function handleSave() {
+    if (!title.trim()) {
+      alert('Please enter a title for the workout');
+      return;
+    }
+    setSaving(true);
+    try {
+      await savePTPlan({
+        id: editingPlan?.id,
+        isGeneric: true,
+        title,
+        firstFormation,
+        workouts,
+        location,
+      });
+      await loadPlans();
+      handleCancel();
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      alert(`Error saving plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(planId: string) {
+    if (!confirm('Are you sure you want to delete this plan?')) {
+      return;
+    }
+    setDeletingId(planId);
+    try {
+      await deleteGenericPTPlan(planId);
+      await loadPlans();
+    } catch (error) {
+      console.error('Error deleting plan:', error);
+      alert(`Error deleting plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-safe-area-inset-bottom">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-900">
+            Generic PT Plans
+          </h1>
+          <button
+            onClick={onBack}
+            className="text-sm text-blue-600 font-medium touch-manipulation"
+            style={{ minHeight: '44px', minWidth: '44px' }}
+          >
+            Back
+          </button>
+        </div>
+      </header>
+
+      <main className="px-4 py-4">
+        {!showAddForm ? (
+          <>
+            <button
+              onClick={() => {
+                setEditingPlan(null);
+                setTitle('');
+                setFirstFormation('0600');
+                setWorkouts('');
+                setLocation('');
+                setShowAddForm(true);
+              }}
+              className="w-full mb-4 py-2 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 touch-manipulation"
+              style={{ minHeight: '44px' }}
+            >
+              Add New Plan
+            </button>
+
+            {loading ? (
+              <div className="text-center py-8 text-gray-600">Loading...</div>
+            ) : plans.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No generic plans yet. Click "Add New Plan" to create one.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {plans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900">{plan.title}</h3>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(plan)}
+                          className="text-sm text-blue-600 hover:text-blue-700 touch-manipulation"
+                          style={{ minHeight: '44px', minWidth: '44px' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(plan.id)}
+                          disabled={deletingId === plan.id}
+                          className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50 touch-manipulation"
+                          style={{ minHeight: '44px', minWidth: '44px' }}
+                        >
+                          {deletingId === plan.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">First Formation: </span>
+                        <span className="text-sm text-gray-900">{plan.firstFormation}</span>
+                      </div>
+                      {plan.workouts && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Workouts: </span>
+                          <div className="text-sm text-gray-900 whitespace-pre-wrap mt-1">{plan.workouts}</div>
+                        </div>
+                      )}
+                      {plan.location && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Location: </span>
+                          <span className="text-sm text-gray-900">{plan.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {editingPlan ? 'Edit Plan' : 'Add New Plan'}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Workout Title *
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Field Circuit Training"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  First Formation
+                </label>
+                <input
+                  type="text"
+                  value={firstFormation}
+                  onChange={(e) => setFirstFormation(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Workouts
+                </label>
+                <textarea
+                  value={workouts}
+                  onChange={(e) => setWorkouts(e.target.value)}
+                  rows={4}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Describe the workout activities..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Main Field"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !title.trim()}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium text-white touch-manipulation ${
+                    saving || !title.trim()
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                  }`}
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 touch-manipulation"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
