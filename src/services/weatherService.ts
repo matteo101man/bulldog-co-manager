@@ -2,7 +2,7 @@
 // To use this, you need to get a free API key from https://openweathermap.org/api
 // Set it in your environment or add it to the config
 
-const WEATHER_API_KEY = import.meta.env.VITE_WEATHER_API_KEY || 'd4421d9accb0571ecbc8c8d17ef112e2';
+const WEATHER_API_KEY = import.meta.env.VITE_WEATHER_API_KEY || 'ab09c8e3d973753732795058459f01f6';
 const WEATHER_API_BASE = 'https://api.openweathermap.org/data/2.5';
 
 export interface WeatherForecast {
