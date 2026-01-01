@@ -48,15 +48,27 @@ export async function getWeatherForecast(date: string): Promise<{ forecast: Weat
 
     if (!response.ok) {
       let errorDetails = '';
+      let errorMessage = '';
       try {
         const errorData = await response.json();
         errorDetails = JSON.stringify(errorData);
+        
+        // Provide helpful message for 401 errors
+        if (response.status === 401) {
+          errorMessage = `Invalid API key (401). Note: New API keys can take 2+ hours to activate. If you just created this key, please wait and try again later.`;
+          if (errorData.message) {
+            errorMessage += ` API message: ${errorData.message}`;
+          }
+        } else {
+          errorMessage = `Weather API error: ${response.status} ${response.statusText}`;
+        }
       } catch {
         errorDetails = await response.text();
+        errorMessage = `Weather API error: ${response.status} ${response.statusText}`;
       }
       
       const error: WeatherError = {
-        message: `Weather API error: ${response.status} ${response.statusText}`,
+        message: errorMessage,
         details: errorDetails,
         statusCode: response.status
       };
