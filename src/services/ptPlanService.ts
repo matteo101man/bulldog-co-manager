@@ -87,14 +87,11 @@ export async function deletePTPlan(
 }
 
 /**
- * Get all PT plans for a specific day across all companies and weeks
+ * Get all PT plans across all companies, weeks, and days
  * Used for loading old plans
  */
-export async function getAllPTPlansForDay(day: DayOfWeek): Promise<PTPlan[]> {
-  const q = query(
-    collection(db, PT_PLANS_COLLECTION),
-    where('day', '==', day)
-  );
+export async function getAllPTPlans(): Promise<PTPlan[]> {
+  const q = query(collection(db, PT_PLANS_COLLECTION));
   
   const querySnapshot = await getDocs(q);
   

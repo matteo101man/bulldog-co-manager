@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Company, DayOfWeek, PTPlan } from '../types';
-import { getPTPlansForWeek, savePTPlan, getAllPTPlansForDay } from '../services/ptPlanService';
+import { getPTPlansForWeek, savePTPlan, getAllPTPlans } from '../services/ptPlanService';
 import { getCurrentWeekStart, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithDay, formatDateWithOrdinal } from '../utils/dates';
 
 interface PTPlansProps {
@@ -222,9 +222,9 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
   const [workouts, setWorkouts] = useState(plan?.workouts || '');
   const [location, setLocation] = useState(plan?.location || '');
   const [saving, setSaving] = useState(false);
-  const [showLoadOldPlan, setShowLoadOldPlan] = useState(false);
-  const [oldPlans, setOldPlans] = useState<PTPlan[]>([]);
-  const [loadingOldPlans, setLoadingOldPlans] = useState(false);
+  const [allPlans, setAllPlans] = useState<PTPlan[]>([]);
+  const [loadingAllPlans, setLoadingAllPlans] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
   useEffect(() => {
     if (plan) {
@@ -238,30 +238,43 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
       setWorkouts('');
       setLocation('');
     }
+    setSelectedPlanId('');
   }, [plan, isEditing]);
 
-  async function handleLoadOldPlans() {
-    setLoadingOldPlans(true);
+  useEffect(() => {
+    if (isEditing && allPlans.length === 0) {
+      loadAllPlans();
+    }
+  }, [isEditing]);
+
+  async function loadAllPlans() {
+    setLoadingAllPlans(true);
     try {
-      const allPlans = await getAllPTPlansForDay(day);
-      // Sort by weekStartDate descending (most recent first)
-      allPlans.sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate));
-      setOldPlans(allPlans);
-      setShowLoadOldPlan(true);
+      const plans = await getAllPTPlans();
+      // Sort by weekStartDate descending (most recent first), then by company
+      plans.sort((a, b) => {
+        const dateCompare = b.weekStartDate.localeCompare(a.weekStartDate);
+        if (dateCompare !== 0) return dateCompare;
+        return a.company.localeCompare(b.company);
+      });
+      setAllPlans(plans);
     } catch (error) {
-      console.error('Error loading old plans:', error);
-      alert(`Error loading old plans: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error loading plans:', error);
+      alert(`Error loading plans: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setLoadingOldPlans(false);
+      setLoadingAllPlans(false);
     }
   }
 
-  function handleLoadPlan(oldPlan: PTPlan) {
-    setTitle(oldPlan.title);
-    setFirstFormation(oldPlan.firstFormation);
-    setWorkouts(oldPlan.workouts);
-    setLocation(oldPlan.location);
-    setShowLoadOldPlan(false);
+  function handlePlanSelect(planId: string) {
+    if (!planId) return;
+    const selectedPlan = allPlans.find(p => p.id === planId);
+    if (selectedPlan) {
+      setTitle(selectedPlan.title);
+      setFirstFormation(selectedPlan.firstFormation);
+      setWorkouts(selectedPlan.workouts);
+      setLocation(selectedPlan.location);
+    }
   }
 
   async function handleSave() {
@@ -343,46 +356,30 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
             />
           </div>
 
-          {showLoadOldPlan ? (
-            <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-gray-900">Load Old Plan</h4>
-                <button
-                  onClick={() => setShowLoadOldPlan(false)}
-                  className="text-sm text-gray-600 hover:text-gray-800"
-                >
-                  Close
-                </button>
-              </div>
-              {loadingOldPlans ? (
-                <div className="text-sm text-gray-600">Loading...</div>
-              ) : oldPlans.length === 0 ? (
-                <div className="text-sm text-gray-600">No old plans found for {dayName}</div>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {oldPlans.map((oldPlan) => (
-                    <button
-                      key={oldPlan.id}
-                      onClick={() => handleLoadPlan(oldPlan)}
-                      className="w-full text-left p-2 bg-white rounded border border-gray-200 hover:bg-gray-50 text-sm"
-                    >
-                      <div className="font-medium text-gray-900">{oldPlan.title}</div>
-                      <div className="text-xs text-gray-600">
-                        {oldPlan.company} - Week of {formatDateWithOrdinal(oldPlan.weekStartDate)}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <button
-              onClick={handleLoadOldPlans}
-              className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 touch-manipulation"
-            >
-              Load Old Plan
-            </button>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Load Plan
+            </label>
+            {loadingAllPlans ? (
+              <div className="text-sm text-gray-600 py-2">Loading plans...</div>
+            ) : (
+              <select
+                value={selectedPlanId}
+                onChange={(e) => {
+                  setSelectedPlanId(e.target.value);
+                  handlePlanSelect(e.target.value);
+                }}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Select a plan to load...</option>
+                {allPlans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.title} - {plan.company} ({plan.day}) - Week of {formatDateWithOrdinal(plan.weekStartDate)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
           <div className="flex gap-2">
             <button
