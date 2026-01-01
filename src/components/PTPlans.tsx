@@ -256,6 +256,7 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing, isEx
   const [allPlans, setAllPlans] = useState<PTPlan[]>([]);
   const [loadingAllPlans, setLoadingAllPlans] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [originalValues, setOriginalValues] = useState<{ title: string; firstFormation: string; workouts: string; location: string } | null>(null);
 
   useEffect(() => {
     if (plan) {
@@ -270,6 +271,17 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing, isEx
       setLocation('');
     }
     setSelectedPlanId('');
+    // Store original values when editing starts
+    if (isEditing) {
+      setOriginalValues({
+        title: plan?.title || '',
+        firstFormation: plan?.firstFormation || '0600',
+        workouts: plan?.workouts || '',
+        location: plan?.location || '',
+      });
+    } else {
+      setOriginalValues(null);
+    }
   }, [plan, isEditing]);
 
   useEffect(() => {
@@ -314,6 +326,7 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing, isEx
       setFirstFormation(selectedPlan.firstFormation);
       setWorkouts(selectedPlan.workouts);
       setLocation(selectedPlan.location);
+      // Don't update originalValues - keep the original plan values for comparison
     }
   }
 
@@ -322,6 +335,22 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing, isEx
       alert('Please enter a title for the workout');
       return;
     }
+    
+    // Check if values have changed from original
+    if (originalValues) {
+      const hasChanges = 
+        title !== originalValues.title ||
+        firstFormation !== originalValues.firstFormation ||
+        workouts !== originalValues.workouts ||
+        location !== originalValues.location;
+      
+      if (!hasChanges) {
+        // No changes made, just close the editor without saving
+        onCancel();
+        return;
+      }
+    }
+    
     setSaving(true);
     try {
       await onSave({ title, firstFormation, workouts, location });
