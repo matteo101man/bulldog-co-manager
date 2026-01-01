@@ -202,12 +202,14 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                   plan={plan}
                   onEdit={() => setEditingPlan({ company: currentCompany, weekStartDate: currentWeekStart, day })}
                   onSave={async (planData) => {
+                    // Save the plan to the company/week/day (so it shows in company view)
                     await savePTPlan({
                       company: currentCompany,
                       weekStartDate: currentWeekStart,
                       day,
                       ...planData,
                     });
+                    
                     await loadPlans();
                     setEditingPlan(null);
                   }}
@@ -329,9 +331,28 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, isEdi
     setLoadingAllPlans(true);
     try {
       const plans = await getAllPTPlans();
+      
+      // Deduplicate plans with same content - keep only one instance of each unique plan
+      const seenPlans = new Map<string, PTPlan>();
+      const deduplicatedPlans: PTPlan[] = [];
+      
+      for (const plan of plans) {
+        // Create a key based on plan content (for non-generic plans)
+        if (!plan.isGeneric && plan.company && plan.weekStartDate && plan.day) {
+          const contentKey = `${plan.title}|${plan.firstFormation}|${plan.workouts}|${plan.location}`;
+          if (!seenPlans.has(contentKey)) {
+            seenPlans.set(contentKey, plan);
+            deduplicatedPlans.push(plan);
+          }
+        } else {
+          // Generic plans - keep all (they're already unique by design)
+          deduplicatedPlans.push(plan);
+        }
+      }
+      
       // Sort by weekStartDate descending (most recent first), then by company
       // Generic plans (without weekStartDate) go to the end
-      plans.sort((a, b) => {
+      deduplicatedPlans.sort((a, b) => {
         // Generic plans go to the end
         if (a.isGeneric && !b.isGeneric) return 1;
         if (!a.isGeneric && b.isGeneric) return -1;
@@ -344,7 +365,7 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, isEdi
         if (dateCompare !== 0) return dateCompare;
         return (a.company || '').localeCompare(b.company || '');
       });
-      setAllPlans(plans);
+      setAllPlans(deduplicatedPlans);
     } catch (error) {
       console.error('Error loading plans:', error);
       alert(`Error loading plans: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -620,8 +641,27 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
     setLoading(true);
     try {
       const allPlans = await getAllPTPlans();
-      // Sort chronologically: plans with dates first (oldest first), then generic plans
-      allPlans.sort((a, b) => {
+      
+      // Deduplicate plans with same content - keep only one instance of each unique plan
+      const seenPlans = new Map<string, PTPlan>();
+      const deduplicatedPlans: PTPlan[] = [];
+      
+      for (const plan of allPlans) {
+        // Create a key based on plan content (for non-generic plans)
+        if (!plan.isGeneric && plan.company && plan.weekStartDate && plan.day) {
+          const contentKey = `${plan.title}|${plan.firstFormation}|${plan.workouts}|${plan.location}`;
+          if (!seenPlans.has(contentKey)) {
+            seenPlans.set(contentKey, plan);
+            deduplicatedPlans.push(plan);
+          }
+        } else {
+          // Generic plans - keep all (they're already unique by design)
+          deduplicatedPlans.push(plan);
+        }
+      }
+      
+      // Sort chronologically: plans with dates first (newest first), then generic plans
+      deduplicatedPlans.sort((a, b) => {
         const aHasDate = !a.isGeneric && a.weekStartDate;
         const bHasDate = !b.isGeneric && b.weekStartDate;
         
@@ -640,7 +680,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
         // Both don't have dates (generic plans) - sort by title
         return a.title.localeCompare(b.title);
       });
-      setPlans(allPlans);
+      setPlans(deduplicatedPlans);
     } catch (error) {
       console.error('Error loading plans:', error);
       alert(`Error loading plans: ${error instanceof Error ? error.message : 'Unknown error'}`);
