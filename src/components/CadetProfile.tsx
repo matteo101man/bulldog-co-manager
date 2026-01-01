@@ -19,14 +19,16 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   const [cadet, setCadet] = useState<Cadet | null>(null);
   const [unexcusedCountPT, setUnexcusedCountPT] = useState<number>(0);
   const [unexcusedCountLab, setUnexcusedCountLab] = useState<number>(0);
+  const [unexcusedCountTactics, setUnexcusedCountTactics] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Cadet>>({});
-  const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | null>(null);
+  const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | 'Tactics' | null>(null);
   const [tooltipDates, setTooltipDates] = useState<string[]>([]);
   const ptRef = useRef<HTMLDivElement>(null);
   const labRef = useRef<HTMLDivElement>(null);
+  const tacticsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCadet();
@@ -38,6 +40,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
       if (tooltipType && 
           ptRef.current && !ptRef.current.contains(event.target as Node) &&
           labRef.current && !labRef.current.contains(event.target as Node) &&
+          tacticsRef.current && !tacticsRef.current.contains(event.target as Node) &&
           !(event.target as HTMLElement).closest('.absolute.z-50')) {
         setTooltipType(null);
         setTooltipDates([]);
@@ -71,13 +74,15 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
           profilePicture: cadetData.profilePicture || ''
         });
         
-        // Load unexcused absences for PT and Lab separately
-        const [countPT, countLab] = await Promise.all([
+        // Load unexcused absences for PT, Lab, and Tactics separately
+        const [countPT, countLab, countTactics] = await Promise.all([
           getTotalUnexcusedAbsences(cadetId, 'PT'),
-          getTotalUnexcusedAbsences(cadetId, 'Lab')
+          getTotalUnexcusedAbsences(cadetId, 'Lab'),
+          getTotalUnexcusedAbsences(cadetId, 'Tactics')
         ]);
         setUnexcusedCountPT(countPT);
         setUnexcusedCountLab(countLab);
+        setUnexcusedCountTactics(countTactics);
       }
     } catch (error) {
       console.error('Error loading cadet:', error);
@@ -430,9 +435,47 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                     )}
                   </div>
                 </div>
+                <div>
+                  <div className="text-sm text-gray-600">Tactics:</div>
+                  <div className="relative" ref={tacticsRef}>
+                    <div 
+                      onClick={async () => {
+                        if (unexcusedCountTactics > 0) {
+                          if (tooltipType === 'Tactics') {
+                            // Toggle off if already showing Tactics tooltip
+                            setTooltipType(null);
+                            setTooltipDates([]);
+                          } else {
+                            // Show Tactics tooltip
+                            const dates = await getUnexcusedAbsenceDates(cadetId, 'Tactics');
+                            setTooltipDates(dates);
+                            setTooltipType('Tactics');
+                          }
+                        }
+                      }}
+                      className={`text-gray-900 font-semibold ${unexcusedCountTactics > 0 ? 'cursor-pointer hover:text-blue-600 underline' : ''}`}
+                    >
+                      {unexcusedCountTactics}
+                    </div>
+                    {tooltipType === 'Tactics' && tooltipDates.length > 0 && (
+                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
+                        <div className="font-semibold mb-2 text-white">Unexcused Tactics Dates:</div>
+                        <div className="space-y-1">
+                          {tooltipDates.map((date, index) => (
+                            <div key={index} className="text-white/90">
+                              {formatDateWithDay(date)}
+                            </div>
+                          ))}
+                        </div>
+                        {/* Arrow pointing down */}
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                {unexcusedCountPT > 0 || unexcusedCountLab > 0 
+                {unexcusedCountPT > 0 || unexcusedCountLab > 0 || unexcusedCountTactics > 0
                   ? 'Click on a number to see specific dates' 
                   : 'These are calculated automatically from attendance records'}
               </div>

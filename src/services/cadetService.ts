@@ -87,3 +87,23 @@ export async function deleteCadet(cadetId: string): Promise<void> {
   await deleteDoc(docRef);
 }
 
+/**
+ * Get all cadets with a specific MS level
+ */
+export async function getCadetsByMSLevel(msLevel: string): Promise<Cadet[]> {
+  const q = query(
+    collection(db, CADETS_COLLECTION),
+    where('militaryScienceLevel', '==', msLevel)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as Cadet)).sort((a, b) => {
+    // Sort by last name, then first name
+    const lastNameCompare = a.lastName.localeCompare(b.lastName);
+    if (lastNameCompare !== 0) return lastNameCompare;
+    return a.firstName.localeCompare(b.firstName);
+  });
+}
+

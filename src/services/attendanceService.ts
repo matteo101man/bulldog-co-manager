@@ -45,6 +45,7 @@ export async function getAttendanceRecord(
     ptThursday: null,
     ptFriday: null,
     labThursday: null,
+    tacticsTuesday: null,
     weekStartDate
   };
 }
@@ -77,6 +78,7 @@ export async function updateAttendance(
     ptThursday: currentRecord?.ptThursday ?? null,
     ptFriday: currentRecord?.ptFriday ?? null,
     labThursday: currentRecord?.labThursday ?? null,
+    tacticsTuesday: currentRecord?.tacticsTuesday ?? null,
   };
   
   if (attendanceType === 'PT') {
@@ -87,6 +89,8 @@ export async function updateAttendance(
     else if (day === 'friday') updateData.ptFriday = status;
   } else if (attendanceType === 'Lab' && day === 'thursday') {
     updateData.labThursday = status;
+  } else if (attendanceType === 'Tactics' && day === 'tuesday') {
+    updateData.tacticsTuesday = status;
   }
   
   await setDoc(docRef, updateData, { merge: true });
@@ -109,6 +113,7 @@ export async function updateAttendanceRecord(record: AttendanceRecord): Promise<
     ptThursday: record.ptThursday ?? null,
     ptFriday: record.ptFriday ?? null,
     labThursday: record.labThursday ?? null,
+    tacticsTuesday: record.tacticsTuesday ?? null,
   }, { merge: true });
 }
 
@@ -152,6 +157,7 @@ export async function getCompanyAttendance(
         ptThursday: null,
         ptFriday: null,
         labThursday: null,
+        tacticsTuesday: null,
         weekStartDate
       });
     } else {
@@ -168,6 +174,7 @@ export async function getCompanyAttendance(
           ptThursday: oldRecord.thursday ?? null,
           ptFriday: null,
           labThursday: null,
+          tacticsTuesday: null,
           weekStartDate
         });
       }
@@ -209,6 +216,9 @@ export async function getTotalUnexcusedAbsences(
     }
     if (attendanceType === 'Lab' || !attendanceType) {
       if (record.labThursday === 'unexcused') totalUnexcused++;
+    }
+    if (attendanceType === 'Tactics' || !attendanceType) {
+      if (record.tacticsTuesday === 'unexcused') totalUnexcused++;
     }
   });
   
@@ -288,6 +298,11 @@ export async function getUnexcusedAbsenceDates(
       if (record.labThursday === 'unexcused') {
         dates.push(formatDate(thursday));
       }
+    } else if (attendanceType === 'Tactics') {
+      // Check Tactics day (Tuesday only)
+      if (record.tacticsTuesday === 'unexcused') {
+        dates.push(formatDate(tuesday));
+      }
     }
   });
   
@@ -339,6 +354,9 @@ export async function getTotalUnexcusedAbsencesForCadets(
       if (attendanceType === 'Lab' || !attendanceType) {
         if (record.labThursday === 'unexcused') unexcusedCount++;
       }
+      if (attendanceType === 'Tactics' || !attendanceType) {
+        if (record.tacticsTuesday === 'unexcused') unexcusedCount++;
+      }
       
       result.set(record.cadetId, currentCount + unexcusedCount);
     });
@@ -371,6 +389,7 @@ export async function getAllAttendanceForWeek(weekStartDate: string): Promise<Ma
         ptThursday: record.thursday ?? null,
         ptFriday: null,
         labThursday: null,
+        tacticsTuesday: null,
         weekStartDate: record.weekStartDate
       });
     } else {
@@ -396,6 +415,7 @@ export async function clearAllAttendance(): Promise<void> {
       ptThursday: null,
       ptFriday: null,
       labThursday: null,
+      tacticsTuesday: null,
     });
   });
   

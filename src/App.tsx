@@ -10,6 +10,7 @@ import TrainingSchedule from './components/TrainingSchedule';
 import TrainingEventDetail from './components/TrainingEventDetail';
 import AddTrainingEvent from './components/AddTrainingEvent';
 import Attendance from './components/Attendance';
+import TacticsAttendance from './components/TacticsAttendance';
 import PTPlans from './components/PTPlans';
 import NotificationPrompt from './components/NotificationPrompt';
 import { Company } from './types';
@@ -20,7 +21,7 @@ import {
   onMessageListener 
 } from './services/notificationService';
 
-type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'pt-plans';
+type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -32,6 +33,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [rosterRefreshKey, setRosterRefreshKey] = useState(0);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
+  const [fromTactics, setFromTactics] = useState(false);
 
   useEffect(() => {
     // Small delay to ensure DOM is ready
@@ -201,6 +203,23 @@ function App() {
           setAttendanceCompany(company);
           setCurrentView('attendance-company');
         }}
+        onTactics={() => setCurrentView('tactics-attendance')}
+      />
+    );
+  }
+
+  if (currentView === 'tactics-attendance') {
+    return (
+      <TacticsAttendance
+        onBack={() => {
+          setFromTactics(false);
+          setCurrentView('attendance');
+        }}
+        onSelectCadet={(cadetId) => {
+          setSelectedCadetId(cadetId);
+          setFromTactics(true);
+          setCurrentView('cadet-profile');
+        }}
       />
     );
   }
@@ -227,6 +246,9 @@ function App() {
           if (attendanceCompany) {
             setCurrentView('attendance-company');
             // Don't clear attendanceCompany so we can return to it
+          } else if (fromTactics) {
+            setFromTactics(false);
+            setCurrentView('tactics-attendance');
           } else if (selectedCompany) {
             setCurrentView('companies');
             // Don't clear selectedCompany so we can return to it
