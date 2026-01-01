@@ -697,11 +697,13 @@ interface StatisticsSectionProps {
   company: Company;
   cadets: Cadet[];
   records: AttendanceRecord[];
+  mondayStats: { present: number; excused: number; unexcused: number };
   tuesdayStats: { present: number; excused: number; unexcused: number };
   wednesdayStats: { present: number; excused: number; unexcused: number };
   thursdayStats: { present: number; excused: number; unexcused: number };
+  fridayStats: { present: number; excused: number; unexcused: number };
   weekStats: { present: number; excused: number; unexcused: number };
-  weekDates: { tuesday: string; wednesday: string; thursday: string };
+  weekDates: { monday: string; tuesday: string; wednesday: string; thursday: string; friday: string };
   excusedByLevel: Map<string, Array<{ id: string; name: string; level: string }>>;
   unexcusedByLevel: Map<string, Array<{ id: string; name: string; level: string }>>;
   selectedDay: DayOfWeek | 'week';
@@ -710,15 +712,18 @@ interface StatisticsSectionProps {
   currentWeekStart: string;
   onWeekChange: (weekStart: string) => void;
   attendanceType: AttendanceType;
+  showMondayFriday: boolean;
 }
 
 function StatisticsSection({
   company,
   cadets,
   records,
+  mondayStats,
   tuesdayStats,
   wednesdayStats,
   thursdayStats,
+  fridayStats,
   weekStats,
   weekDates,
   excusedByLevel,
@@ -728,7 +733,8 @@ function StatisticsSection({
   unexcusedTotals,
   currentWeekStart,
   onWeekChange,
-  attendanceType
+  attendanceType,
+  showMondayFriday
 }: StatisticsSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [statsViewMode, setStatsViewMode] = useState<'summary' | 'excused' | 'unexcused'>('summary');
