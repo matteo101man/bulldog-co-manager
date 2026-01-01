@@ -39,9 +39,11 @@ export async function getAttendanceRecord(
   // Return default record if none exists
   return {
     cadetId,
+    ptMonday: null,
     ptTuesday: null,
     ptWednesday: null,
     ptThursday: null,
+    ptFriday: null,
     labThursday: null,
     weekStartDate
   };
@@ -69,16 +71,20 @@ export async function updateAttendance(
   const updateData: any = {
     cadetId,
     weekStartDate,
+    ptMonday: currentRecord?.ptMonday ?? null,
     ptTuesday: currentRecord?.ptTuesday ?? null,
     ptWednesday: currentRecord?.ptWednesday ?? null,
     ptThursday: currentRecord?.ptThursday ?? null,
+    ptFriday: currentRecord?.ptFriday ?? null,
     labThursday: currentRecord?.labThursday ?? null,
   };
   
   if (attendanceType === 'PT') {
-    if (day === 'tuesday') updateData.ptTuesday = status;
+    if (day === 'monday') updateData.ptMonday = status;
+    else if (day === 'tuesday') updateData.ptTuesday = status;
     else if (day === 'wednesday') updateData.ptWednesday = status;
     else if (day === 'thursday') updateData.ptThursday = status;
+    else if (day === 'friday') updateData.ptFriday = status;
   } else if (attendanceType === 'Lab' && day === 'thursday') {
     updateData.labThursday = status;
   }
@@ -97,9 +103,11 @@ export async function updateAttendanceRecord(record: AttendanceRecord): Promise<
   await setDoc(docRef, {
     cadetId: record.cadetId,
     weekStartDate: record.weekStartDate,
+    ptMonday: record.ptMonday ?? null,
     ptTuesday: record.ptTuesday ?? null,
     ptWednesday: record.ptWednesday ?? null,
     ptThursday: record.ptThursday ?? null,
+    ptFriday: record.ptFriday ?? null,
     labThursday: record.labThursday ?? null,
   }, { merge: true });
 }
@@ -138,9 +146,11 @@ export async function getCompanyAttendance(
     if (!attendanceMap.has(cadet.id)) {
       attendanceMap.set(cadet.id, {
         cadetId: cadet.id,
+        ptMonday: null,
         ptTuesday: null,
         ptWednesday: null,
         ptThursday: null,
+        ptFriday: null,
         labThursday: null,
         weekStartDate
       });
@@ -152,9 +162,11 @@ export async function getCompanyAttendance(
         const oldRecord = record as any;
         attendanceMap.set(cadet.id, {
           cadetId: cadet.id,
+          ptMonday: null,
           ptTuesday: oldRecord.tuesday ?? null,
           ptWednesday: oldRecord.wednesday ?? null,
           ptThursday: oldRecord.thursday ?? null,
+          ptFriday: null,
           labThursday: null,
           weekStartDate
         });
@@ -185,9 +197,11 @@ export async function getTotalUnexcusedAbsences(
     const record = doc.data() as any;
     // Handle migration from old format
     if (attendanceType === 'PT' || !attendanceType) {
+      if (record.ptMonday === 'unexcused') totalUnexcused++;
       if (record.ptTuesday === 'unexcused') totalUnexcused++;
       if (record.ptWednesday === 'unexcused') totalUnexcused++;
       if (record.ptThursday === 'unexcused') totalUnexcused++;
+      if (record.ptFriday === 'unexcused') totalUnexcused++;
       // Legacy support
       if (record.tuesday === 'unexcused' && !record.ptTuesday) totalUnexcused++;
       if (record.wednesday === 'unexcused' && !record.ptWednesday) totalUnexcused++;
@@ -241,6 +255,12 @@ export async function getUnexcusedAbsenceDates(
     
     if (attendanceType === 'PT') {
       // Check PT days
+      const monday = new Date(year, month - 1, day);
+      const friday = new Date(year, month - 1, day + 4);
+      
+      if (record.ptMonday === 'unexcused') {
+        dates.push(formatDate(monday));
+      }
       if (record.ptTuesday === 'unexcused') {
         dates.push(formatDate(tuesday));
       }
@@ -249,6 +269,9 @@ export async function getUnexcusedAbsenceDates(
       }
       if (record.ptThursday === 'unexcused') {
         dates.push(formatDate(thursday));
+      }
+      if (record.ptFriday === 'unexcused') {
+        dates.push(formatDate(friday));
       }
       // Legacy support
       if (record.tuesday === 'unexcused' && !record.ptTuesday) {
@@ -303,9 +326,11 @@ export async function getTotalUnexcusedAbsencesForCadets(
       let unexcusedCount = 0;
       
       if (attendanceType === 'PT' || !attendanceType) {
+        if (record.ptMonday === 'unexcused') unexcusedCount++;
         if (record.ptTuesday === 'unexcused') unexcusedCount++;
         if (record.ptWednesday === 'unexcused') unexcusedCount++;
         if (record.ptThursday === 'unexcused') unexcusedCount++;
+        if (record.ptFriday === 'unexcused') unexcusedCount++;
         // Legacy support
         if (record.tuesday === 'unexcused' && !record.ptTuesday) unexcusedCount++;
         if (record.wednesday === 'unexcused' && !record.ptWednesday) unexcusedCount++;
@@ -340,9 +365,11 @@ export async function getAllAttendanceForWeek(weekStartDate: string): Promise<Ma
     if (!('ptTuesday' in record)) {
       attendanceMap.set(record.cadetId, {
         cadetId: record.cadetId,
+        ptMonday: null,
         ptTuesday: record.tuesday ?? null,
         ptWednesday: record.wednesday ?? null,
         ptThursday: record.thursday ?? null,
+        ptFriday: null,
         labThursday: null,
         weekStartDate: record.weekStartDate
       });
@@ -363,9 +390,11 @@ export async function clearAllAttendance(): Promise<void> {
   
   querySnapshot.docs.forEach(docSnap => {
     batch.update(docSnap.ref, {
+      ptMonday: null,
       ptTuesday: null,
       ptWednesday: null,
       ptThursday: null,
+      ptFriday: null,
       labThursday: null,
     });
   });

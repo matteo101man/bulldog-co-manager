@@ -21,10 +21,13 @@ export interface Cadet {
 
 export interface AttendanceRecord {
   cadetId: string;
-  // PT (Physical Training) - Tuesday, Wednesday, Thursday
+  // PT (Physical Training) - Monday, Tuesday, Wednesday, Thursday, Friday
+  // Monday and Friday are only used for Ranger Company
+  ptMonday?: AttendanceStatus;
   ptTuesday: AttendanceStatus;
   ptWednesday: AttendanceStatus;
   ptThursday: AttendanceStatus;
+  ptFriday?: AttendanceStatus;
   // Lab - Thursday only
   labThursday: AttendanceStatus;
   weekStartDate: string; // ISO date string for the Monday of the week

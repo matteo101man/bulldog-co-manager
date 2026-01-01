@@ -23,7 +23,11 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   const [attendanceType, setAttendanceType] = useState<AttendanceType>('PT');
   const [unexcusedTotalsPT, setUnexcusedTotalsPT] = useState<Map<string, number>>(new Map());
   const [unexcusedTotalsLab, setUnexcusedTotalsLab] = useState<Map<string, number>>(new Map());
+  const [contextMenu, setContextMenu] = useState<{ day: DayOfWeek; type: AttendanceType; x: number; y: number } | null>(null);
   const weekDates = getWeekDatesForWeek(currentWeekStart);
+  
+  // Determine if we should show Monday and Friday (Ranger Company PT only)
+  const showMondayFriday = company === 'Ranger' && attendanceType === 'PT';
 
   useEffect(() => {
     loadData();
@@ -75,9 +79,11 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       const newMap = new Map(prev);
       const existingRecord = newMap.get(cadetId) || {
         cadetId,
+        ptMonday: null,
         ptTuesday: null,
         ptWednesday: null,
         ptThursday: null,
+        ptFriday: null,
         labThursday: null,
         weekStartDate: currentWeekStart
       };
@@ -88,14 +94,53 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       };
       
       if (type === 'PT') {
-        if (day === 'tuesday') updatedRecord.ptTuesday = status || null;
+        if (day === 'monday') updatedRecord.ptMonday = status || null;
+        else if (day === 'tuesday') updatedRecord.ptTuesday = status || null;
         else if (day === 'wednesday') updatedRecord.ptWednesday = status || null;
         else if (day === 'thursday') updatedRecord.ptThursday = status || null;
+        else if (day === 'friday') updatedRecord.ptFriday = status || null;
       } else if (type === 'Lab' && day === 'thursday') {
         updatedRecord.labThursday = status || null;
       }
       
       newMap.set(cadetId, updatedRecord);
+      return newMap;
+    });
+  }
+
+  async function handleMarkAllPresent(day: DayOfWeek, type: AttendanceType) {
+    // Mark all cadets in the company as present for the specified day
+    setLocalAttendanceMap(prev => {
+      const newMap = new Map(prev);
+      cadets.forEach(cadet => {
+        const existingRecord = newMap.get(cadet.id) || {
+          cadetId: cadet.id,
+          ptMonday: null,
+          ptTuesday: null,
+          ptWednesday: null,
+          ptThursday: null,
+          ptFriday: null,
+          labThursday: null,
+          weekStartDate: currentWeekStart
+        };
+        
+        const updatedRecord: AttendanceRecord = {
+          ...existingRecord,
+          weekStartDate: currentWeekStart
+        };
+        
+        if (type === 'PT') {
+          if (day === 'monday') updatedRecord.ptMonday = 'present';
+          else if (day === 'tuesday') updatedRecord.ptTuesday = 'present';
+          else if (day === 'wednesday') updatedRecord.ptWednesday = 'present';
+          else if (day === 'thursday') updatedRecord.ptThursday = 'present';
+          else if (day === 'friday') updatedRecord.ptFriday = 'present';
+        } else if (type === 'Lab' && day === 'thursday') {
+          updatedRecord.labThursday = 'present';
+        }
+        
+        newMap.set(cadet.id, updatedRecord);
+      });
       return newMap;
     });
   }
@@ -110,6 +155,9 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         const serverRecord = attendanceMap.get(cadetId);
         
         // Check PT changes
+        if (localRecord.ptMonday !== (serverRecord?.ptMonday ?? null)) {
+          changes.push({ cadetId, day: 'monday', status: localRecord.ptMonday ?? null, type: 'PT' });
+        }
         if (localRecord.ptTuesday !== (serverRecord?.ptTuesday ?? null)) {
           changes.push({ cadetId, day: 'tuesday', status: localRecord.ptTuesday, type: 'PT' });
         }
@@ -118,6 +166,9 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         }
         if (localRecord.ptThursday !== (serverRecord?.ptThursday ?? null)) {
           changes.push({ cadetId, day: 'thursday', status: localRecord.ptThursday, type: 'PT' });
+        }
+        if (localRecord.ptFriday !== (serverRecord?.ptFriday ?? null)) {
+          changes.push({ cadetId, day: 'friday', status: localRecord.ptFriday ?? null, type: 'PT' });
         }
         
         // Check Lab changes
@@ -130,6 +181,9 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       attendanceMap.forEach((serverRecord, cadetId) => {
         if (!localAttendanceMap.has(cadetId)) {
           // This shouldn't happen, but handle it
+          if (serverRecord.ptMonday !== null && serverRecord.ptMonday !== undefined) {
+            changes.push({ cadetId, day: 'monday', status: null, type: 'PT' });
+          }
           if (serverRecord.ptTuesday !== null) {
             changes.push({ cadetId, day: 'tuesday', status: null, type: 'PT' });
           }
@@ -138,6 +192,9 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
           }
           if (serverRecord.ptThursday !== null) {
             changes.push({ cadetId, day: 'thursday', status: null, type: 'PT' });
+          }
+          if (serverRecord.ptFriday !== null && serverRecord.ptFriday !== undefined) {
+            changes.push({ cadetId, day: 'friday', status: null, type: 'PT' });
           }
           if (serverRecord.labThursday !== null) {
             changes.push({ cadetId, day: 'thursday', status: null, type: 'Lab' });
@@ -159,9 +216,11 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
             changesByCadet.set(cadetId, {
               cadetId,
               weekStartDate: currentWeekStart,
+              ptMonday: null,
               ptTuesday: null,
               ptWednesday: null,
               ptThursday: null,
+              ptFriday: null,
               labThursday: null
             });
           }
@@ -206,9 +265,11 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   // Calculate stats using localAttendanceMap for real-time updates
   const records = Array.from(localAttendanceMap.values());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
+  const mondayStats = showMondayFriday ? calculateDayStats(records, 'monday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
   const tuesdayStats = attendanceType === 'PT' ? calculateDayStats(records, 'tuesday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
   const wednesdayStats = attendanceType === 'PT' ? calculateDayStats(records, 'wednesday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
   const thursdayStats = calculateDayStats(records, 'thursday', attendanceType);
+  const fridayStats = showMondayFriday ? calculateDayStats(records, 'friday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
   const weekStats = calculateWeekStats(records, attendanceType);
   const excusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'excused', attendanceType);
   const unexcusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'unexcused', attendanceType);
@@ -271,23 +332,84 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
 
         {/* Week dates header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-          <div className={`grid gap-2 text-center ${attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'}`}>
+          <div className={`grid gap-2 text-center ${
+            showMondayFriday ? 'grid-cols-6' : 
+            attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'
+          }`}>
             <div className="font-semibold text-gray-700">Name</div>
+            {showMondayFriday && (
+              <DayHeader
+                date={weekDates.monday}
+                day="monday"
+                attendanceType={attendanceType}
+                company={company}
+                onContextMenu={(e, day) => {
+                  e.preventDefault();
+                  setContextMenu({ day, type: attendanceType, x: e.clientX, y: e.clientY });
+                }}
+              />
+            )}
             {attendanceType === 'PT' && (
               <>
-                <div className="font-semibold text-gray-700 text-sm">
-                  {formatDateWithDay(weekDates.tuesday)}
-                </div>
-                <div className="font-semibold text-gray-700 text-sm">
-                  {formatDateWithDay(weekDates.wednesday)}
-                </div>
+                <DayHeader
+                  date={weekDates.tuesday}
+                  day="tuesday"
+                  attendanceType={attendanceType}
+                  company={company}
+                  onContextMenu={(e, day) => {
+                    e.preventDefault();
+                    setContextMenu({ day, type: attendanceType, x: e.clientX, y: e.clientY });
+                  }}
+                />
+                <DayHeader
+                  date={weekDates.wednesday}
+                  day="wednesday"
+                  attendanceType={attendanceType}
+                  company={company}
+                  onContextMenu={(e, day) => {
+                    e.preventDefault();
+                    setContextMenu({ day, type: attendanceType, x: e.clientX, y: e.clientY });
+                  }}
+                />
               </>
             )}
-            <div className="font-semibold text-gray-700 text-sm">
-              {formatDateWithDay(weekDates.thursday)}
-            </div>
+            <DayHeader
+              date={weekDates.thursday}
+              day="thursday"
+              attendanceType={attendanceType}
+              company={company}
+              onContextMenu={(e, day) => {
+                e.preventDefault();
+                setContextMenu({ day, type: attendanceType, x: e.clientX, y: e.clientY });
+              }}
+            />
+            {showMondayFriday && (
+              <DayHeader
+                date={weekDates.friday}
+                day="friday"
+                attendanceType={attendanceType}
+                company={company}
+                onContextMenu={(e, day) => {
+                  e.preventDefault();
+                  setContextMenu({ day, type: attendanceType, x: e.clientX, y: e.clientY });
+                }}
+              />
+            )}
           </div>
         </div>
+        
+        {/* Context Menu */}
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            onMarkAllPresent={() => {
+              handleMarkAllPresent(contextMenu.day, contextMenu.type);
+              setContextMenu(null);
+            }}
+          />
+        )}
 
         {/* Cadet list */}
         <div className="space-y-2">
@@ -326,6 +448,8 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
                           onStatusChange={handleStatusChange}
                           onSelectCadet={onSelectCadet}
                           attendanceType={attendanceType}
+                          company={company}
+                          showMondayFriday={showMondayFriday}
                         />
                       );
                     })}
@@ -345,6 +469,8 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
                   onStatusChange={handleStatusChange}
                   onSelectCadet={onSelectCadet}
                   attendanceType={attendanceType}
+                  company={company}
+                  showMondayFriday={showMondayFriday}
                 />
               );
             })
@@ -388,9 +514,11 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
             company={company}
             cadets={cadets}
             records={records}
+            mondayStats={mondayStats}
             tuesdayStats={tuesdayStats}
             wednesdayStats={wednesdayStats}
             thursdayStats={thursdayStats}
+            fridayStats={fridayStats}
             weekStats={weekStats}
             weekDates={weekDates}
             excusedByLevel={excusedByLevel}
@@ -401,6 +529,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
             currentWeekStart={currentWeekStart}
             onWeekChange={setCurrentWeekStart}
             attendanceType={attendanceType}
+            showMondayFriday={showMondayFriday}
           />
         )}
       </main>
@@ -421,11 +550,15 @@ function CadetRow({
   attendance,
   onStatusChange,
   onSelectCadet,
-  attendanceType
-}: CadetRowProps) {
+  attendanceType,
+  company,
+  showMondayFriday
+}: CadetRowProps & { company: Company; showMondayFriday: boolean }) {
+  const ptMonday = attendance?.ptMonday ?? null;
   const ptTuesday = attendance?.ptTuesday ?? null;
   const ptWednesday = attendance?.ptWednesday ?? null;
   const ptThursday = attendance?.ptThursday ?? null;
+  const ptFriday = attendance?.ptFriday ?? null;
   const labThursday = attendance?.labThursday ?? null;
 
   function getStatusColor(status: AttendanceStatus): string {
@@ -437,7 +570,10 @@ function CadetRow({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className={`grid gap-2 p-3 ${attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'}`}>
+      <div className={`grid gap-2 p-3 ${
+        showMondayFriday ? 'grid-cols-6' : 
+        attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'
+      }`}>
         <div className="flex items-center">
           <button
             onClick={() => onSelectCadet?.(cadet.id)}
@@ -446,6 +582,22 @@ function CadetRow({
             {cadet.lastName}, {cadet.firstName}
           </button>
         </div>
+        {showMondayFriday && (
+          <select
+            value={ptMonday || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              onStatusChange(cadet.id, 'monday', value === '' ? null : (value as AttendanceStatus), 'PT');
+            }}
+            aria-label={`${cadet.firstName} ${cadet.lastName} Monday PT attendance`}
+            className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(ptMonday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="">—</option>
+            <option value="present">Present</option>
+            <option value="excused">Excused</option>
+            <option value="unexcused">Unexcused</option>
+          </select>
+        )}
         {attendanceType === 'PT' && (
           <>
             <select
@@ -492,6 +644,22 @@ function CadetRow({
           <option value="excused">Excused</option>
           <option value="unexcused">Unexcused</option>
         </select>
+        {showMondayFriday && (
+          <select
+            value={ptFriday || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              onStatusChange(cadet.id, 'friday', value === '' ? null : (value as AttendanceStatus), 'PT');
+            }}
+            aria-label={`${cadet.firstName} ${cadet.lastName} Friday PT attendance`}
+            className={`border-2 rounded-md px-2 py-2 text-sm font-medium touch-manipulation min-h-[44px] bg-white ${getStatusColor(ptFriday)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="">—</option>
+            <option value="present">Present</option>
+            <option value="excused">Excused</option>
+            <option value="unexcused">Unexcused</option>
+          </select>
+        )}
       </div>
     </div>
   );
@@ -636,6 +804,7 @@ function StatisticsSection({
                 selectedDay={selectedDay}
                 onDayChange={onDayChange}
                 attendanceType={attendanceType}
+                showMondayFriday={showMondayFriday}
               />
             )}
             {statsViewMode === 'unexcused' && (
@@ -645,6 +814,7 @@ function StatisticsSection({
                 selectedDay={selectedDay}
                 onDayChange={onDayChange}
                 attendanceType={attendanceType}
+                showMondayFriday={showMondayFriday}
               />
             )}
           </div>
@@ -723,17 +893,20 @@ interface SummaryStatsProps {
   company: Company;
   cadets: Cadet[];
   records: AttendanceRecord[];
+  mondayStats: { present: number; excused: number; unexcused: number };
   tuesdayStats: { present: number; excused: number; unexcused: number };
   wednesdayStats: { present: number; excused: number; unexcused: number };
   thursdayStats: { present: number; excused: number; unexcused: number };
+  fridayStats: { present: number; excused: number; unexcused: number };
   weekStats: { present: number; excused: number; unexcused: number };
-  weekDates: { tuesday: string; wednesday: string; thursday: string };
+  weekDates: { monday: string; tuesday: string; wednesday: string; thursday: string; friday: string };
   unexcusedTotals: Map<string, number>;
   currentWeekStart: string;
   attendanceType: AttendanceType;
+  showMondayFriday: boolean;
 }
 
-function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, thursdayStats, weekStats, weekDates, unexcusedTotals, currentWeekStart, attendanceType }: SummaryStatsProps) {
+function SummaryStats({ company, cadets, records, mondayStats, tuesdayStats, wednesdayStats, thursdayStats, fridayStats, weekStats, weekDates, unexcusedTotals, currentWeekStart, attendanceType, showMondayFriday }: SummaryStatsProps) {
   const [companyStats, setCompanyStats] = useState<Map<Company, { tuesday: { present: number; excused: number; unexcused: number }; wednesday: { present: number; excused: number; unexcused: number }; thursday: { present: number; excused: number; unexcused: number } }>>(new Map());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
 
@@ -770,6 +943,7 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
           if (compCadetIds.has(cadetId)) {
             if (attendanceType === 'PT') {
               // Use PT fields for Tuesday, Wednesday, Thursday PT attendance
+              // Note: Monday and Friday are only for Ranger Company and not shown in Master List stats
               if (record.ptTuesday === 'present') tuesday.present++;
               else if (record.ptTuesday === 'excused') tuesday.excused++;
               else if (record.ptTuesday === 'unexcused') tuesday.unexcused++;
@@ -799,14 +973,16 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
     }
   }
 
-  // Helper function to get cadet names for a specific day and status
+      // Helper function to get cadet names for a specific day and status
   const getCadetNames = (day: DayOfWeek, status: 'excused' | 'unexcused'): Array<{ name: string; count?: number }> => {
     return records
       .filter(record => {
         if (attendanceType === 'PT') {
+          if (day === 'monday') return record.ptMonday === status;
           if (day === 'tuesday') return record.ptTuesday === status;
           if (day === 'wednesday') return record.ptWednesday === status;
           if (day === 'thursday') return record.ptThursday === status;
+          if (day === 'friday') return record.ptFriday === status;
         } else if (attendanceType === 'Lab' && day === 'thursday') {
           return record.labThursday === status;
         }
@@ -833,7 +1009,11 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
     records.forEach(record => {
       let hasStatus = false;
       if (attendanceType === 'PT') {
-        hasStatus = record.ptTuesday === status || record.ptWednesday === status || record.ptThursday === status;
+        hasStatus = (record.ptMonday === status) ||
+                    (record.ptTuesday === status) || 
+                    (record.ptWednesday === status) || 
+                    (record.ptThursday === status) ||
+                    (record.ptFriday === status);
       } else if (attendanceType === 'Lab') {
         hasStatus = record.labThursday === status;
       }
@@ -862,6 +1042,31 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
       {/* Daily Stats */}
       <div className="space-y-3">
         <h3 className="font-semibold text-gray-900">Daily Statistics</h3>
+        
+        {showMondayFriday && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="font-semibold text-gray-900 mb-2">Monday</div>
+            <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.monday)}</div>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="text-center">
+                <div className="text-lg font-bold text-present">{mondayStats.present}</div>
+                <div className="text-xs text-gray-600">Present</div>
+              </div>
+              <StatWithTooltip
+                count={mondayStats.excused}
+                label="Excused"
+                cadetNames={getCadetNames('monday', 'excused')}
+                colorClass="text-excused"
+              />
+              <StatWithTooltip
+                count={mondayStats.unexcused}
+                label="Unexcused"
+                cadetNames={getCadetNames('monday', 'unexcused')}
+                colorClass="text-unexcused"
+              />
+            </div>
+          </div>
+        )}
         
         {attendanceType === 'PT' && (
           <>
@@ -980,6 +1185,31 @@ function SummaryStats({ company, cadets, records, tuesdayStats, wednesdayStats, 
             </div>
           )}
         </div>
+        
+        {showMondayFriday && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="font-semibold text-gray-900 mb-2">Friday</div>
+            <div className="text-xs text-gray-500 mb-3">{formatDateWithDay(weekDates.friday)}</div>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="text-center">
+                <div className="text-lg font-bold text-present">{fridayStats.present}</div>
+                <div className="text-xs text-gray-600">Present</div>
+              </div>
+              <StatWithTooltip
+                count={fridayStats.excused}
+                label="Excused"
+                cadetNames={getCadetNames('friday', 'excused')}
+                colorClass="text-excused"
+              />
+              <StatWithTooltip
+                count={fridayStats.unexcused}
+                label="Unexcused"
+                cadetNames={getCadetNames('friday', 'unexcused')}
+                colorClass="text-unexcused"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Weekly Stats */}
@@ -1090,9 +1320,10 @@ interface StatusListProps {
   selectedDay: DayOfWeek | 'week';
   onDayChange: (day: DayOfWeek | 'week') => void;
   attendanceType: AttendanceType;
+  showMondayFriday?: boolean;
 }
 
-function StatusList({ cadetsByLevel, status, selectedDay, onDayChange, attendanceType }: StatusListProps) {
+function StatusList({ cadetsByLevel, status, selectedDay, onDayChange, attendanceType, showMondayFriday = false }: StatusListProps) {
   const levels = Array.from(cadetsByLevel.keys()).sort();
   const totalCount = Array.from(cadetsByLevel.values()).reduce((sum, list) => sum + list.length, 0);
 
@@ -1103,7 +1334,10 @@ function StatusList({ cadetsByLevel, status, selectedDay, onDayChange, attendanc
         <label className="block text-sm font-medium text-gray-700 mb-2">
           View by Day/Week
         </label>
-        <div className={`grid gap-2 ${attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'}`}>
+        <div className={`grid gap-2 ${
+          showMondayFriday ? 'grid-cols-6' : 
+          attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'
+        }`}>
           <button
             onClick={() => onDayChange('week')}
             className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
@@ -1114,6 +1348,18 @@ function StatusList({ cadetsByLevel, status, selectedDay, onDayChange, attendanc
           >
             Week
           </button>
+          {showMondayFriday && (
+            <button
+              onClick={() => onDayChange('monday')}
+              className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+                selectedDay === 'monday'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300'
+              }`}
+            >
+              Mon
+            </button>
+          )}
           {attendanceType === 'PT' && (
             <>
               <button
@@ -1148,6 +1394,18 @@ function StatusList({ cadetsByLevel, status, selectedDay, onDayChange, attendanc
           >
             Thu
           </button>
+          {showMondayFriday && (
+            <button
+              onClick={() => onDayChange('friday')}
+              className={`py-2 px-3 rounded-md text-sm font-medium touch-manipulation ${
+                selectedDay === 'friday'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300'
+              }`}
+            >
+              Fri
+            </button>
+          )}
         </div>
       </div>
 
@@ -1181,6 +1439,94 @@ function StatusList({ cadetsByLevel, status, selectedDay, onDayChange, attendanc
           );
         })
       )}
+    </div>
+  );
+}
+
+interface DayHeaderProps {
+  date: string;
+  day: DayOfWeek;
+  attendanceType: AttendanceType;
+  company: Company;
+  onContextMenu: (e: React.MouseEvent, day: DayOfWeek) => void;
+}
+
+function DayHeader({ date, day, attendanceType, company, onContextMenu }: DayHeaderProps) {
+  // Only show context menu for company views (not Master List)
+  const showContextMenu = company !== 'Master';
+  
+  const handleClick = (e: React.MouseEvent) => {
+    if (showContextMenu) {
+      e.preventDefault();
+      onContextMenu(e, day);
+    }
+  };
+  
+  return (
+    <div
+      className={`font-semibold text-gray-700 text-sm ${
+        showContextMenu ? 'cursor-pointer hover:bg-gray-50 rounded px-2 py-1 touch-manipulation' : ''
+      }`}
+      onContextMenu={showContextMenu ? (e) => {
+        e.preventDefault();
+        onContextMenu(e, day);
+      } : undefined}
+      onClick={showContextMenu ? handleClick : undefined}
+    >
+      {formatDateWithDay(date)}
+    </div>
+  );
+}
+
+interface ContextMenuProps {
+  x: number;
+  y: number;
+  onClose: () => void;
+  onMarkAllPresent: () => void;
+}
+
+function ContextMenu({ x, y, onClose, onMarkAllPresent }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+
+    // Add listener after a short delay to avoid immediate close
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [onClose]);
+
+  // Adjust position to keep menu on screen
+  const adjustedX = Math.min(x, window.innerWidth - 200);
+  const adjustedY = Math.min(y, window.innerHeight - 100);
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-2 min-w-[180px]"
+      style={{ left: `${adjustedX}px`, top: `${adjustedY}px` }}
+    >
+      <button
+        onClick={() => {
+          onMarkAllPresent();
+          onClose();
+        }}
+        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 touch-manipulation"
+      >
+        Mark All Present
+      </button>
     </div>
   );
 }

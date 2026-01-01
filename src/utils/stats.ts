@@ -17,9 +17,11 @@ export function calculateDayStats(
   records.forEach(record => {
     let status: AttendanceStatus | null = null;
     if (attendanceType === 'PT') {
-      if (day === 'tuesday') status = record.ptTuesday;
+      if (day === 'monday') status = record.ptMonday ?? null;
+      else if (day === 'tuesday') status = record.ptTuesday;
       else if (day === 'wednesday') status = record.ptWednesday;
       else if (day === 'thursday') status = record.ptThursday;
+      else if (day === 'friday') status = record.ptFriday ?? null;
     } else if (attendanceType === 'Lab' && day === 'thursday') {
       status = record.labThursday;
     }
@@ -47,7 +49,16 @@ export function calculateWeekStats(
 
   records.forEach(record => {
     if (attendanceType === 'PT') {
-      [record.ptTuesday, record.ptWednesday, record.ptThursday].forEach(status => {
+      // Include Monday and Friday if they exist (for Ranger Company)
+      const ptDays = [
+        record.ptMonday,
+        record.ptTuesday,
+        record.ptWednesday,
+        record.ptThursday,
+        record.ptFriday
+      ].filter(status => status !== undefined) as AttendanceStatus[];
+      
+      ptDays.forEach(status => {
         if (status === 'present') stats.present++;
         else if (status === 'excused') stats.excused++;
         else if (status === 'unexcused') stats.unexcused++;
@@ -83,13 +94,17 @@ export function getCadetsByStatusAndLevel(
     if (attendanceType === 'PT') {
       if (day === 'week') {
         // Check if cadet has this status on any PT day
-        matches = record.ptTuesday === status || 
-                  record.ptWednesday === status || 
-                  record.ptThursday === status;
+        matches = (record.ptMonday === status) ||
+                  (record.ptTuesday === status) || 
+                  (record.ptWednesday === status) || 
+                  (record.ptThursday === status) ||
+                  (record.ptFriday === status);
       } else {
-        if (day === 'tuesday') matches = record.ptTuesday === status;
+        if (day === 'monday') matches = record.ptMonday === status;
+        else if (day === 'tuesday') matches = record.ptTuesday === status;
         else if (day === 'wednesday') matches = record.ptWednesday === status;
         else if (day === 'thursday') matches = record.ptThursday === status;
+        else if (day === 'friday') matches = record.ptFriday === status;
       }
     } else if (attendanceType === 'Lab') {
       if (day === 'week' || day === 'thursday') {
