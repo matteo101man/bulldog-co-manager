@@ -496,6 +496,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
   const [location, setLocation] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadPlans();
@@ -661,19 +662,44 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
                     const planDate = weekDates[plan.day];
                     planInfo = `${plan.company} - ${formatDateFullWithOrdinal(planDate)}`;
                   }
+                  const isExpanded = expandedPlans.has(plan.id);
+                  
                   return (
                     <div
                       key={plan.id}
                       className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
                     >
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-gray-900">{plan.title}</h3>
                           {planInfo && (
                             <p className="text-sm text-gray-600 mt-1">{planInfo}</p>
                           )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                          <button
+                            onClick={() => {
+                              const newExpanded = new Set(expandedPlans);
+                              if (isExpanded) {
+                                newExpanded.delete(plan.id);
+                              } else {
+                                newExpanded.add(plan.id);
+                              }
+                              setExpandedPlans(newExpanded);
+                            }}
+                            className="flex items-center justify-center w-8 h-8 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
+                            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                          >
+                            {isExpanded ? (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                            )}
+                          </button>
                           <button
                             onClick={() => handleEdit(plan)}
                             className="text-sm text-blue-600 hover:text-blue-700 touch-manipulation"
@@ -691,24 +717,26 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
                           </button>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">First Formation: </span>
-                          <span className="text-sm text-gray-900">{plan.firstFormation}</span>
+                      {isExpanded && (
+                        <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">First Formation: </span>
+                            <span className="text-sm text-gray-900">{plan.firstFormation}</span>
+                          </div>
+                          {plan.workouts && (
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">Workouts: </span>
+                              <div className="text-sm text-gray-900 whitespace-pre-wrap mt-1">{plan.workouts}</div>
+                            </div>
+                          )}
+                          {plan.location && (
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">Location: </span>
+                              <span className="text-sm text-gray-900">{plan.location}</span>
+                            </div>
+                          )}
                         </div>
-                        {plan.workouts && (
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">Workouts: </span>
-                            <div className="text-sm text-gray-900 whitespace-pre-wrap mt-1">{plan.workouts}</div>
-                          </div>
-                        )}
-                        {plan.location && (
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">Location: </span>
-                            <span className="text-sm text-gray-900">{plan.location}</span>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   );
                 })}
