@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Company, DayOfWeek, PTPlan } from '../types';
-import { getPTPlansForWeek, savePTPlan, getAllPTPlans, getGenericPTPlans, deleteGenericPTPlan } from '../services/ptPlanService';
+import { getPTPlansForWeek, savePTPlan, getAllPTPlans, getGenericPTPlans, deleteGenericPTPlan, deletePTPlan } from '../services/ptPlanService';
 import { getCurrentWeekStart, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithDay, formatDateWithOrdinal, formatDateFullWithOrdinal } from '../utils/dates';
 
 interface PTPlansProps {
@@ -93,7 +93,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
             style={{ minHeight: '44px' }}
           >
             <span className="text-lg font-semibold text-gray-900">
-              Plans
+              PT Plans
             </span>
           </button>
           <p className="text-center text-gray-600 mb-6">
@@ -504,10 +504,24 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
   async function loadPlans() {
     setLoading(true);
     try {
-      const genericPlans = await getGenericPTPlans();
-      setPlans(genericPlans);
+      const allPlans = await getAllPTPlans();
+      // Sort by date (most recent first), then by company
+      allPlans.sort((a, b) => {
+        // Generic plans go to the end
+        if (a.isGeneric && !b.isGeneric) return 1;
+        if (!a.isGeneric && b.isGeneric) return -1;
+        if (a.isGeneric && b.isGeneric) {
+          // Both generic - sort by title
+          return a.title.localeCompare(b.title);
+        }
+        // Both non-generic - sort by date then company
+        const dateCompare = (b.weekStartDate || '').localeCompare(a.weekStartDate || '');
+        if (dateCompare !== 0) return dateCompare;
+        return (a.company || '').localeCompare(b.company || '');
+      });
+      setPlans(allPlans);
     } catch (error) {
-      console.error('Error loading generic plans:', error);
+      console.error('Error loading plans:', error);
       alert(`Error loading plans: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
@@ -539,14 +553,29 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
     }
     setSaving(true);
     try {
-      await savePTPlan({
-        id: editingPlan?.id,
-        isGeneric: true,
-        title,
-        firstFormation,
-        workouts,
-        location,
-      });
+      // If editing an existing plan, preserve its type and properties
+      if (editingPlan) {
+        await savePTPlan({
+          id: editingPlan.id,
+          isGeneric: editingPlan.isGeneric || false,
+          company: editingPlan.company,
+          weekStartDate: editingPlan.weekStartDate,
+          day: editingPlan.day,
+          title,
+          firstFormation,
+          workouts,
+          location,
+        });
+      } else {
+        // New plan - create as generic
+        await savePTPlan({
+          isGeneric: true,
+          title,
+          firstFormation,
+          workouts,
+          location,
+        });
+      }
       await loadPlans();
       handleCancel();
     } catch (error) {
@@ -557,13 +586,20 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
     }
   }
 
-  async function handleDelete(planId: string) {
+  async function handleDelete(plan: PTPlan) {
     if (!confirm('Are you sure you want to delete this plan?')) {
       return;
     }
-    setDeletingId(planId);
+    setDeletingId(plan.id);
     try {
-      await deleteGenericPTPlan(planId);
+      if (plan.isGeneric) {
+        await deleteGenericPTPlan(plan.id);
+      } else {
+        if (!plan.company || !plan.weekStartDate || !plan.day) {
+          throw new Error('Cannot delete plan: missing required fields');
+        }
+        await deletePTPlan(plan.company, plan.weekStartDate, plan.day);
+      }
       await loadPlans();
     } catch (error) {
       console.error('Error deleting plan:', error);
@@ -578,7 +614,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
         <div className="px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">
-            Generic PT Plans
+            PT Plans
           </h1>
           <button
             onClick={onBack}
@@ -612,55 +648,70 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
               <div className="text-center py-8 text-gray-600">Loading...</div>
             ) : plans.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No generic plans yet. Click "Add New Plan" to create one.
+                No plans yet. Click "Add New Plan" to create one.
               </div>
             ) : (
               <div className="space-y-4">
-                {plans.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{plan.title}</h3>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(plan)}
-                          className="text-sm text-blue-600 hover:text-blue-700 touch-manipulation"
-                          style={{ minHeight: '44px', minWidth: '44px' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(plan.id)}
-                          disabled={deletingId === plan.id}
-                          className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50 touch-manipulation"
-                          style={{ minHeight: '44px', minWidth: '44px' }}
-                        >
-                          {deletingId === plan.id ? 'Deleting...' : 'Delete'}
-                        </button>
+                {plans.map((plan) => {
+                  let planInfo = '';
+                  if (plan.isGeneric) {
+                    planInfo = 'Generic Plan';
+                  } else if (plan.company && plan.weekStartDate && plan.day) {
+                    const weekDates = getWeekDatesForWeek(plan.weekStartDate);
+                    const planDate = weekDates[plan.day];
+                    planInfo = `${plan.company} - ${formatDateFullWithOrdinal(planDate)}`;
+                  }
+                  return (
+                    <div
+                      key={plan.id}
+                      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">{plan.title}</h3>
+                          {planInfo && (
+                            <p className="text-sm text-gray-600 mt-1">{planInfo}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEdit(plan)}
+                            className="text-sm text-blue-600 hover:text-blue-700 touch-manipulation"
+                            style={{ minHeight: '44px', minWidth: '44px' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(plan)}
+                            disabled={deletingId === plan.id}
+                            className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50 touch-manipulation"
+                            style={{ minHeight: '44px', minWidth: '44px' }}
+                          >
+                            {deletingId === plan.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">First Formation: </span>
+                          <span className="text-sm text-gray-900">{plan.firstFormation}</span>
+                        </div>
+                        {plan.workouts && (
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">Workouts: </span>
+                            <div className="text-sm text-gray-900 whitespace-pre-wrap mt-1">{plan.workouts}</div>
+                          </div>
+                        )}
+                        {plan.location && (
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">Location: </span>
+                            <span className="text-sm text-gray-900">{plan.location}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">First Formation: </span>
-                        <span className="text-sm text-gray-900">{plan.firstFormation}</span>
-                      </div>
-                      {plan.workouts && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">Workouts: </span>
-                          <div className="text-sm text-gray-900 whitespace-pre-wrap mt-1">{plan.workouts}</div>
-                        </div>
-                      )}
-                      {plan.location && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">Location: </span>
-                          <span className="text-sm text-gray-900">{plan.location}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
