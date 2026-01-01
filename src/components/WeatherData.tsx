@@ -45,44 +45,50 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
 
       const forecasts = await getWeatherForecasts(dates);
       
-      // Load saved data from localStorage if available
-      const savedData = localStorage.getItem('weatherData');
-      const savedRows: WeatherRow[] = savedData ? JSON.parse(savedData) : [];
+      // Load saved events and impact from localStorage if available
+      const savedData = localStorage.getItem('weatherEventsImpact');
+      const savedDataMap: Record<string, { events: string; impact: string }> = savedData ? JSON.parse(savedData) : {};
 
       // Create rows with weather data
-      const rows: WeatherRow[] = dates.map((date, index) => {
-        const savedRow = savedRows.find(r => r.date === date);
+      const rows: WeatherRow[] = dates.map((date) => {
         const forecast = forecasts.get(date);
+        const saved = savedDataMap[date];
         
         return {
           date,
           dayLabel: formatDateShort(date),
-          high: savedRow?.high || (forecast ? String(forecast.high) : ''),
-          low: savedRow?.low || (forecast ? String(forecast.low) : ''),
-          wind: savedRow?.wind || (forecast ? String(forecast.wind) : ''),
-          precipDay: savedRow?.precipDay || (forecast ? String(forecast.precipDay) : ''),
-          precipNight: savedRow?.precipNight || (forecast ? String(forecast.precipNight) : ''),
-          events: savedRow?.events || '',
-          impact: savedRow?.impact || '',
+          high: forecast ? String(forecast.high) : '',
+          low: forecast ? String(forecast.low) : '',
+          wind: forecast ? String(forecast.wind) : '',
+          precipDay: forecast ? String(forecast.precipDay) : '',
+          precipNight: forecast ? String(forecast.precipNight) : '',
+          events: saved?.events || '',
+          impact: saved?.impact || '',
         };
       });
 
       setWeatherRows(rows);
     } catch (error) {
       console.error('Error loading weather data:', error);
-      alert('Error loading weather data');
     } finally {
       setLoading(false);
     }
   }
 
-  function handleFieldChange(index: number, field: keyof WeatherRow, value: string) {
+  function handleFieldChange(index: number, field: 'events' | 'impact', value: string) {
     const updated = [...weatherRows];
     updated[index] = { ...updated[index], [field]: value };
     setWeatherRows(updated);
     
-    // Save to localStorage
-    localStorage.setItem('weatherData', JSON.stringify(updated));
+    // Save only events and impact to localStorage
+    const eventsImpactMap: Record<string, { events: string; impact: string }> = {};
+    updated.forEach(row => {
+      eventsImpactMap[row.date] = {
+        events: row.events,
+        impact: row.impact
+      };
+    });
+    localStorage.setItem('weatherEventsImpact', JSON.stringify(eventsImpactMap));
   }
 
   return (
@@ -103,6 +109,8 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
       <main className="px-4 py-4">
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading weather data...</div>
+        ) : weatherRows.length === 0 || weatherRows.every(row => !row.high && !row.low) ? (
+          <div className="text-center py-8 text-gray-500">No weather data available</div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
             <div className="overflow-x-auto">
@@ -126,49 +134,29 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
                         {row.dayLabel}
                       </td>
                       <td className="px-3 py-2 border-r border-gray-300 bg-white">
-                        <input
-                          type="text"
-                          value={row.high}
-                          onChange={(e) => handleFieldChange(index, 'high', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:bg-blue-50"
-                          placeholder="--"
-                        />
+                        <div className="px-2 py-1 text-sm text-gray-900">
+                          {row.high || '--'}
+                        </div>
                       </td>
                       <td className="px-3 py-2 border-r border-gray-300 bg-white">
-                        <input
-                          type="text"
-                          value={row.low}
-                          onChange={(e) => handleFieldChange(index, 'low', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:bg-blue-50"
-                          placeholder="--"
-                        />
+                        <div className="px-2 py-1 text-sm text-gray-900">
+                          {row.low || '--'}
+                        </div>
                       </td>
                       <td className="px-3 py-2 border-r border-gray-300 bg-white">
-                        <input
-                          type="text"
-                          value={row.wind}
-                          onChange={(e) => handleFieldChange(index, 'wind', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:bg-blue-50"
-                          placeholder="--"
-                        />
+                        <div className="px-2 py-1 text-sm text-gray-900">
+                          {row.wind || '--'}
+                        </div>
                       </td>
                       <td className="px-3 py-2 border-r border-gray-300 bg-white">
-                        <input
-                          type="text"
-                          value={row.precipDay}
-                          onChange={(e) => handleFieldChange(index, 'precipDay', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:bg-blue-50"
-                          placeholder="--"
-                        />
+                        <div className="px-2 py-1 text-sm text-gray-900">
+                          {row.precipDay || '--'}
+                        </div>
                       </td>
                       <td className="px-3 py-2 border-r border-gray-300 bg-white">
-                        <input
-                          type="text"
-                          value={row.precipNight}
-                          onChange={(e) => handleFieldChange(index, 'precipNight', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:bg-blue-50"
-                          placeholder="--"
-                        />
+                        <div className="px-2 py-1 text-sm text-gray-900">
+                          {row.precipNight || '--'}
+                        </div>
                       </td>
                       <td className="px-3 py-2 border-r border-gray-300 bg-white">
                         <input

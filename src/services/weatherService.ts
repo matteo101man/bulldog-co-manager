@@ -18,17 +18,17 @@ export interface WeatherForecast {
  * Fetch weather forecast for Athens, Georgia for a specific date
  * Note: OpenWeatherMap free tier provides 5-day forecast, so for dates beyond that,
  * we'll use the closest available forecast day
+ * Returns null if API call fails
  */
 export async function getWeatherForecast(date: string): Promise<WeatherForecast | null> {
   if (!WEATHER_API_KEY) {
-    console.warn('Weather API key not configured. Using mock data.');
-    return getMockWeatherData(date);
+    console.error('Weather API key not configured.');
+    return null;
   }
 
   try {
     // Convert date to timestamp
     const dateObj = new Date(date + 'T12:00:00');
-    const timestamp = Math.floor(dateObj.getTime() / 1000);
 
     // Fetch 5-day forecast
     const response = await fetch(
@@ -37,7 +37,7 @@ export async function getWeatherForecast(date: string): Promise<WeatherForecast 
 
     if (!response.ok) {
       console.error('Weather API error:', response.statusText);
-      return getMockWeatherData(date);
+      return null;
     }
 
     const data = await response.json();
@@ -91,26 +91,8 @@ export async function getWeatherForecast(date: string): Promise<WeatherForecast 
     };
   } catch (error) {
     console.error('Error fetching weather:', error);
-    return getMockWeatherData(date);
+    return null;
   }
-}
-
-/**
- * Get mock weather data when API is not available
- */
-function getMockWeatherData(date: string): WeatherForecast {
-  // Generate some reasonable mock data
-  const dayOfYear = Math.floor((new Date(date).getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-  const baseTemp = 60 + Math.sin((dayOfYear / 365) * 2 * Math.PI) * 20;
-  
-  return {
-    date,
-    high: Math.round(baseTemp + 10 + Math.random() * 10),
-    low: Math.round(baseTemp - 10 - Math.random() * 5),
-    wind: Math.round(5 + Math.random() * 10),
-    precipDay: Math.round(Math.random() * 30),
-    precipNight: Math.round(Math.random() * 40),
-  };
 }
 
 /**
