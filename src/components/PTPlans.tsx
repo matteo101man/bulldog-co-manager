@@ -19,6 +19,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
   const [loading, setLoading] = useState(false);
   const [editingPlan, setEditingPlan] = useState<{ company: Company; weekStartDate: string; day: DayOfWeek } | null>(null);
   const [showGenericPlans, setShowGenericPlans] = useState(false);
+  const [expandedDays, setExpandedDays] = useState<Set<DayOfWeek>>(new Set());
 
   useEffect(() => {
     if (selectedCompany && selectedCompany !== currentCompany) {
@@ -187,7 +188,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
         {loading ? (
           <div className="text-center py-8 text-gray-600">Loading...</div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
             {DAYS.map((day) => {
               const plan = plans.get(day);
               const date = weekDates[day];
@@ -212,6 +213,16 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                   }}
                   onCancel={() => setEditingPlan(null)}
                   isEditing={editingPlan?.company === currentCompany && editingPlan?.weekStartDate === currentWeekStart && editingPlan?.day === day}
+                  isExpanded={expandedDays.has(day)}
+                  onToggleExpand={() => {
+                    const newExpanded = new Set(expandedDays);
+                    if (newExpanded.has(day)) {
+                      newExpanded.delete(day);
+                    } else {
+                      newExpanded.add(day);
+                    }
+                    setExpandedDays(newExpanded);
+                  }}
                 />
               );
             })}
@@ -232,9 +243,11 @@ interface PTPlanCardProps {
   onSave: (planData: { title: string; firstFormation: string; workouts: string; location: string }) => Promise<void>;
   onCancel: () => void;
   isEditing: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PTPlanCardProps) {
+function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing, isExpanded = false, onToggleExpand }: PTPlanCardProps) {
   const [title, setTitle] = useState(plan?.title || '');
   const [firstFormation, setFirstFormation] = useState(plan?.firstFormation || '0600');
   const [workouts, setWorkouts] = useState(plan?.workouts || '');
@@ -323,10 +336,29 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
   const dayName = day.charAt(0).toUpperCase() + day.slice(1);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <div className="mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">{dayName}</h3>
-        <p className="text-sm text-gray-600">{formatDateWithDay(date)}</p>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex-1">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-900">{dayName}</h3>
+          <p className="text-sm text-gray-600">{formatDateWithDay(date)}</p>
+        </div>
+        {!isEditing && onToggleExpand && (
+          <button
+            onClick={onToggleExpand}
+            className="flex items-center justify-center w-8 h-8 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 touch-manipulation ml-2"
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          >
+            {isExpanded ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            )}
+          </button>
+        )}
       </div>
 
       {isEditing ? (
@@ -444,30 +476,38 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing }: PT
       ) : (
         <div>
           {plan ? (
-            <div className="space-y-2">
-              <div>
-                <span className="text-sm font-medium text-gray-700">Title: </span>
-                <span className="text-sm text-gray-900">{plan.title}</span>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">First Formation: </span>
-                <span className="text-sm text-gray-900">{plan.firstFormation}</span>
-              </div>
-              {plan.workouts && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Workouts: </span>
-                  <div className="text-sm text-gray-900 whitespace-pre-wrap mt-1">{plan.workouts}</div>
+            <>
+              {isExpanded ? (
+                <div className="space-y-2 pt-3 border-t border-gray-200">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Title: </span>
+                    <span className="text-sm text-gray-900">{plan.title}</span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">First Formation: </span>
+                    <span className="text-sm text-gray-900">{plan.firstFormation}</span>
+                  </div>
+                  {plan.workouts && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Workouts: </span>
+                      <div className="text-sm text-gray-900 whitespace-pre-wrap mt-1">{plan.workouts}</div>
+                    </div>
+                  )}
+                  {plan.location && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Location: </span>
+                      <span className="text-sm text-gray-900">{plan.location}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="pt-3 border-t border-gray-200">
+                  <div className="text-sm font-medium text-gray-900">{plan.title}</div>
                 </div>
               )}
-              {plan.location && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Location: </span>
-                  <span className="text-sm text-gray-900">{plan.location}</span>
-                </div>
-              )}
-            </div>
+            </>
           ) : (
-            <div className="text-sm text-gray-500 italic">No plan created yet</div>
+            <div className="text-sm text-gray-500 italic pt-3 border-t border-gray-200">No plan created yet</div>
           )}
           <button
             onClick={onEdit}
@@ -515,9 +555,9 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
         if (aHasDate && !bHasDate) return -1;
         if (!aHasDate && bHasDate) return 1;
         
-        // Both have dates - sort chronologically (oldest first)
+        // Both have dates - sort chronologically (newest first)
         if (aHasDate && bHasDate) {
-          const dateCompare = (a.weekStartDate || '').localeCompare(b.weekStartDate || '');
+          const dateCompare = (b.weekStartDate || '').localeCompare(a.weekStartDate || '');
           if (dateCompare !== 0) return dateCompare;
           // If same date, sort by company
           return (a.company || '').localeCompare(b.company || '');
