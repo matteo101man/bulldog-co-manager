@@ -506,19 +506,25 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
     setLoading(true);
     try {
       const allPlans = await getAllPTPlans();
-      // Sort by date (most recent first), then by company
+      // Sort chronologically: plans with dates first (oldest first), then generic plans
       allPlans.sort((a, b) => {
-        // Generic plans go to the end
-        if (a.isGeneric && !b.isGeneric) return 1;
-        if (!a.isGeneric && b.isGeneric) return -1;
-        if (a.isGeneric && b.isGeneric) {
-          // Both generic - sort by title
-          return a.title.localeCompare(b.title);
+        const aHasDate = !a.isGeneric && a.weekStartDate;
+        const bHasDate = !b.isGeneric && b.weekStartDate;
+        
+        // Plans with dates come before plans without dates
+        if (aHasDate && !bHasDate) return -1;
+        if (!aHasDate && bHasDate) return 1;
+        
+        // Both have dates - sort chronologically (oldest first)
+        if (aHasDate && bHasDate) {
+          const dateCompare = (a.weekStartDate || '').localeCompare(b.weekStartDate || '');
+          if (dateCompare !== 0) return dateCompare;
+          // If same date, sort by company
+          return (a.company || '').localeCompare(b.company || '');
         }
-        // Both non-generic - sort by date then company
-        const dateCompare = (b.weekStartDate || '').localeCompare(a.weekStartDate || '');
-        if (dateCompare !== 0) return dateCompare;
-        return (a.company || '').localeCompare(b.company || '');
+        
+        // Both don't have dates (generic plans) - sort by title
+        return a.title.localeCompare(b.title);
       });
       setPlans(allPlans);
     } catch (error) {
