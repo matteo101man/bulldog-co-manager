@@ -291,6 +291,41 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   const unexcusedByLevel = getCadetsByStatusAndLevel(records, cadetsMap, selectedDay, 'unexcused', attendanceType);
   const unexcusedTotals = attendanceType === 'PT' ? unexcusedTotalsPT : unexcusedTotalsLab;
   
+  // Get current day statistics (only show if viewing current week)
+  const currentDateEST = getCurrentDateStringEST();
+  const actualCurrentWeekStart = getCurrentWeekStart();
+  const isViewingCurrentWeek = currentWeekStart === actualCurrentWeekStart;
+  
+  let currentDayName: DayOfWeek | null = null;
+  let currentDayDate = '';
+  
+  if (isViewingCurrentWeek) {
+    // Check if current date matches any day in the displayed week
+    if (currentDateEST === weekDates.monday) {
+      currentDayName = 'monday';
+      currentDayDate = weekDates.monday;
+    } else if (currentDateEST === weekDates.tuesday) {
+      currentDayName = 'tuesday';
+      currentDayDate = weekDates.tuesday;
+    } else if (currentDateEST === weekDates.wednesday) {
+      currentDayName = 'wednesday';
+      currentDayDate = weekDates.wednesday;
+    } else if (currentDateEST === weekDates.thursday) {
+      currentDayName = 'thursday';
+      currentDayDate = weekDates.thursday;
+    } else if (currentDateEST === weekDates.friday) {
+      currentDayName = 'friday';
+      currentDayDate = weekDates.friday;
+    }
+  }
+  
+  // Calculate current day stats
+  let currentDayStats = { present: 0, excused: 0, unexcused: 0, assigned: cadets.length };
+  if (currentDayName) {
+    currentDayStats = calculateDayStats(records, currentDayName, attendanceType);
+    currentDayStats.assigned = cadets.length;
+  }
+  
   // Check if there are unsaved changes
   const hasUnsavedChanges = JSON.stringify(Array.from(attendanceMap.entries()).sort()) !== 
                             JSON.stringify(Array.from(localAttendanceMap.entries()).sort());
@@ -525,6 +560,31 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
             >
               {saving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'All Changes Saved'}
             </button>
+          </div>
+        )}
+
+        {/* Today's Attendance */}
+        {cadets.length > 0 && currentDayName && currentDayDate && (
+          <div className="mb-4 bg-blue-50 rounded-lg border border-blue-200 p-4">
+            <div className="text-sm font-semibold text-gray-900 mb-2">Today's Attendance ({formatDateWithDay(currentDayDate)})</div>
+            <div className="grid grid-cols-4 gap-3 text-center">
+              <div>
+                <div className="text-lg font-bold text-gray-900">{currentDayStats.assigned}</div>
+                <div className="text-xs text-gray-600">Assigned</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold text-present">{currentDayStats.present}</div>
+                <div className="text-xs text-gray-600">Present</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold text-excused">{currentDayStats.excused}</div>
+                <div className="text-xs text-gray-600">Excused</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold text-unexcused">{currentDayStats.unexcused}</div>
+                <div className="text-xs text-gray-600">Unexcused</div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1074,68 +1134,8 @@ function SummaryStats({ company, cadets, records, mondayStats, tuesdayStats, wed
       .sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  // Get current day statistics (only show if viewing current week)
-  const currentDateEST = getCurrentDateStringEST();
-  const actualCurrentWeekStart = getCurrentWeekStart();
-  const isViewingCurrentWeek = currentWeekStart === actualCurrentWeekStart;
-  
-  let currentDayName: DayOfWeek | null = null;
-  let currentDayDate = '';
-  
-  if (isViewingCurrentWeek) {
-    // Check if current date matches any day in the displayed week
-    if (currentDateEST === weekDates.monday) {
-      currentDayName = 'monday';
-      currentDayDate = weekDates.monday;
-    } else if (currentDateEST === weekDates.tuesday) {
-      currentDayName = 'tuesday';
-      currentDayDate = weekDates.tuesday;
-    } else if (currentDateEST === weekDates.wednesday) {
-      currentDayName = 'wednesday';
-      currentDayDate = weekDates.wednesday;
-    } else if (currentDateEST === weekDates.thursday) {
-      currentDayName = 'thursday';
-      currentDayDate = weekDates.thursday;
-    } else if (currentDateEST === weekDates.friday) {
-      currentDayName = 'friday';
-      currentDayDate = weekDates.friday;
-    }
-  }
-  
-  // Calculate current day stats
-  let currentDayStats = { present: 0, excused: 0, unexcused: 0, assigned: cadets.length };
-  if (currentDayName) {
-    currentDayStats = calculateDayStats(records, currentDayName, attendanceType);
-    currentDayStats.assigned = cadets.length;
-  }
-
   return (
     <div className="space-y-4">
-      {/* Current Day Statistics */}
-      {currentDayName && currentDayDate && (
-        <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Today's Attendance ({formatDateWithDay(currentDayDate)})</h3>
-          <div className="grid grid-cols-4 gap-3 text-center">
-            <div>
-              <div className="text-lg font-bold text-gray-900">{currentDayStats.assigned}</div>
-              <div className="text-xs text-gray-600">Assigned</div>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-present">{currentDayStats.present}</div>
-              <div className="text-xs text-gray-600">Present</div>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-excused">{currentDayStats.excused}</div>
-              <div className="text-xs text-gray-600">Excused</div>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-unexcused">{currentDayStats.unexcused}</div>
-              <div className="text-xs text-gray-600">Unexcused</div>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Daily Stats */}
       <div className="space-y-3">
         <h3 className="font-semibold text-gray-900">Daily Statistics</h3>
