@@ -65,6 +65,8 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
           firstName: cadetData.firstName || '',
           lastName: cadetData.lastName || '',
           age: cadetData.age || 0,
+          dateOfBirth: cadetData.dateOfBirth || '',
+          shirtSize: cadetData.shirtSize || '',
           position: cadetData.position || '',
           company: cadetData.company,
           militaryScienceLevel: cadetData.militaryScienceLevel || 'MS1',
@@ -261,6 +263,46 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                 />
               ) : (
                 <div className="text-gray-900">{cadet.age || '—'}</div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+              {isEditing ? (
+                <input
+                  type="date"
+                  value={formData.dateOfBirth || ''}
+                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              ) : (
+                <div className="text-gray-900">
+                  {cadet.dateOfBirth 
+                    ? new Date(cadet.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                    : '—'}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Shirt Size</label>
+              {isEditing ? (
+                <select
+                  value={formData.shirtSize || ''}
+                  onChange={(e) => setFormData({ ...formData, shirtSize: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="">Select size</option>
+                  <option value="XS">XS</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                  <option value="XXL">XXL</option>
+                  <option value="XXXL">XXXL</option>
+                </select>
+              ) : (
+                <div className="text-gray-900">{cadet.shirtSize || '—'}</div>
               )}
             </div>
 

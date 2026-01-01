@@ -15,6 +15,8 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
     firstName: '',
     lastName: '',
     age: '',
+    dateOfBirth: '',
+    shirtSize: '',
     position: '',
     company: 'Alpha' as Company,
     militaryScienceLevel: 'MS1' as string,
@@ -40,6 +42,8 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
         firstName: formData.firstName,
         lastName: formData.lastName,
         age: parseInt(formData.age),
+        dateOfBirth: formData.dateOfBirth || undefined,
+        shirtSize: formData.shirtSize || undefined,
         position: formData.position,
         company: formData.company,
         militaryScienceLevel: formData.militaryScienceLevel,
@@ -107,6 +111,36 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
               onChange={(e) => setFormData({ ...formData, age: e.target.value })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             />
+          </div>
+
+          <div>
+            <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+            <input
+              id="dateOfBirth"
+              type="date"
+              value={formData.dateOfBirth}
+              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="shirtSize" className="block text-sm font-medium text-gray-700 mb-1">Shirt Size</label>
+            <select
+              id="shirtSize"
+              value={formData.shirtSize}
+              onChange={(e) => setFormData({ ...formData, shirtSize: e.target.value })}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            >
+              <option value="">Select size</option>
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
+              <option value="XXXL">XXXL</option>
+            </select>
           </div>
 
           <div>
