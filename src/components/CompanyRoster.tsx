@@ -108,8 +108,8 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
     });
   }
 
-  async function handleMarkAllPresent(day: DayOfWeek, type: AttendanceType) {
-    // Mark all cadets in the company as present for the specified day
+  function handleMarkAllForDay(day: DayOfWeek, type: AttendanceType, status: AttendanceStatus) {
+    // Mark all cadets in the company with the specified status for the specified day
     setLocalAttendanceMap(prev => {
       const newMap = new Map(prev);
       cadets.forEach(cadet => {
@@ -130,19 +130,35 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         };
         
         if (type === 'PT') {
-          if (day === 'monday') updatedRecord.ptMonday = 'present';
-          else if (day === 'tuesday') updatedRecord.ptTuesday = 'present';
-          else if (day === 'wednesday') updatedRecord.ptWednesday = 'present';
-          else if (day === 'thursday') updatedRecord.ptThursday = 'present';
-          else if (day === 'friday') updatedRecord.ptFriday = 'present';
+          if (day === 'monday') updatedRecord.ptMonday = status;
+          else if (day === 'tuesday') updatedRecord.ptTuesday = status;
+          else if (day === 'wednesday') updatedRecord.ptWednesday = status;
+          else if (day === 'thursday') updatedRecord.ptThursday = status;
+          else if (day === 'friday') updatedRecord.ptFriday = status;
         } else if (type === 'Lab' && day === 'thursday') {
-          updatedRecord.labThursday = 'present';
+          updatedRecord.labThursday = status;
         }
         
         newMap.set(cadet.id, updatedRecord);
       });
       return newMap;
     });
+  }
+
+  async function handleMarkAllPresent(day: DayOfWeek, type: AttendanceType) {
+    handleMarkAllForDay(day, type, 'present');
+  }
+
+  async function handleMarkAllExcused(day: DayOfWeek, type: AttendanceType) {
+    handleMarkAllForDay(day, type, 'excused');
+  }
+
+  async function handleMarkAllUnexcused(day: DayOfWeek, type: AttendanceType) {
+    handleMarkAllForDay(day, type, 'unexcused');
+  }
+
+  async function handleClearAll(day: DayOfWeek, type: AttendanceType) {
+    handleMarkAllForDay(day, type, null);
   }
 
   async function handleSave() {
@@ -406,6 +422,18 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
             onClose={() => setContextMenu(null)}
             onMarkAllPresent={() => {
               handleMarkAllPresent(contextMenu.day, contextMenu.type);
+              setContextMenu(null);
+            }}
+            onMarkAllExcused={() => {
+              handleMarkAllExcused(contextMenu.day, contextMenu.type);
+              setContextMenu(null);
+            }}
+            onMarkAllUnexcused={() => {
+              handleMarkAllUnexcused(contextMenu.day, contextMenu.type);
+              setContextMenu(null);
+            }}
+            onClearAll={() => {
+              handleClearAll(contextMenu.day, contextMenu.type);
               setContextMenu(null);
             }}
           />
@@ -1483,9 +1511,12 @@ interface ContextMenuProps {
   y: number;
   onClose: () => void;
   onMarkAllPresent: () => void;
+  onMarkAllExcused: () => void;
+  onMarkAllUnexcused: () => void;
+  onClearAll: () => void;
 }
 
-function ContextMenu({ x, y, onClose, onMarkAllPresent }: ContextMenuProps) {
+function ContextMenu({ x, y, onClose, onMarkAllPresent, onMarkAllExcused, onMarkAllUnexcused, onClearAll }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1510,7 +1541,7 @@ function ContextMenu({ x, y, onClose, onMarkAllPresent }: ContextMenuProps) {
 
   // Adjust position to keep menu on screen
   const adjustedX = Math.min(x, window.innerWidth - 200);
-  const adjustedY = Math.min(y, window.innerHeight - 100);
+  const adjustedY = Math.min(y, window.innerHeight - 200);
 
   return (
     <div
@@ -1526,6 +1557,34 @@ function ContextMenu({ x, y, onClose, onMarkAllPresent }: ContextMenuProps) {
         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 touch-manipulation"
       >
         Mark All Present
+      </button>
+      <button
+        onClick={() => {
+          onMarkAllExcused();
+          onClose();
+        }}
+        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 touch-manipulation"
+      >
+        Mark All Excused
+      </button>
+      <button
+        onClick={() => {
+          onMarkAllUnexcused();
+          onClose();
+        }}
+        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 touch-manipulation"
+      >
+        Mark All Unexcused
+      </button>
+      <div className="border-t border-gray-200 my-1"></div>
+      <button
+        onClick={() => {
+          onClearAll();
+          onClose();
+        }}
+        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 touch-manipulation"
+      >
+        Clear All
       </button>
     </div>
   );
