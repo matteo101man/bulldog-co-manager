@@ -39,11 +39,13 @@ export async function getWeatherForecast(date: string): Promise<{ forecast: Weat
   try {
     // Convert date to timestamp
     const dateObj = new Date(date + 'T12:00:00');
-    const url = `${WEATHER_API_BASE}/forecast?q=Athens,GA,US&appid=${WEATHER_API_KEY}&units=imperial`;
+    // Use city name format - try Athens, Georgia first, fallback to just Athens
+    // Using appid parameter (lowercase) as per API documentation
+    const url = `${WEATHER_API_BASE}/forecast?q=Athens,Georgia,US&appid=${WEATHER_API_KEY}&units=imperial`;
     
     console.log('Fetching weather from:', url.replace(WEATHER_API_KEY, '***'));
 
-    // Fetch 5-day forecast
+    // Fetch 5-day forecast (free tier supports 5-day/3-hour forecast)
     const response = await fetch(url);
 
     if (!response.ok) {
