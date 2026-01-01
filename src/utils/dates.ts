@@ -1,3 +1,5 @@
+import { DayOfWeek } from '../types';
+
 /**
  * Get the current date in EST timezone
  */
@@ -177,5 +179,43 @@ export function formatDateFullWithOrdinal(dateString: string): string {
   };
   
   return `${monthName} ${getOrdinal(day)}, ${year}`;
+}
+
+/**
+ * Get the current day of week in EST (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+ */
+export function getCurrentDayEST(): number {
+  const today = getCurrentDateEST();
+  return today.getDay();
+}
+
+/**
+ * Get the current date string in EST (YYYY-MM-DD)
+ */
+export function getCurrentDateStringEST(): string {
+  const today = getCurrentDateEST();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const date = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${date}`;
+}
+
+/**
+ * Get the day of week name from day number (0 = Sunday, 1 = Monday, etc.)
+ * Returns null for Sunday (0) and Saturday (6) as we don't track attendance on those days
+ */
+export function getDayNameFromNumber(dayNum: number): DayOfWeek | null {
+  // For attendance, we only track Mon-Fri
+  if (dayNum === 0 || dayNum === 6) return null; // Sunday and Saturday
+  
+  const dayMap: { [key: number]: DayOfWeek } = {
+    1: 'monday',
+    2: 'tuesday',
+    3: 'wednesday',
+    4: 'thursday',
+    5: 'friday'
+  };
+  
+  return dayMap[dayNum] || null;
 }
 

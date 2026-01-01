@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord, AttendanceType } from '../types';
 import { getCadetsByCompany } from '../services/cadetService';
 import { getCompanyAttendance, updateAttendance, updateAttendanceRecord, getAllAttendanceForWeek } from '../services/attendanceService';
-import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithOrdinal } from '../utils/dates';
+import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithOrdinal, getCurrentDateStringEST } from '../utils/dates';
 import { getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
 import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from '../utils/stats';
 
@@ -347,8 +347,8 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         </div>
 
         {/* Week dates header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-          <div className={`grid gap-2 text-center ${
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 overflow-x-auto">
+          <div className={`grid gap-2 text-center min-w-full ${
             showMondayFriday ? 'grid-cols-6' : 
             attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'
           }`}>
@@ -598,7 +598,7 @@ function CadetRow({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className={`grid gap-2 p-3 ${
+      <div className={`grid gap-2 p-3 min-w-full ${
         showMondayFriday ? 'grid-cols-6' : 
         attendanceType === 'PT' ? 'grid-cols-4' : 'grid-cols-2'
       }`}>
@@ -809,14 +809,17 @@ function StatisticsSection({
                 company={company}
                 cadets={cadets}
                 records={records}
+                mondayStats={mondayStats}
                 tuesdayStats={tuesdayStats}
                 wednesdayStats={wednesdayStats}
                 thursdayStats={thursdayStats}
+                fridayStats={fridayStats}
                 weekStats={weekStats}
                 weekDates={weekDates}
                 unexcusedTotals={unexcusedTotals}
                 currentWeekStart={currentWeekStart}
                 attendanceType={attendanceType}
+                showMondayFriday={showMondayFriday}
                 onRecordsUpdate={async () => {
                   // Reload company stats when records are updated (for Master List)
                   if (company === 'Master') {
@@ -1065,8 +1068,68 @@ function SummaryStats({ company, cadets, records, mondayStats, tuesdayStats, wed
       .sort((a, b) => a.name.localeCompare(b.name));
   };
 
+  // Get current day statistics (only show if viewing current week)
+  const currentDateEST = getCurrentDateStringEST();
+  const actualCurrentWeekStart = getCurrentWeekStart();
+  const isViewingCurrentWeek = currentWeekStart === actualCurrentWeekStart;
+  
+  let currentDayName: DayOfWeek | null = null;
+  let currentDayDate = '';
+  
+  if (isViewingCurrentWeek) {
+    // Check if current date matches any day in the displayed week
+    if (currentDateEST === weekDates.monday) {
+      currentDayName = 'monday';
+      currentDayDate = weekDates.monday;
+    } else if (currentDateEST === weekDates.tuesday) {
+      currentDayName = 'tuesday';
+      currentDayDate = weekDates.tuesday;
+    } else if (currentDateEST === weekDates.wednesday) {
+      currentDayName = 'wednesday';
+      currentDayDate = weekDates.wednesday;
+    } else if (currentDateEST === weekDates.thursday) {
+      currentDayName = 'thursday';
+      currentDayDate = weekDates.thursday;
+    } else if (currentDateEST === weekDates.friday) {
+      currentDayName = 'friday';
+      currentDayDate = weekDates.friday;
+    }
+  }
+  
+  // Calculate current day stats
+  let currentDayStats = { present: 0, excused: 0, unexcused: 0, assigned: cadets.length };
+  if (currentDayName) {
+    currentDayStats = calculateDayStats(records, currentDayName, attendanceType);
+    currentDayStats.assigned = cadets.length;
+  }
+
   return (
     <div className="space-y-4">
+      {/* Current Day Statistics */}
+      {currentDayName && currentDayDate && (
+        <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+          <h3 className="font-semibold text-gray-900 mb-3">Today's Attendance ({formatDateWithDay(currentDayDate)})</h3>
+          <div className="grid grid-cols-4 gap-3 text-center">
+            <div>
+              <div className="text-lg font-bold text-gray-900">{currentDayStats.assigned}</div>
+              <div className="text-xs text-gray-600">Assigned</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-present">{currentDayStats.present}</div>
+              <div className="text-xs text-gray-600">Present</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-excused">{currentDayStats.excused}</div>
+              <div className="text-xs text-gray-600">Excused</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-unexcused">{currentDayStats.unexcused}</div>
+              <div className="text-xs text-gray-600">Unexcused</div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Daily Stats */}
       <div className="space-y-3">
         <h3 className="font-semibold text-gray-900">Daily Statistics</h3>
