@@ -355,6 +355,11 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, onNoP
       const deduplicatedPlans: PTPlan[] = [];
       
       for (const plan of plans) {
+        // Skip "No PT" plans - they shouldn't appear in the dropdown
+        if (plan.title === 'No PT') {
+          continue;
+        }
+        
         // Create a key based on plan content (for non-generic plans)
         if (!plan.isGeneric && plan.company && plan.weekStartDate && plan.day) {
           const contentKey = `${plan.title}|${plan.firstFormation}|${plan.workouts}|${plan.location}`;
@@ -671,6 +676,11 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
       const deduplicatedPlans: PTPlan[] = [];
       
       for (const plan of allPlans) {
+        // Skip "No PT" plans - they shouldn't appear in All Plans
+        if (plan.title === 'No PT') {
+          continue;
+        }
+        
         // Create a key based on plan content (for non-generic plans)
         if (!plan.isGeneric && plan.company && plan.weekStartDate && plan.day) {
           const contentKey = `${plan.title}|${plan.firstFormation}|${plan.workouts}|${plan.location}`;
