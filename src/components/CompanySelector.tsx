@@ -7,11 +7,13 @@ interface CompanySelectorProps {
   onIssues: () => void;
   onCadets: () => void;
   onTrainingSchedule: () => void;
+  onAttendance: () => void;
+  onPT: () => void;
 }
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
 
-export default function CompanySelector({ onSelect, onSettings, onIssues, onCadets, onTrainingSchedule }: CompanySelectorProps) {
+export default function CompanySelector({ onSelect, onSettings, onIssues, onCadets, onTrainingSchedule, onAttendance, onPT }: CompanySelectorProps) {
   const [activeTab, setActiveTab] = useState<'companies' | 'issues' | 'cadets' | 'settings' | 'training-schedule'>('companies');
 
   return (
@@ -89,10 +91,10 @@ export default function CompanySelector({ onSelect, onSettings, onIssues, onCade
 
         {activeTab === 'companies' && (
           <>
-            <p className="text-center text-gray-600 mb-8">
+            <p className="text-center text-gray-600 mb-4">
               Select your company
             </p>
-            <div className="space-y-3">
+            <div className="space-y-3 mb-6">
               {COMPANIES.map((company) => (
                 <button
                   key={company}
@@ -105,6 +107,28 @@ export default function CompanySelector({ onSelect, onSettings, onIssues, onCade
                   </span>
                 </button>
               ))}
+            </div>
+            
+            {/* Attendance and PT buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={onAttendance}
+                className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                style={{ minHeight: '44px' }}
+              >
+                <span className="text-lg font-semibold text-gray-900">
+                  Attendance
+                </span>
+              </button>
+              <button
+                onClick={onPT}
+                className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                style={{ minHeight: '44px' }}
+              >
+                <span className="text-lg font-semibold text-gray-900">
+                  PT
+                </span>
+              </button>
             </div>
           </>
         )}

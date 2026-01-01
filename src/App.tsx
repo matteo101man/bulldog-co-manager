@@ -9,6 +9,8 @@ import AddCadet from './components/AddCadet';
 import TrainingSchedule from './components/TrainingSchedule';
 import TrainingEventDetail from './components/TrainingEventDetail';
 import AddTrainingEvent from './components/AddTrainingEvent';
+import Attendance from './components/Attendance';
+import PTPlans from './components/PTPlans';
 import NotificationPrompt from './components/NotificationPrompt';
 import { Company } from './types';
 import { 
@@ -18,13 +20,15 @@ import {
   onMessageListener 
 } from './services/notificationService';
 
-type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-schedule' | 'training-event-detail' | 'add-training-event';
+type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'pt-plans';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [currentView, setCurrentView] = useState<View>('companies');
   const [selectedCadetId, setSelectedCadetId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [attendanceCompany, setAttendanceCompany] = useState<Company | null>(null);
+  const [ptCompany, setPTCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [rosterRefreshKey, setRosterRefreshKey] = useState(0);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
@@ -87,7 +91,24 @@ function App() {
     );
   }
 
-  if (selectedCompany && currentView !== 'cadet-profile') {
+  if (attendanceCompany && currentView === 'attendance-company') {
+    return (
+      <CompanyRoster 
+        key={`${attendanceCompany}-${rosterRefreshKey}`}
+        company={attendanceCompany} 
+        onBack={() => {
+          setAttendanceCompany(null);
+          setCurrentView('attendance');
+        }}
+        onSelectCadet={(cadetId) => {
+          setSelectedCadetId(cadetId);
+          setCurrentView('cadet-profile');
+        }}
+      />
+    );
+  }
+
+  if (selectedCompany && currentView !== 'cadet-profile' && currentView !== 'attendance' && currentView !== 'pt-plans' && currentView !== 'attendance-company') {
     return (
       <CompanyRoster 
         key={`${selectedCompany}-${rosterRefreshKey}`}
@@ -172,13 +193,41 @@ function App() {
     );
   }
 
+  if (currentView === 'attendance') {
+    return (
+      <Attendance
+        onBack={() => setCurrentView('companies')}
+        onSelectCompany={(company) => {
+          setAttendanceCompany(company);
+          setCurrentView('attendance-company');
+        }}
+      />
+    );
+  }
+
+  if (currentView === 'pt-plans') {
+    return (
+      <PTPlans
+        onBack={() => {
+          setPTCompany(null);
+          setCurrentView('companies');
+        }}
+        onSelectCompany={(company) => setPTCompany(company)}
+        selectedCompany={ptCompany}
+      />
+    );
+  }
+
   if (currentView === 'cadet-profile' && selectedCadetId) {
     return (
       <CadetProfile
         cadetId={selectedCadetId}
         onBack={() => {
-          // If we came from a company, go back to that company
-          if (selectedCompany) {
+          // If we came from attendance, go back to attendance
+          if (attendanceCompany) {
+            setCurrentView('attendance-company');
+            // Don't clear attendanceCompany so we can return to it
+          } else if (selectedCompany) {
             setCurrentView('companies');
             // Don't clear selectedCompany so we can return to it
           } else {
@@ -186,7 +235,10 @@ function App() {
           }
         }}
         onDelete={() => {
-          if (selectedCompany) {
+          if (attendanceCompany) {
+            setAttendanceCompany(null);
+            setCurrentView('attendance');
+          } else if (selectedCompany) {
             setSelectedCompany(null);
             setCurrentView('companies');
           } else {
@@ -196,7 +248,7 @@ function App() {
         }}
         onCompanyChange={(oldCompany, newCompany) => {
           // Refresh the roster if we're viewing the old or new company
-          if (selectedCompany === oldCompany || selectedCompany === newCompany) {
+          if (selectedCompany === oldCompany || selectedCompany === newCompany || attendanceCompany === oldCompany || attendanceCompany === newCompany) {
             setRosterRefreshKey(prev => prev + 1);
           }
         }}
@@ -207,11 +259,16 @@ function App() {
   return (
     <>
       <CompanySelector 
-        onSelect={setSelectedCompany} 
+        onSelect={(company) => {
+          setSelectedCompany(company);
+          setCurrentView('companies');
+        }}
         onSettings={() => setCurrentView('settings')}
         onIssues={() => setCurrentView('issues')}
         onCadets={() => setCurrentView('cadets')}
         onTrainingSchedule={() => setCurrentView('training-schedule')}
+        onAttendance={() => setCurrentView('attendance')}
+        onPT={() => setCurrentView('pt-plans')}
       />
       <NotificationPrompt />
     </>

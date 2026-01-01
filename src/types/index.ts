@@ -123,3 +123,14 @@ export interface ConopData {
   };
 }
 
+export interface PTPlan {
+  id: string;
+  company: Company;
+  weekStartDate: string; // ISO date string for the Monday of the week
+  day: DayOfWeek; // 'tuesday' | 'wednesday' | 'thursday'
+  title: string; // Workout title
+  firstFormation: string; // Default "0600"
+  workouts: string; // Actual workout description
+  location: string;
+}
+
