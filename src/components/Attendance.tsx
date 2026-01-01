@@ -6,7 +6,7 @@ interface AttendanceProps {
   onSelectCompany: (company: Company) => void;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
 
 export default function Attendance({ onBack, onSelectCompany }: AttendanceProps) {
   return (
@@ -39,7 +39,7 @@ export default function Attendance({ onBack, onSelectCompany }: AttendanceProps)
               style={{ minHeight: '44px' }}
             >
               <span className="text-lg font-semibold text-gray-900">
-                {company} Company
+                {company === 'Master' ? 'Master List' : `${company} Company`}
               </span>
             </button>
           ))}
