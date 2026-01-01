@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Company, DayOfWeek, PTPlan } from '../types';
-import { getPTPlansForWeek, savePTPlan, getAllPTPlans, getGenericPTPlans, deleteGenericPTPlan, deletePTPlan } from '../services/ptPlanService';
+import { getPTPlansForWeek, savePTPlan, getAllPTPlans, getGenericPTPlans, deleteGenericPTPlan, deletePTPlan, deletePTPlanById } from '../services/ptPlanService';
 import { getCurrentWeekStart, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithDay, formatDateWithOrdinal, formatDateFullWithOrdinal } from '../utils/dates';
 
 interface PTPlansProps {
@@ -212,6 +212,40 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                     setEditingPlan(null);
                   }}
                   onCancel={() => setEditingPlan(null)}
+                  onDelete={async () => {
+                    if (!plan) return;
+                    if (!confirm('Are you sure you want to delete this plan?')) return;
+                    
+                    // Delete from current company/week/day
+                    await deletePTPlan(currentCompany, currentWeekStart, day);
+                    
+                    // Check for duplicates in All Plans
+                    const allPlans = await getAllPTPlans();
+                    const duplicatePlans = allPlans.filter(p => 
+                      p.id !== plan.id &&
+                      !p.isGeneric &&
+                      p.title === plan.title &&
+                      p.firstFormation === plan.firstFormation &&
+                      p.workouts === plan.workouts &&
+                      p.location === plan.location
+                    );
+                    
+                    // If no duplicates exist, delete all plans with same content
+                    if (duplicatePlans.length === 0) {
+                      const plansWithSameContent = allPlans.filter(p =>
+                        p.title === plan.title &&
+                        p.firstFormation === plan.firstFormation &&
+                        p.workouts === plan.workouts &&
+                        p.location === plan.location
+                      );
+                      // Delete all plans with the same content
+                      for (const p of plansWithSameContent) {
+                        await deletePTPlanById(p.id);
+                      }
+                    }
+                    
+                    await loadPlans();
+                  }}
                   isEditing={editingPlan?.company === currentCompany && editingPlan?.weekStartDate === currentWeekStart && editingPlan?.day === day}
                   isExpanded={expandedDays.has(day)}
                   onToggleExpand={() => {
@@ -242,12 +276,13 @@ interface PTPlanCardProps {
   onEdit: () => void;
   onSave: (planData: { title: string; firstFormation: string; workouts: string; location: string }) => Promise<void>;
   onCancel: () => void;
+  onDelete: () => Promise<void>;
   isEditing: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
 }
 
-function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing, isExpanded = false, onToggleExpand }: PTPlanCardProps) {
+function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, isEditing, isExpanded = false, onToggleExpand }: PTPlanCardProps) {
   const [title, setTitle] = useState(plan?.title || '');
   const [firstFormation, setFirstFormation] = useState(plan?.firstFormation || '0600');
   const [workouts, setWorkouts] = useState(plan?.workouts || '');
@@ -538,12 +573,22 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, isEditing, isEx
           ) : (
             <div className="text-sm text-gray-500 italic pt-3 border-t border-gray-200">No plan created yet</div>
           )}
-          <button
-            onClick={onEdit}
-            className="mt-3 w-full py-2 px-4 rounded-md text-sm font-medium text-blue-600 border border-blue-600 hover:bg-blue-50 active:bg-blue-100 touch-manipulation"
-          >
-            {plan ? 'Edit Plan' : 'Create Plan'}
-          </button>
+          <div className="mt-3 space-y-2">
+            <button
+              onClick={onEdit}
+              className="w-full py-2 px-4 rounded-md text-sm font-medium text-blue-600 border border-blue-600 hover:bg-blue-50 active:bg-blue-100 touch-manipulation"
+            >
+              {plan ? 'Edit Plan' : 'Create Plan'}
+            </button>
+            {plan && (
+              <button
+                onClick={onDelete}
+                className="w-full py-2 px-4 rounded-md text-sm font-medium text-red-600 border border-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation"
+              >
+                Delete Plan
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

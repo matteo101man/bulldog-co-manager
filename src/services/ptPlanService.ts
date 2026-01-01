@@ -152,3 +152,11 @@ export async function deleteGenericPTPlan(planId: string): Promise<void> {
   await deleteDoc(docRef);
 }
 
+/**
+ * Delete a PT plan by document ID
+ */
+export async function deletePTPlanById(planId: string): Promise<void> {
+  const docRef = doc(db, PT_PLANS_COLLECTION, planId);
+  await deleteDoc(docRef);
+}
+
