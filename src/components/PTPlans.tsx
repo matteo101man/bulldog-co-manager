@@ -87,15 +87,6 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
         </header>
 
         <main className="px-4 py-4">
-          <button
-            onClick={() => setShowGenericPlans(true)}
-            className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation mb-4"
-            style={{ minHeight: '44px' }}
-          >
-            <span className="text-lg font-semibold text-gray-900">
-              PT Plans
-            </span>
-          </button>
           <p className="text-center text-gray-600 mb-6">
             Select a company to view PT plans
           </p>
@@ -118,6 +109,15 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setShowGenericPlans(true)}
+            className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation mt-4"
+            style={{ minHeight: '44px' }}
+          >
+            <span className="text-lg font-semibold text-gray-900">
+              All Plans
+            </span>
+          </button>
         </main>
       </div>
     );
