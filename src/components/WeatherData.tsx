@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCurrentWeekStart, getFullWeekDates, formatDateShort } from '../utils/dates';
-import { getWeatherForecasts, WeatherForecast } from '../services/weatherService';
+import { getWeatherForecasts, WeatherForecast, WeatherError } from '../services/weatherService';
 
 interface WeatherRow {
   date: string;
@@ -21,6 +21,7 @@ interface WeatherDataProps {
 export default function WeatherData({ onBack }: WeatherDataProps) {
   const [weatherRows, setWeatherRows] = useState<WeatherRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadWeatherData();
@@ -43,7 +44,18 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
         weekDates.sunday,
       ];
 
-      const forecasts = await getWeatherForecasts(dates);
+      const { forecasts, errors } = await getWeatherForecasts(dates);
+      
+      // Build error message if any errors occurred
+      if (errors.size > 0) {
+        const errorMessages: string[] = [];
+        errors.forEach((err, date) => {
+          errorMessages.push(`${date}: ${err.message}${err.details ? ` - ${err.details}` : ''}${err.statusCode ? ` (Status: ${err.statusCode})` : ''}`);
+        });
+        setError(errorMessages.join('\n'));
+      } else {
+        setError(null);
+      }
       
       // Load saved events and impact from localStorage if available
       const savedData = localStorage.getItem('weatherEventsImpact');
@@ -69,6 +81,9 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
 
       setWeatherRows(rows);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorDetails = error instanceof Error ? error.stack : String(error);
+      setError(`Error loading weather data: ${errorMessage}\n${errorDetails}`);
       console.error('Error loading weather data:', error);
     } finally {
       setLoading(false);
@@ -109,6 +124,11 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
       <main className="px-4 py-4">
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading weather data...</div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-red-900 mb-2">Weather Data Error</h2>
+            <pre className="text-sm text-red-800 whitespace-pre-wrap break-words">{error}</pre>
+          </div>
         ) : weatherRows.length === 0 || weatherRows.every(row => !row.high && !row.low) ? (
           <div className="text-center py-8 text-gray-500">No weather data available</div>
         ) : (
