@@ -7,7 +7,7 @@ interface AddCadetProps {
   onSuccess: () => void;
 }
 
-const MS_LEVELS = ['MS1', 'MS2', 'MS3', 'MS4'];
+const MS_LEVELS = ['MS1', 'MS2', 'MS3', 'MS4', 'MS5'];
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
 
 export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {

@@ -11,7 +11,7 @@ interface CadetProfileProps {
   onCompanyChange?: (oldCompany: Company, newCompany: Company) => void;
 }
 
-const MS_LEVELS = ['MS1', 'MS2', 'MS3', 'MS4'];
+const MS_LEVELS = ['MS1', 'MS2', 'MS3', 'MS4', 'MS5'];
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
 const DEFAULT_PROFILE_PICTURE = 'https://t3.ftcdn.net/jpg/00/57/04/58/360_F_57045887_HHJml6DJVxNBMqMeDqVJ0ZQDnotp5rGD.jpg';
 

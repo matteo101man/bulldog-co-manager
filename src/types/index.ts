@@ -14,7 +14,7 @@ export interface Cadet {
   dateOfBirth?: string; // ISO date string (YYYY-MM-DD)
   shirtSize?: string;
   position?: string;
-  militaryScienceLevel: string; // e.g., "MS1", "MS2", "MS3", "MS4"
+  militaryScienceLevel: string; // e.g., "MS1", "MS2", "MS3", "MS4", "MS5"
   phoneNumber: string;
   email: string;
   contracted?: 'Y' | 'N';
