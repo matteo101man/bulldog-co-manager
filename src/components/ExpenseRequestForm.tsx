@@ -21,40 +21,37 @@ interface FormData {
 
 const FORM_STORAGE_KEY = 'expenseRequestForm';
 
+const getInitialFormData = (): FormData => ({
+  name: '',
+  dateOfRequest: '',
+  position: '',
+  vendor: '',
+  purposeOfExpense: '',
+  paymentMethod: '',
+  items: [''],
+  totalExpectedExpenses: '',
+  budgetCategory: '',
+  allottedBudget: '',
+  additionalComments: 'I, __________, understand and acknowledge that reimbursement for expenses is contingent upon following the established process, including obtaining proper approvals and submitting the necessary documentation. I also accept that failure to comply with these requirements or discrepancies between requested and actual expenses may result in denial of reimbursement or reimbursement limited to the amount requested.',
+  acknowledged: false,
+});
+
 export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) {
   const formRef = useRef<HTMLDivElement>(null);
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    dateOfRequest: '',
-    position: '',
-    vendor: '',
-    purposeOfExpense: '',
-    paymentMethod: '',
-    items: [''],
-    totalExpectedExpenses: '',
-    budgetCategory: '',
-    allottedBudget: '',
-    additionalComments: 'I, __________, understand and acknowledge that reimbursement for expenses is contingent upon following the established process, including obtaining proper approvals and submitting the necessary documentation. I also accept that failure to comply with these requirements or discrepancies between requested and actual expenses may result in denial of reimbursement or reimbursement limited to the amount requested.',
-    acknowledged: false,
-  });
+  const [formData, setFormData] = useState<FormData>(getInitialFormData());
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
-    // Load saved form data from localStorage
-    const saved = localStorage.getItem(FORM_STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setFormData(parsed);
-      } catch (e) {
-        console.error('Error loading saved form data:', e);
-      }
-    }
+    // Always start fresh - clear any saved form data on mount (fresh start on refresh)
+    localStorage.removeItem(FORM_STORAGE_KEY);
   }, []);
 
   useEffect(() => {
-    // Save form data to localStorage whenever it changes
-    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formData));
-  }, [formData]);
+    // Clear form data when component unmounts (user goes back or navigates away)
+    return () => {
+      localStorage.removeItem(FORM_STORAGE_KEY);
+    };
+  }, []);
 
   function updateField<K extends keyof FormData>(field: K, value: FormData[K]) {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -84,6 +81,8 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
   async function saveAsPDF() {
     if (!formRef.current) return;
 
+    setIsGeneratingPDF(true);
+
     try {
       // Dynamically load html2canvas and jspdf from CDN
       const loadScript = (src: string): Promise<void> => {
@@ -105,15 +104,27 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
         loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
       ]);
 
+      // Wait a bit for buttons to be hidden and DOM to update
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       // @ts-ignore - html2canvas is loaded from CDN
       const html2canvas = window.html2canvas;
       // @ts-ignore - jsPDF is loaded from CDN
       const { jsPDF } = window.jspdf;
 
+      // Scroll to top to ensure we capture everything
+      window.scrollTo(0, 0);
+      formRef.current.scrollIntoView({ behavior: 'instant', block: 'start' });
+
       const canvas = await html2canvas(formRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: formRef.current.scrollWidth,
+        windowHeight: formRef.current.scrollHeight,
+        allowTaint: false,
+        removeContainer: false,
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -144,7 +155,15 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
     }
+  }
+
+  function handleBack() {
+    // Clear form data when going back
+    localStorage.removeItem(FORM_STORAGE_KEY);
+    onBack();
   }
 
   return (
@@ -161,7 +180,7 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
               Save
             </button>
             <button
-              onClick={onBack}
+              onClick={handleBack}
               className="text-sm text-blue-600 font-medium touch-manipulation"
               style={{ minHeight: '44px', minWidth: '44px' }}
             >
@@ -172,7 +191,7 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
       </header>
 
       <main className="px-4 py-4">
-        <div ref={formRef} className="bg-white p-6 max-w-4xl mx-auto shadow-sm border border-gray-300" style={{ fontFamily: 'Arial, sans-serif' }}>
+        <div ref={formRef} className="bg-white p-6 max-w-4xl mx-auto shadow-sm border border-gray-300" style={{ fontFamily: 'Arial, sans-serif', overflow: 'visible' }}>
           {/* Header */}
           <h1 className="text-3xl font-bold text-center mb-2" style={{ fontSize: '28px' }}>Expense Request Form</h1>
           
@@ -297,7 +316,7 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
                     placeholder={index === 0 ? "Conservatory Great room and Gardenside" : "Enter expense item"}
                     className="flex-1 border-0 outline-none bg-transparent placeholder:text-gray-400 text-gray-900"
                   />
-                  {formData.items.length > 1 && (
+                  {!isGeneratingPDF && formData.items.length > 1 && (
                     <button
                       onClick={() => removeItem(index)}
                       className="text-red-600 font-bold text-lg px-2 touch-manipulation"
@@ -306,7 +325,7 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
                       −
                     </button>
                   )}
-                  {index === formData.items.length - 1 && (
+                  {!isGeneratingPDF && index === formData.items.length - 1 && (
                     <button
                       onClick={addItem}
                       className="text-blue-600 font-bold text-lg px-2 touch-manipulation"
@@ -371,6 +390,11 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
               value={formData.additionalComments}
               onChange={(e) => updateField('additionalComments', e.target.value)}
               className="w-full border-0 outline-none bg-transparent p-2 min-h-[100px] resize-none text-gray-900"
+              style={{ 
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word'
+              }}
               placeholder="I, __________, understand and acknowledge..."
             />
           </div>
