@@ -78,86 +78,131 @@ export default function ExpenseRequestForm({ onBack }: ExpenseRequestFormProps) 
     }));
   }
 
-  async function saveAsPDF() {
+  function saveAsPDF() {
     if (!formRef.current) return;
 
     setIsGeneratingPDF(true);
 
-    try {
-      // Dynamically load html2canvas and jspdf from CDN
-      const loadScript = (src: string): Promise<void> => {
-        return new Promise((resolve, reject) => {
-          if (document.querySelector(`script[src="${src}"]`)) {
-            resolve();
-            return;
-          }
-          const script = document.createElement('script');
-          script.src = src;
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error(`Failed to load ${src}`));
-          document.head.appendChild(script);
-        });
-      };
-
-      await Promise.all([
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-      ]);
-
-      // Wait a bit for buttons to be hidden and DOM to update
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // @ts-ignore - html2canvas is loaded from CDN
-      const html2canvas = window.html2canvas;
-      // @ts-ignore - jsPDF is loaded from CDN
-      const { jsPDF } = window.jspdf;
-
-      // Scroll to top to ensure we capture everything
-      window.scrollTo(0, 0);
-      formRef.current.scrollIntoView({ behavior: 'instant', block: 'start' });
-
-      const canvas = await html2canvas(formRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: formRef.current.scrollWidth,
-        windowHeight: formRef.current.scrollHeight,
-        allowTaint: false,
-        removeContainer: false,
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save('expense-request-form.pdf');
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
-    } finally {
+    // Create a new window with just the form content
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to generate PDF');
       setIsGeneratingPDF(false);
+      return;
     }
+
+    // Clone the form element
+    const formClone = formRef.current.cloneNode(true) as HTMLElement;
+    
+    // Remove the plus/minus buttons from the clone
+    const buttons = formClone.querySelectorAll('button');
+    buttons.forEach(btn => {
+      if (btn.textContent === '+' || btn.textContent === '−' || btn.textContent === '-') {
+        btn.remove();
+      }
+    });
+
+    // Convert inputs to display their values as text for better printing
+    const inputs = formClone.querySelectorAll('input[type="text"]');
+    inputs.forEach((input: Element) => {
+      const htmlInput = input as HTMLInputElement;
+      const value = htmlInput.value || htmlInput.placeholder;
+      const span = document.createElement('span');
+      span.textContent = value;
+      span.style.color = value === htmlInput.placeholder ? '#9ca3af' : '#111827';
+      htmlInput.parentNode?.replaceChild(span, htmlInput);
+    });
+
+    // Convert textarea to display its value
+    const textareas = formClone.querySelectorAll('textarea');
+    textareas.forEach((textarea: Element) => {
+      const htmlTextarea = textarea as HTMLTextAreaElement;
+      const value = htmlTextarea.value;
+      const div = document.createElement('div');
+      div.textContent = value;
+      div.style.whiteSpace = 'pre-wrap';
+      div.style.wordWrap = 'break-word';
+      div.style.color = '#111827';
+      htmlTextarea.parentNode?.replaceChild(div, htmlTextarea);
+    });
+
+    // Create print styles
+    const printStyles = `
+      <style>
+        @media print {
+          @page {
+            size: letter;
+            margin: 0.5in;
+          }
+          body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: white;
+          }
+          * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          button {
+            display: none !important;
+          }
+        }
+        body {
+          margin: 0;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+          background: white;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        td {
+          border: 1px solid #d1d5db;
+          padding: 8px;
+        }
+        input, textarea {
+          border: none;
+          outline: none;
+          background: transparent;
+          width: 100%;
+          font-family: inherit;
+        }
+        textarea {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        }
+      </style>
+    `;
+
+    // Write the content to the new window
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Expense Request Form</title>
+          ${printStyles}
+        </head>
+        <body>
+          ${formClone.innerHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    // Wait for content to load, then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        // Close the window after a short delay
+        setTimeout(() => {
+          printWindow.close();
+          setIsGeneratingPDF(false);
+        }, 500);
+      }, 250);
+    };
   }
 
   function handleBack() {
