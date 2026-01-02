@@ -14,6 +14,8 @@ import Attendance from './components/Attendance';
 import TacticsAttendance from './components/TacticsAttendance';
 import PTPlans from './components/PTPlans';
 import WeatherData from './components/WeatherData';
+import Forms from './components/Forms';
+import ExpenseRequestForm from './components/ExpenseRequestForm';
 import NotificationPrompt from './components/NotificationPrompt';
 import { Company } from './types';
 import { 
@@ -23,7 +25,7 @@ import {
   onMessageListener 
 } from './services/notificationService';
 
-type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-landing' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans' | 'weather-data';
+type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-landing' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans' | 'weather-data' | 'forms' | 'expense-request-form';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -161,6 +163,7 @@ function App() {
       <TrainingLanding
         onTrainingSchedule={() => setCurrentView('training-schedule')}
         onWeatherData={() => setCurrentView('weather-data')}
+        onForms={() => setCurrentView('forms')}
         onBack={() => setCurrentView('companies')}
       />
     );
@@ -254,6 +257,23 @@ function App() {
         }}
         onSelectCompany={(company) => setPTCompany(company)}
         selectedCompany={ptCompany}
+      />
+    );
+  }
+
+  if (currentView === 'forms') {
+    return (
+      <Forms
+        onExpenseRequest={() => setCurrentView('expense-request-form')}
+        onBack={() => setCurrentView('training-landing')}
+      />
+    );
+  }
+
+  if (currentView === 'expense-request-form') {
+    return (
+      <ExpenseRequestForm
+        onBack={() => setCurrentView('forms')}
       />
     );
   }

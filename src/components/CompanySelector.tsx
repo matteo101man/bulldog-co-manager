@@ -56,7 +56,7 @@ export default function CompanySelector({ onSelect, onSettings, onCadets, onTrai
                 : 'text-gray-600'
             }`}
           >
-            Training
+            Staff
           </button>
           <button
             onClick={() => {

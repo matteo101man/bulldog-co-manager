@@ -3,15 +3,16 @@ import React from 'react';
 interface TrainingLandingProps {
   onTrainingSchedule: () => void;
   onWeatherData: () => void;
+  onForms: () => void;
   onBack: () => void;
 }
 
-export default function TrainingLanding({ onTrainingSchedule, onWeatherData, onBack }: TrainingLandingProps) {
+export default function TrainingLanding({ onTrainingSchedule, onWeatherData, onForms, onBack }: TrainingLandingProps) {
   return (
     <div className="min-h-screen bg-gray-50 pb-safe-area-inset-bottom">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
         <div className="px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">Training</h1>
+          <h1 className="text-xl font-bold text-gray-900">Staff</h1>
           <button
             onClick={onBack}
             className="text-sm text-blue-600 font-medium touch-manipulation"
@@ -43,6 +44,15 @@ export default function TrainingLanding({ onTrainingSchedule, onWeatherData, onB
           >
             <span className="text-lg font-semibold text-gray-900">
               Weather Data
+            </span>
+          </button>
+          <button
+            onClick={onForms}
+            className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+            style={{ minHeight: '44px' }}
+          >
+            <span className="text-lg font-semibold text-gray-900">
+              Forms
             </span>
           </button>
         </div>

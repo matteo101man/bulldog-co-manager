@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getCurrentWeekStart, getFullWeekDates, formatDateShort } from '../utils/dates';
 import { getWeatherForecasts, WeatherForecast, WeatherError } from '../services/weatherService';
+import { getAllTrainingEvents } from '../services/trainingEventService';
 
 interface WeatherRow {
   date: string;
@@ -57,6 +58,13 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
         setError(null);
       }
       
+      // Fetch training events to autofill event names
+      const trainingEvents = await getAllTrainingEvents();
+      const eventsByDate = new Map<string, string>();
+      trainingEvents.forEach(event => {
+        eventsByDate.set(event.date, event.name);
+      });
+      
       // Load saved events and impact from localStorage if available
       const savedData = localStorage.getItem('weatherEventsImpact');
       const savedDataMap: Record<string, { events: string; impact: string }> = savedData ? JSON.parse(savedData) : {};
@@ -65,6 +73,10 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
       const rows: WeatherRow[] = dates.map((date) => {
         const forecast = forecasts.get(date);
         const saved = savedDataMap[date];
+        const eventName = eventsByDate.get(date);
+        
+        // Use saved events if available (including empty string), otherwise use training event name if available
+        const eventsValue = saved?.events !== undefined ? saved.events : (eventName || '');
         
         return {
           date,
@@ -74,7 +86,7 @@ export default function WeatherData({ onBack }: WeatherDataProps) {
           wind: forecast ? String(forecast.wind) : '',
           precipDay: forecast ? String(forecast.precipDay) : '',
           precipNight: forecast ? String(forecast.precipNight) : '',
-          events: saved?.events || '',
+          events: eventsValue,
           impact: saved?.impact || '',
         };
       });
