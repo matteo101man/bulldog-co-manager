@@ -154,26 +154,156 @@ export async function getWeatherForecast(date: string): Promise<{ forecast: Weat
 
 /**
  * Fetch weather for multiple dates
+ * Fetches the 5-day forecast once and extracts data for each requested date
  */
 export async function getWeatherForecasts(dates: string[]): Promise<{ forecasts: Map<string, WeatherForecast>; errors: Map<string, WeatherError> }> {
   const forecasts = new Map<string, WeatherForecast>();
   const errors = new Map<string, WeatherError>();
   
-  // Fetch all forecasts (with rate limiting consideration)
-  // Note: We only need to call the API once since it returns 5-day forecast
-  // So we'll fetch once and use it for all dates
-  if (dates.length > 0) {
-    const result = await getWeatherForecast(dates[0]);
-    if (result.forecast) {
-      // Use the same forecast data for all dates (API limitation)
+  if (dates.length === 0) {
+    return { forecasts, errors };
+  }
+
+  if (!WEATHER_API_KEY) {
+    const error: WeatherError = {
+      message: 'Weather API key not configured',
+      details: 'VITE_WEATHER_API_KEY is not set and no fallback key is available'
+    };
+    dates.forEach(date => {
+      errors.set(date, error);
+    });
+    return { forecasts, errors };
+  }
+
+  try {
+    // Fetch 5-day forecast once (returns 3-hour intervals for 5 days)
+    const url = `${WEATHER_API_BASE}/forecast?q=Athens,Georgia,US&appid=${WEATHER_API_KEY}&units=imperial`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      let errorDetails = '';
+      let errorMessage = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = JSON.stringify(errorData);
+        
+        if (response.status === 401) {
+          errorMessage = `Invalid API key (401). Note: New API keys can take 2+ hours to activate. If you just created this key, please wait and try again later.`;
+          if (errorData.message) {
+            errorMessage += ` API message: ${errorData.message}`;
+          }
+        } else {
+          errorMessage = `Weather API error: ${response.status} ${response.statusText}`;
+        }
+      } catch {
+        errorDetails = await response.text();
+        errorMessage = `Weather API error: ${response.status} ${response.statusText}`;
+      }
+      
+      const error: WeatherError = {
+        message: errorMessage,
+        details: errorDetails,
+        statusCode: response.status
+      };
       dates.forEach(date => {
-        forecasts.set(date, result.forecast!);
+        errors.set(date, error);
       });
-    } else if (result.error) {
-      dates.forEach(date => {
-        errors.set(date, result.error!);
-      });
+      return { forecasts, errors };
     }
+
+    const data = await response.json();
+    
+    if (!data.list || !Array.isArray(data.list) || data.list.length === 0) {
+      const error: WeatherError = {
+        message: 'No forecast data in API response',
+        details: `Response structure: ${JSON.stringify(Object.keys(data))}`
+      };
+      dates.forEach(date => {
+        errors.set(date, error);
+      });
+      return { forecasts, errors };
+    }
+
+    // Process each requested date
+    for (const dateStr of dates) {
+      const targetDate = new Date(dateStr + 'T12:00:00');
+      const targetDateStr = targetDate.toDateString();
+      
+      // Filter forecasts for this specific date
+      const dayForecasts = data.list.filter((f: any) => {
+        const forecastDate = new Date(f.dt * 1000);
+        return forecastDate.toDateString() === targetDateStr;
+      });
+
+      if (dayForecasts.length > 0) {
+        // Calculate high/low from all temperatures for the day
+        const temps = dayForecasts.map((f: any) => f.main.temp);
+        const high = Math.max(...temps);
+        const low = Math.min(...temps);
+        
+        // Average wind speed for the day
+        const windSpeeds = dayForecasts.map((f: any) => f.wind?.speed || 0);
+        const avgWind = windSpeeds.reduce((sum: number, speed: number) => sum + speed, 0) / windSpeeds.length;
+        
+        // Calculate precipitation - use max probability for day and night
+        // Day: forecasts from 6 AM to 6 PM (roughly)
+        // Night: forecasts from 6 PM to 6 AM next day
+        const dayPrecip = dayForecasts
+          .filter((f: any) => {
+            const hour = new Date(f.dt * 1000).getHours();
+            return hour >= 6 && hour < 18;
+          })
+          .map((f: any) => (f.pop || 0) * 100);
+        const nightPrecip = dayForecasts
+          .filter((f: any) => {
+            const hour = new Date(f.dt * 1000).getHours();
+            return hour < 6 || hour >= 18;
+          })
+          .map((f: any) => (f.pop || 0) * 100);
+        
+        const maxPrecipDay = dayPrecip.length > 0 ? Math.max(...dayPrecip) : 0;
+        const maxPrecipNight = nightPrecip.length > 0 ? Math.max(...nightPrecip) : 0;
+
+        forecasts.set(dateStr, {
+          date: dateStr,
+          high: Math.round(high),
+          low: Math.round(low),
+          wind: Math.round(avgWind),
+          precipDay: Math.round(maxPrecipDay),
+          precipNight: Math.round(maxPrecipNight),
+        });
+      } else {
+        // No forecast for this date - find closest
+        let closestForecast = data.list[0];
+        let minDiff = Math.abs(new Date(closestForecast.dt * 1000).getTime() - targetDate.getTime());
+
+        for (const forecast of data.list) {
+          const forecastTime = new Date(forecast.dt * 1000).getTime();
+          const diff = Math.abs(forecastTime - targetDate.getTime());
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestForecast = forecast;
+          }
+        }
+
+        forecasts.set(dateStr, {
+          date: dateStr,
+          high: Math.round(closestForecast.main.temp_max || closestForecast.main.temp),
+          low: Math.round(closestForecast.main.temp_min || closestForecast.main.temp),
+          wind: Math.round(closestForecast.wind?.speed || 0),
+          precipDay: Math.round((closestForecast.pop || 0) * 100),
+          precipNight: Math.round((closestForecast.pop || 0) * 100),
+        });
+      }
+    }
+  } catch (error) {
+    const errorInfo: WeatherError = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: error instanceof Error ? error.stack : String(error)
+    };
+    dates.forEach(date => {
+      errors.set(date, errorInfo);
+    });
   }
   
   return { forecasts, errors };
