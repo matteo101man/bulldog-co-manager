@@ -113,64 +113,59 @@ export function getWeekStartByOffset(weekStartDate: string, weeksOffset: number)
 
 /**
  * Get week dates for a specific week start date
- * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format
+ * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format (in EST)
  */
 export function getWeekDatesForWeek(weekStartDate: string): { monday: string; tuesday: string; wednesday: string; thursday: string; friday: string } {
   const [year, month, day] = weekStartDate.split('-').map(Number);
   
-  // Monday = weekStartDate, Tuesday = Monday + 1, Wednesday = Monday + 2, Thursday = Monday + 3, Friday = Monday + 4
-  const monday = new Date(year, month - 1, day);
-  const tuesday = new Date(year, month - 1, day + 1);
-  const wednesday = new Date(year, month - 1, day + 2);
-  const thursday = new Date(year, month - 1, day + 3);
-  const friday = new Date(year, month - 1, day + 4);
-
-  const formatDate = (date: Date): string => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+  // Create dates in EST timezone by using date arithmetic on the EST date
+  // We'll work with the date components directly to avoid timezone issues
+  const formatDate = (y: number, m: number, d: number): string => {
+    // Create a date object in EST by using UTC methods with EST offset
+    // But actually, we'll just do simple date arithmetic since we're working with dates, not times
+    const date = new Date(Date.UTC(y, m - 1, d));
+    const estYear = date.getUTCFullYear();
+    const estMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const estDay = String(date.getUTCDate()).padStart(2, '0');
+    return `${estYear}-${estMonth}-${estDay}`;
   };
 
+  // Calculate dates by adding days (works correctly for date-only values)
+  // Monday = weekStartDate
+  // Tuesday = Monday + 1, etc.
   return {
-    monday: formatDate(monday),
-    tuesday: formatDate(tuesday),
-    wednesday: formatDate(wednesday),
-    thursday: formatDate(thursday),
-    friday: formatDate(friday),
+    monday: formatDate(year, month, day),
+    tuesday: formatDate(year, month, day + 1),
+    wednesday: formatDate(year, month, day + 2),
+    thursday: formatDate(year, month, day + 3),
+    friday: formatDate(year, month, day + 4),
   };
 }
 
 /**
  * Get all 7 days of the week (Monday through Sunday) for a specific week start date
- * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format
+ * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format (in EST)
  */
 export function getFullWeekDates(weekStartDate: string): { monday: string; tuesday: string; wednesday: string; thursday: string; friday: string; saturday: string; sunday: string } {
   const [year, month, day] = weekStartDate.split('-').map(Number);
   
-  const monday = new Date(year, month - 1, day);
-  const tuesday = new Date(year, month - 1, day + 1);
-  const wednesday = new Date(year, month - 1, day + 2);
-  const thursday = new Date(year, month - 1, day + 3);
-  const friday = new Date(year, month - 1, day + 4);
-  const saturday = new Date(year, month - 1, day + 5);
-  const sunday = new Date(year, month - 1, day + 6);
-
-  const formatDate = (date: Date): string => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+  // Use UTC date arithmetic to avoid timezone issues
+  const formatDate = (y: number, m: number, d: number): string => {
+    const date = new Date(Date.UTC(y, m - 1, d));
+    const estYear = date.getUTCFullYear();
+    const estMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const estDay = String(date.getUTCDate()).padStart(2, '0');
+    return `${estYear}-${estMonth}-${estDay}`;
   };
 
   return {
-    monday: formatDate(monday),
-    tuesday: formatDate(tuesday),
-    wednesday: formatDate(wednesday),
-    thursday: formatDate(thursday),
-    friday: formatDate(friday),
-    saturday: formatDate(saturday),
-    sunday: formatDate(sunday),
+    monday: formatDate(year, month, day),
+    tuesday: formatDate(year, month, day + 1),
+    wednesday: formatDate(year, month, day + 2),
+    thursday: formatDate(year, month, day + 3),
+    friday: formatDate(year, month, day + 4),
+    saturday: formatDate(year, month, day + 5),
+    sunday: formatDate(year, month, day + 6),
   };
 }
 
@@ -187,20 +182,24 @@ export function formatDateShort(dateString: string): string {
 
 /**
  * Format date with day name (e.g., "Tuesday, Jan 15")
- * Uses local timezone to match how dates are calculated
+ * Uses EST timezone for consistent display
  */
 export function formatDateWithDay(dateString: string): string {
-  // Parse the date string (YYYY-MM-DD) and create a date object
-  // Use the same method as getWeekDatesForWeek - create date in local timezone
+  // Parse the date string (YYYY-MM-DD)
   const [year, month, day] = dateString.split('-').map(Number);
-  // Create date in local timezone (matching how we calculate week dates)
-  const date = new Date(year, month - 1, day);
   
-  // Format using local timezone to match the date calculation
+  // Create date string in ISO format and explicitly set to EST timezone (UTC-5 or UTC-4)
+  // Use noon EST to avoid timezone boundary issues
+  // We'll create it as if it's in EST by using a date string that represents EST time
+  const estDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00-05:00`;
+  const date = new Date(estDateStr);
+  
+  // Format using EST timezone
   return date.toLocaleDateString('en-US', { 
     weekday: 'long', 
     month: 'short', 
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'America/New_York'
   });
 }
 
