@@ -241,36 +241,66 @@ export async function getWeatherForecasts(dates: string[]): Promise<{ forecasts:
         const high = Math.max(...temps);
         const low = Math.min(...temps);
         
-        // Average wind speed for the day
-        const windSpeeds = dayForecasts.map((f: any) => f.wind?.speed || 0);
-        const avgWind = windSpeeds.reduce((sum: number, speed: number) => sum + speed, 0) / windSpeeds.length;
+        // Wind speed: Use midday wind (12 PM) if available, otherwise average of daytime hours (9 AM - 3 PM)
+        // This gives a more representative wind speed for the day
+        const middayForecast = dayForecasts.find((f: any) => {
+          const hour = new Date(f.dt * 1000).getHours();
+          return hour === 12;
+        });
         
-        // Calculate precipitation - use max probability for day and night
-        // Day: forecasts from 6 AM to 6 PM (roughly)
+        let windSpeed = 0;
+        if (middayForecast && middayForecast.wind?.speed) {
+          windSpeed = middayForecast.wind.speed;
+        } else {
+          // Average of daytime hours (9 AM - 3 PM)
+          const daytimeForecasts = dayForecasts.filter((f: any) => {
+            const hour = new Date(f.dt * 1000).getHours();
+            return hour >= 9 && hour <= 15;
+          });
+          if (daytimeForecasts.length > 0) {
+            const windSpeeds = daytimeForecasts
+              .map((f: any) => f.wind?.speed || 0)
+              .filter((speed: number) => speed > 0);
+            if (windSpeeds.length > 0) {
+              windSpeed = windSpeeds.reduce((sum: number, speed: number) => sum + speed, 0) / windSpeeds.length;
+            }
+          } else {
+            // Fallback to first forecast of the day
+            windSpeed = dayForecasts[0]?.wind?.speed || 0;
+          }
+        }
+        
+        // Precipitation calculation
+        // Day: forecasts from 6 AM to 6 PM
         // Night: forecasts from 6 PM to 6 AM next day
-        const dayPrecip = dayForecasts
-          .filter((f: any) => {
-            const hour = new Date(f.dt * 1000).getHours();
-            return hour >= 6 && hour < 18;
-          })
-          .map((f: any) => (f.pop || 0) * 100);
-        const nightPrecip = dayForecasts
-          .filter((f: any) => {
-            const hour = new Date(f.dt * 1000).getHours();
-            return hour < 6 || hour >= 18;
-          })
-          .map((f: any) => (f.pop || 0) * 100);
+        const dayForecastsFiltered = dayForecasts.filter((f: any) => {
+          const hour = new Date(f.dt * 1000).getHours();
+          return hour >= 6 && hour < 18;
+        });
+        const nightForecastsFiltered = dayForecasts.filter((f: any) => {
+          const hour = new Date(f.dt * 1000).getHours();
+          return hour < 6 || hour >= 18;
+        });
         
-        const maxPrecipDay = dayPrecip.length > 0 ? Math.max(...dayPrecip) : 0;
-        const maxPrecipNight = nightPrecip.length > 0 ? Math.max(...nightPrecip) : 0;
+        // Calculate precipitation probability (pop) for day and night
+        // pop is probability of precipitation (0-1), convert to percentage (0-100)
+        const getPrecipProbability = (forecasts: any[]): number => {
+          if (forecasts.length === 0) return 0;
+          // Use max probability from the period
+          const probabilities = forecasts.map((f: any) => (f.pop || 0) * 100);
+          return Math.max(...probabilities);
+        };
+        
+        const precipDay = getPrecipProbability(dayForecastsFiltered);
+        const precipNight = getPrecipProbability(nightForecastsFiltered);
 
         forecasts.set(dateStr, {
           date: dateStr,
           high: Math.round(high),
           low: Math.round(low),
-          wind: Math.round(avgWind),
-          precipDay: Math.round(maxPrecipDay),
-          precipNight: Math.round(maxPrecipNight),
+          wind: Math.round(windSpeed),
+          precipDay: Math.round(precipDay),
+          precipNight: Math.round(precipNight),
         });
       } else {
         // No forecast for this date - find closest
