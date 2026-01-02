@@ -187,23 +187,20 @@ export function formatDateShort(dateString: string): string {
 
 /**
  * Format date with day name (e.g., "Tuesday, Jan 15")
- * Uses EST timezone for consistent display
+ * Uses local timezone to match how dates are calculated
  */
 export function formatDateWithDay(dateString: string): string {
   // Parse the date string (YYYY-MM-DD) and create a date object
-  // We need to ensure it's interpreted as a date in EST timezone
+  // Use the same method as getWeekDatesForWeek - create date in local timezone
   const [year, month, day] = dateString.split('-').map(Number);
-  // Create date string in ISO format with EST timezone offset
-  // Use noon to avoid timezone boundary issues
-  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00`;
-  const date = new Date(dateStr);
+  // Create date in local timezone (matching how we calculate week dates)
+  const date = new Date(year, month - 1, day);
   
-  // Format using EST timezone
+  // Format using local timezone to match the date calculation
   return date.toLocaleDateString('en-US', { 
     weekday: 'long', 
     month: 'short', 
-    day: 'numeric',
-    timeZone: 'America/New_York'
+    day: 'numeric'
   });
 }
 
