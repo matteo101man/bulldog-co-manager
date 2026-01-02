@@ -1394,17 +1394,17 @@ function StatWithTooltip({ count, label, cadetNames, colorClass, size = 'normal'
       </div>
       <div className={size === 'large' ? 'text-sm text-gray-600' : 'text-xs text-gray-600'}>{label}</div>
       {showTooltip && cadetNames.length > 0 && (
-        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
-          <div className="font-semibold mb-2 text-white">{label} Cadets:</div>
+        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-white text-gray-900 text-xs rounded-lg shadow-lg border border-gray-300 p-3 max-h-64 overflow-y-auto">
+          <div className="font-semibold mb-2 text-gray-900">{label} Cadets:</div>
           <div className="space-y-1">
             {cadetNames.map((item, index) => (
-              <div key={index} className="text-white/90">
+              <div key={index} className="text-gray-700">
                 {item.name}{item.count !== undefined ? ` (${item.count})` : ''}
               </div>
             ))}
           </div>
           {/* Arrow pointing down */}
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
         </div>
       )}
     </div>

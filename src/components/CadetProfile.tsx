@@ -424,17 +424,17 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                       {unexcusedCountPT}
                     </div>
                     {tooltipType === 'PT' && tooltipDates.length > 0 && (
-                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
-                        <div className="font-semibold mb-2 text-white">Unexcused PT Dates:</div>
+                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-white text-gray-900 text-xs rounded-lg shadow-lg border border-gray-300 p-3 max-h-64 overflow-y-auto">
+                        <div className="font-semibold mb-2 text-gray-900">Unexcused PT Dates:</div>
                         <div className="space-y-1">
                           {tooltipDates.map((date, index) => (
-                            <div key={index} className="text-white/90">
+                            <div key={index} className="text-gray-700">
                               {formatDateWithDay(date)}
                             </div>
                           ))}
                         </div>
                         {/* Arrow pointing down */}
-                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
                       </div>
                     )}
                   </div>
@@ -462,17 +462,17 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                       {unexcusedCountLab}
                     </div>
                     {tooltipType === 'Lab' && tooltipDates.length > 0 && (
-                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
-                        <div className="font-semibold mb-2 text-white">Unexcused Lab Dates:</div>
+                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-white text-gray-900 text-xs rounded-lg shadow-lg border border-gray-300 p-3 max-h-64 overflow-y-auto">
+                        <div className="font-semibold mb-2 text-gray-900">Unexcused Lab Dates:</div>
                         <div className="space-y-1">
                           {tooltipDates.map((date, index) => (
-                            <div key={index} className="text-white/90">
+                            <div key={index} className="text-gray-700">
                               {formatDateWithDay(date)}
                             </div>
                           ))}
                         </div>
                         {/* Arrow pointing down */}
-                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
                       </div>
                     )}
                   </div>
@@ -500,17 +500,17 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                       {unexcusedCountTactics}
                     </div>
                     {tooltipType === 'Tactics' && tooltipDates.length > 0 && (
-                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-gray-900 text-white text-xs rounded-lg shadow-lg p-3 max-h-64 overflow-y-auto">
-                        <div className="font-semibold mb-2 text-white">Unexcused Tactics Dates:</div>
+                      <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-white text-gray-900 text-xs rounded-lg shadow-lg border border-gray-300 p-3 max-h-64 overflow-y-auto">
+                        <div className="font-semibold mb-2 text-gray-900">Unexcused Tactics Dates:</div>
                         <div className="space-y-1">
                           {tooltipDates.map((date, index) => (
-                            <div key={index} className="text-white/90">
+                            <div key={index} className="text-gray-700">
                               {formatDateWithDay(date)}
                             </div>
                           ))}
                         </div>
                         {/* Arrow pointing down */}
-                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
                       </div>
                     )}
                   </div>
