@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCadetsByCompany } from '../services/cadetService';
-import { Cadet } from '../types';
+import { Cadet, Company } from '../types';
 
 interface CadetsListProps {
   onSelectCadet: (cadetId: string) => void;
@@ -8,10 +8,16 @@ interface CadetsListProps {
   onAddCadet?: () => void;
 }
 
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
+
 export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: CadetsListProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedCompanies, setSelectedCompanies] = useState<Set<Company>>(new Set(COMPANIES));
+  const [showContracted, setShowContracted] = useState(true);
+  const [showUncontracted, setShowUncontracted] = useState(true);
 
   useEffect(() => {
     loadCadets();
@@ -30,8 +36,32 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
     }
   }
 
-  // Filter cadets based on search query
+  // Toggle company filter
+  const toggleCompany = (company: Company) => {
+    setSelectedCompanies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(company)) {
+        newSet.delete(company);
+      } else {
+        newSet.add(company);
+      }
+      return newSet;
+    });
+  };
+
+  // Filter cadets based on search query, company, and contracted status
   const filteredCadets = cadets.filter(cadet => {
+    // Company filter
+    if (!selectedCompanies.has(cadet.company)) {
+      return false;
+    }
+
+    // Contracted status filter
+    const isContracted = cadet.contracted === 'Y';
+    if (isContracted && !showContracted) return false;
+    if (!isContracted && !showUncontracted) return false;
+
+    // Search query filter
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
     const fullName = `${cadet.firstName} ${cadet.lastName}`.toLowerCase();
@@ -77,13 +107,22 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
         <div className="px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">Cadets</h1>
-          <button
-            onClick={onBack}
-            className="text-sm text-blue-600 font-medium touch-manipulation"
-            style={{ minHeight: '44px', minWidth: '44px' }}
-          >
-            Home
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="text-sm text-blue-600 font-medium touch-manipulation px-3 py-2 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors"
+              style={{ minHeight: '44px', minWidth: '44px' }}
+            >
+              Filter
+            </button>
+            <button
+              onClick={onBack}
+              className="text-sm text-blue-600 font-medium touch-manipulation"
+              style={{ minHeight: '44px', minWidth: '44px' }}
+            >
+              Home
+            </button>
+          </div>
         </div>
       </header>
 
@@ -92,6 +131,68 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
           <div className="text-center py-8 text-gray-500">Loading...</div>
         ) : (
           <>
+            {/* Filter Panel */}
+            {showFilters && (
+              <div className="mb-4 bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="text-gray-500 hover:text-gray-700 touch-manipulation"
+                    style={{ minHeight: '44px', minWidth: '44px' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                {/* Company Filter */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Company</h3>
+                  <div className="space-y-2">
+                    {COMPANIES.map(company => (
+                      <label
+                        key={company}
+                        className="flex items-center cursor-pointer touch-manipulation py-2"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCompanies.has(company)}
+                          onChange={() => toggleCompany(company)}
+                          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                        />
+                        <span className="ml-3 text-sm text-gray-900">{company}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Contracted Status Filter */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Contracted Status</h3>
+                  <div className="space-y-2">
+                    <label className="flex items-center cursor-pointer touch-manipulation py-2">
+                      <input
+                        type="checkbox"
+                        checked={showContracted}
+                        onChange={(e) => setShowContracted(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                      />
+                      <span className="ml-3 text-sm text-gray-900">Contracted</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer touch-manipulation py-2">
+                      <input
+                        type="checkbox"
+                        checked={showUncontracted}
+                        onChange={(e) => setShowUncontracted(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                      />
+                      <span className="ml-3 text-sm text-gray-900">Uncontracted</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mb-4">
               <div className="mb-3">
                 <label htmlFor="cadet-search" className="block text-sm font-medium text-gray-700 mb-2">
