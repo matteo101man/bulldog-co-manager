@@ -64,6 +64,11 @@ blockquote.instagram-media p {
   justify-content: center;
 }
 
+.instagram-profile-container.instagram-edit-mode {
+  cursor: move;
+  user-select: none;
+}
+
 .instagram-profile-embed {
   width: 100% !important;
   height: 100% !important;
@@ -79,6 +84,16 @@ blockquote.instagram-media p {
 }
 
 /* Hide all Instagram embed UI elements except the main image */
+.instagram-profile-embed .Header,
+.instagram-profile-embed .AvatarContainer,
+.instagram-profile-embed .Avatar,
+.instagram-profile-embed .HeaderText,
+.instagram-profile-embed .Username,
+.instagram-profile-embed .UsernameText,
+.instagram-profile-embed .HeaderSecondaryContent,
+.instagram-profile-embed .FollowerCountText,
+.instagram-profile-embed .HeaderCta,
+.instagram-profile-embed .ViewProfileButton,
 .instagram-profile-embed .EmbedSidecar,
 .instagram-profile-embed ._ae39,
 .instagram-profile-embed ._ae36,
@@ -104,6 +119,7 @@ blockquote.instagram-media p {
   border-radius: 50% !important;
   margin: 0 !important;
   padding: 0 !important;
+  transform-origin: center center !important;
 }
 
 .instagram-profile-embed .EmbedFrame,
