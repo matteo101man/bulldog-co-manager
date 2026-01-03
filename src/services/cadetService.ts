@@ -67,7 +67,11 @@ export async function getCadetById(cadetId: string): Promise<Cadet | null> {
  * Add a new cadet to the database
  */
 export async function addCadet(cadet: Omit<Cadet, 'id'>): Promise<string> {
-  const docRef = await addDoc(collection(db, CADETS_COLLECTION), cadet);
+  // Filter out undefined values as Firestore doesn't accept them
+  const cadetData = Object.fromEntries(
+    Object.entries(cadet).filter(([_, value]) => value !== undefined)
+  ) as Omit<Cadet, 'id'>;
+  const docRef = await addDoc(collection(db, CADETS_COLLECTION), cadetData);
   return docRef.id;
 }
 
@@ -75,8 +79,12 @@ export async function addCadet(cadet: Omit<Cadet, 'id'>): Promise<string> {
  * Update an existing cadet
  */
 export async function updateCadet(cadetId: string, updates: Partial<Cadet>): Promise<void> {
+  // Filter out undefined values as Firestore doesn't accept them
+  const updateData = Object.fromEntries(
+    Object.entries(updates).filter(([_, value]) => value !== undefined)
+  ) as Partial<Cadet>;
   const docRef = doc(db, CADETS_COLLECTION, cadetId);
-  await updateDoc(docRef, updates);
+  await updateDoc(docRef, updateData);
 }
 
 /**
