@@ -1,20 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getCadetById, updateCadet, deleteCadet } from '../services/cadetService';
 import { getTotalUnexcusedAbsences, getUnexcusedAbsenceDates } from '../services/attendanceService';
 import { formatDateWithDay } from '../utils/dates';
-import { isInstagramPostUrl, extractInstagramUrl } from '../utils/imageUtils';
 import { Cadet, Company } from '../types';
-
-// Type declaration for Instagram embed API
-declare global {
-  interface Window {
-    instgrm?: {
-      Embeds: {
-        process: () => void;
-      };
-    };
-  }
-}
 
 interface CadetProfileProps {
   cadetId: string;
@@ -38,178 +26,13 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   const [formData, setFormData] = useState<Partial<Cadet>>({});
   const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | 'Tactics' | null>(null);
   const [tooltipDates, setTooltipDates] = useState<string[]>([]);
-  const [imageZoom, setImageZoom] = useState(1);
-  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const ptRef = useRef<HTMLDivElement>(null);
   const labRef = useRef<HTMLDivElement>(null);
   const tacticsRef = useRef<HTMLDivElement>(null);
-  const instagramEmbedRef = useRef<HTMLDivElement>(null);
-  const instagramImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     loadCadet();
   }, [cadetId]);
-
-  // Load Instagram embed script when needed
-  useEffect(() => {
-    const profilePicture = isEditing ? formData.profilePicture : cadet?.profilePicture;
-    if (profilePicture && isInstagramPostUrl(profilePicture)) {
-      const processEmbeds = () => {
-        setTimeout(() => {
-          if (window.instgrm) {
-            window.instgrm.Embeds.process();
-          }
-        }, 100);
-      };
-
-      // Check if script is already loaded
-      if (!window.instgrm) {
-        const existingScript = document.querySelector('script[src="//www.instagram.com/embed.js"]');
-        if (!existingScript) {
-          const script = document.createElement('script');
-          script.src = '//www.instagram.com/embed.js';
-          script.async = true;
-          document.body.appendChild(script);
-          
-          script.onload = processEmbeds;
-        } else {
-          // Script exists but not loaded yet, wait for it
-          existingScript.addEventListener('load', processEmbeds);
-        }
-      } else {
-        // Script already loaded, just process embeds
-        processEmbeds();
-      }
-    }
-  }, [cadet?.profilePicture, formData.profilePicture, isEditing]);
-
-  // Process embeds when component mounts or when switching between edit/view modes
-  useEffect(() => {
-    if (cadet?.profilePicture && isInstagramPostUrl(cadet.profilePicture) && !isEditing) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        if (window.instgrm) {
-          window.instgrm.Embeds.process();
-        }
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [cadet?.profilePicture, isEditing]);
-
-  // Find Instagram image element after embed loads (for edit mode zoom/pan)
-  useEffect(() => {
-    if (isEditing && formData.profilePicture && isInstagramPostUrl(formData.profilePicture)) {
-      const findImage = () => {
-        const container = instagramEmbedRef.current;
-        if (container) {
-          const img = container.querySelector('img.EmbeddedMediaImage') as HTMLImageElement;
-          if (img) {
-            instagramImageRef.current = img;
-            // Reset zoom and position when image changes
-            setImageZoom(1);
-            setImagePosition({ x: 0, y: 0 });
-          }
-        }
-      };
-
-      // Try to find image immediately
-      findImage();
-
-      // Also check after a delay (embed might load later)
-      const timer = setTimeout(findImage, 500);
-      const interval = setInterval(findImage, 1000);
-
-      return () => {
-        clearTimeout(timer);
-        clearInterval(interval);
-      };
-    } else {
-      instagramImageRef.current = null;
-    }
-  }, [isEditing, formData.profilePicture]);
-
-  // Apply zoom and position to Instagram image in edit mode
-  useEffect(() => {
-    if (isEditing && instagramImageRef.current) {
-      const img = instagramImageRef.current;
-      img.style.transform = `scale(${imageZoom}) translate(${imagePosition.x}px, ${imagePosition.y}px)`;
-      img.style.transition = isDragging ? 'none' : 'transform 0.1s ease-out';
-      img.style.cursor = 'move';
-    }
-  }, [imageZoom, imagePosition, isDragging, isEditing]);
-
-  // Handle mouse/touch drag for panning
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isEditing || !instagramImageRef.current) return;
-    e.preventDefault();
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - imagePosition.x, y: e.clientY - imagePosition.y });
-  }, [isEditing, imagePosition]);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isEditing || !isDragging || !instagramImageRef.current) return;
-    setImagePosition({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    });
-  }, [isEditing, isDragging, dragStart]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  // Add document-level mouse listeners for dragging
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  // Handle wheel for zooming
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!isEditing || !instagramImageRef.current) return;
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setImageZoom(prev => Math.max(0.5, Math.min(3, prev * delta)));
-  };
-
-  // Handle touch events for mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isEditing || !instagramImageRef.current) return;
-    if (e.touches.length === 1) {
-      setIsDragging(true);
-      const touch = e.touches[0];
-      setDragStart({ x: touch.clientX - imagePosition.x, y: touch.clientY - imagePosition.y });
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isEditing || !isDragging || !instagramImageRef.current) return;
-    if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      setImagePosition({
-        x: touch.clientX - dragStart.x,
-        y: touch.clientY - dragStart.y
-      });
-    } else if (e.touches.length === 2) {
-      // Pinch to zoom
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-      // This is a simplified version - you'd need to track previous distance for proper pinch
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
 
   // Close tooltip when clicking outside
   useEffect(() => {
@@ -288,9 +111,6 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
       
       await loadCadet(); // Reload to get updated data
       setIsEditing(false);
-      // Reset zoom and position when exiting edit mode
-      setImageZoom(1);
-      setImagePosition({ x: 0, y: 0 });
       alert('Cadet profile updated successfully!');
     } catch (error) {
       console.error('Error saving cadet:', error);
@@ -374,80 +194,31 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                 <input
                   type="url"
                   value={formData.profilePicture || ''}
-                  onChange={(e) => {
-                    const inputValue = e.target.value;
-                    // Extract Instagram URL if HTML blockquote was pasted
-                    const extractedUrl = extractInstagramUrl(inputValue);
-                    setFormData({ ...formData, profilePicture: extractedUrl });
-                  }}
-                  placeholder="Enter image URL or Instagram post URL..."
+                  onChange={(e) => setFormData({ ...formData, profilePicture: e.target.value })}
+                  placeholder="Enter image URL..."
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
-                {isInstagramPostUrl(formData.profilePicture || '') && (
-                  <p className="text-xs text-gray-500">
-                    Instagram post detected. Will be embedded as an Instagram post.
-                  </p>
-                )}
                 <div className="flex justify-center">
-                  {formData.profilePicture && isInstagramPostUrl(formData.profilePicture) ? (
-                    <div 
-                      className="w-32 h-32 rounded-full overflow-hidden border-2 border-gray-200 instagram-profile-container instagram-edit-mode" 
-                      ref={instagramEmbedRef}
-                      onMouseDown={handleMouseDown}
-                      onWheel={handleWheel}
-                      onTouchStart={handleTouchStart}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                    >
-                      <blockquote
-                        key={`edit-${extractInstagramUrl(formData.profilePicture)}`}
-                        className="instagram-media instagram-profile-embed"
-                        data-instgrm-permalink={extractInstagramUrl(formData.profilePicture)}
-                        data-instgrm-version="14"
-                      >
-                      </blockquote>
-                      {isEditing && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
-                          <p className="text-xs text-white bg-black bg-opacity-70 px-2 py-1 rounded">
-                            Drag to move • Scroll to zoom
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <img 
-                      src={formData.profilePicture || DEFAULT_PROFILE_PICTURE} 
-                      alt={`${cadet.firstName} ${cadet.lastName}`} 
-                      className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center">
-                {cadet.profilePicture && isInstagramPostUrl(cadet.profilePicture) ? (
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-gray-200 instagram-profile-container" ref={instagramEmbedRef}>
-                    <blockquote
-                      key={`view-${extractInstagramUrl(cadet.profilePicture)}`}
-                      className="instagram-media instagram-profile-embed"
-                      data-instgrm-permalink={extractInstagramUrl(cadet.profilePicture)}
-                      data-instgrm-version="14"
-                    >
-                    </blockquote>
-                  </div>
-                ) : (
                   <img 
-                    src={cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                    src={formData.profilePicture || DEFAULT_PROFILE_PICTURE} 
                     alt={`${cadet.firstName} ${cadet.lastName}`} 
                     className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
                     }}
                   />
-                )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <img 
+                  src={cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                  alt={`${cadet.firstName} ${cadet.lastName}`} 
+                  className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
+                  }}
+                />
               </div>
             )}
           </div>
@@ -769,9 +540,6 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
               <button
                 onClick={() => {
                   setIsEditing(false);
-                  // Reset zoom and position when canceling
-                  setImageZoom(1);
-                  setImagePosition({ x: 0, y: 0 });
                   loadCadet(); // Reset form data
                 }}
                 className="flex-1 py-3 px-4 rounded-lg font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 active:bg-gray-400 touch-manipulation min-h-[44px]"
