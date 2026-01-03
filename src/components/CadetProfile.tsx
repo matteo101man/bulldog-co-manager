@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getCadetById, updateCadet, deleteCadet } from '../services/cadetService';
 import { getTotalUnexcusedAbsences, getUnexcusedAbsenceDates } from '../services/attendanceService';
 import { formatDateWithDay } from '../utils/dates';
+import { convertInstagramUrl, isInstagramPostUrl } from '../utils/imageUtils';
 import { Cadet, Company } from '../types';
 
 interface CadetProfileProps {
@@ -195,12 +196,19 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                   type="url"
                   value={formData.profilePicture || ''}
                   onChange={(e) => setFormData({ ...formData, profilePicture: e.target.value })}
-                  placeholder="Enter image URL..."
+                  placeholder="Enter image URL or Instagram post URL..."
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
+                {isInstagramPostUrl(formData.profilePicture || '') && (
+                  <p className="text-xs text-gray-500">
+                    Instagram post detected. Will be converted to image URL automatically.
+                    <br />
+                    <span className="text-gray-400">Tip: If image doesn't load, right-click the Instagram image and "Copy image address" for direct URL.</span>
+                  </p>
+                )}
                 <div className="flex justify-center">
                   <img 
-                    src={formData.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                    src={formData.profilePicture ? convertInstagramUrl(formData.profilePicture) : DEFAULT_PROFILE_PICTURE} 
                     alt={`${cadet.firstName} ${cadet.lastName}`} 
                     className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
                     onError={(e) => {
@@ -212,7 +220,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
             ) : (
               <div className="flex justify-center">
                 <img 
-                  src={cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                  src={cadet.profilePicture ? convertInstagramUrl(cadet.profilePicture) : DEFAULT_PROFILE_PICTURE} 
                   alt={`${cadet.firstName} ${cadet.lastName}`} 
                   className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
                   onError={(e) => {
