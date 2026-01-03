@@ -269,23 +269,12 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                 )}
                 <div className="flex justify-center">
                   {formData.profilePicture && isInstagramPostUrl(formData.profilePicture) ? (
-                    <div className="w-full max-w-md" ref={instagramEmbedRef}>
+                    <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-gray-200 instagram-profile-container" ref={instagramEmbedRef}>
                       <blockquote
                         key={`edit-${extractInstagramUrl(formData.profilePicture)}`}
-                        className="instagram-media"
+                        className="instagram-media instagram-profile-embed"
                         data-instgrm-permalink={extractInstagramUrl(formData.profilePicture)}
                         data-instgrm-version="14"
-                        style={{
-                          background: '#FFF',
-                          border: 0,
-                          borderRadius: '3px',
-                          boxShadow: '0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15)',
-                          margin: '1px',
-                          maxWidth: '540px',
-                          minWidth: '326px',
-                          padding: 0,
-                          width: '99.375%'
-                        }}
                       >
                       </blockquote>
                     </div>
@@ -304,23 +293,12 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
             ) : (
               <div className="flex justify-center">
                 {cadet.profilePicture && isInstagramPostUrl(cadet.profilePicture) ? (
-                  <div className="w-full max-w-md" ref={instagramEmbedRef}>
+                  <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-gray-200 instagram-profile-container" ref={instagramEmbedRef}>
                     <blockquote
                       key={`view-${extractInstagramUrl(cadet.profilePicture)}`}
-                      className="instagram-media"
+                      className="instagram-media instagram-profile-embed"
                       data-instgrm-permalink={extractInstagramUrl(cadet.profilePicture)}
                       data-instgrm-version="14"
-                      style={{
-                        background: '#FFF',
-                        border: 0,
-                        borderRadius: '3px',
-                        boxShadow: '0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15)',
-                        margin: '1px',
-                        maxWidth: '540px',
-                        minWidth: '326px',
-                        padding: 0,
-                        width: '99.375%'
-                      }}
                     >
                     </blockquote>
                   </div>
