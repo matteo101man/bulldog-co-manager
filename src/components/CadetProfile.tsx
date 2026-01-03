@@ -27,6 +27,8 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   const [formData, setFormData] = useState<Partial<Cadet>>({});
   const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | 'Tactics' | null>(null);
   const [tooltipDates, setTooltipDates] = useState<string[]>([]);
+  const [convertedImageUrl, setConvertedImageUrl] = useState<string>('');
+  const [convertedEditImageUrl, setConvertedEditImageUrl] = useState<string>('');
   const ptRef = useRef<HTMLDivElement>(null);
   const labRef = useRef<HTMLDivElement>(null);
   const tacticsRef = useRef<HTMLDivElement>(null);
@@ -34,6 +36,28 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   useEffect(() => {
     loadCadet();
   }, [cadetId]);
+
+  // Convert Instagram URL for view mode
+  useEffect(() => {
+    if (cadet?.profilePicture && isInstagramPostUrl(cadet.profilePicture)) {
+      convertInstagramUrl(cadet.profilePicture).then(setConvertedImageUrl).catch(() => {
+        setConvertedImageUrl(cadet.profilePicture || '');
+      });
+    } else {
+      setConvertedImageUrl(cadet?.profilePicture || '');
+    }
+  }, [cadet?.profilePicture]);
+
+  // Convert Instagram URL for edit mode
+  useEffect(() => {
+    if (formData.profilePicture && isInstagramPostUrl(formData.profilePicture)) {
+      convertInstagramUrl(formData.profilePicture).then(setConvertedEditImageUrl).catch(() => {
+        setConvertedEditImageUrl(formData.profilePicture || '');
+      });
+    } else {
+      setConvertedEditImageUrl(formData.profilePicture || '');
+    }
+  }, [formData.profilePicture]);
 
   // Close tooltip when clicking outside
   useEffect(() => {
@@ -208,7 +232,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                 )}
                 <div className="flex justify-center">
                   <img 
-                    src={formData.profilePicture ? convertInstagramUrl(formData.profilePicture) : DEFAULT_PROFILE_PICTURE} 
+                    src={convertedEditImageUrl || formData.profilePicture || DEFAULT_PROFILE_PICTURE} 
                     alt={`${cadet.firstName} ${cadet.lastName}`} 
                     className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
                     onError={(e) => {
@@ -220,7 +244,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
             ) : (
               <div className="flex justify-center">
                 <img 
-                  src={cadet.profilePicture ? convertInstagramUrl(cadet.profilePicture) : DEFAULT_PROFILE_PICTURE} 
+                  src={convertedImageUrl || cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
                   alt={`${cadet.firstName} ${cadet.lastName}`} 
                   className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
                   onError={(e) => {
