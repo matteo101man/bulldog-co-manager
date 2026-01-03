@@ -2,8 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getCadetById, updateCadet, deleteCadet } from '../services/cadetService';
 import { getTotalUnexcusedAbsences, getUnexcusedAbsenceDates } from '../services/attendanceService';
 import { formatDateWithDay } from '../utils/dates';
-import { convertInstagramUrl, isInstagramPostUrl } from '../utils/imageUtils';
+import { isInstagramPostUrl } from '../utils/imageUtils';
 import { Cadet, Company } from '../types';
+
+// Type declaration for Instagram embed API
+declare global {
+  interface Window {
+    instgrm?: {
+      Embeds: {
+        process: () => void;
+      };
+    };
+  }
+}
 
 interface CadetProfileProps {
   cadetId: string;
@@ -27,37 +38,47 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   const [formData, setFormData] = useState<Partial<Cadet>>({});
   const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | 'Tactics' | null>(null);
   const [tooltipDates, setTooltipDates] = useState<string[]>([]);
-  const [convertedImageUrl, setConvertedImageUrl] = useState<string>('');
-  const [convertedEditImageUrl, setConvertedEditImageUrl] = useState<string>('');
   const ptRef = useRef<HTMLDivElement>(null);
   const labRef = useRef<HTMLDivElement>(null);
   const tacticsRef = useRef<HTMLDivElement>(null);
+  const instagramEmbedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCadet();
   }, [cadetId]);
 
-  // Convert Instagram URL for view mode
+  // Load Instagram embed script when needed
   useEffect(() => {
-    if (cadet?.profilePicture && isInstagramPostUrl(cadet.profilePicture)) {
-      convertInstagramUrl(cadet.profilePicture).then(setConvertedImageUrl).catch(() => {
-        setConvertedImageUrl(cadet.profilePicture || '');
-      });
-    } else {
-      setConvertedImageUrl(cadet?.profilePicture || '');
+    const profilePicture = isEditing ? formData.profilePicture : cadet?.profilePicture;
+    if (profilePicture && isInstagramPostUrl(profilePicture)) {
+      // Check if script is already loaded
+      if (!window.instgrm) {
+        const existingScript = document.querySelector('script[src="//www.instagram.com/embed.js"]');
+        if (!existingScript) {
+          const script = document.createElement('script');
+          script.src = '//www.instagram.com/embed.js';
+          script.async = true;
+          document.body.appendChild(script);
+          
+          script.onload = () => {
+            // Process embeds after script loads
+            setTimeout(() => {
+              if (window.instgrm) {
+                window.instgrm.Embeds.process();
+              }
+            }, 100);
+          };
+        }
+      } else {
+        // Script already loaded, just process embeds
+        setTimeout(() => {
+          if (window.instgrm) {
+            window.instgrm.Embeds.process();
+          }
+        }, 100);
+      }
     }
-  }, [cadet?.profilePicture]);
-
-  // Convert Instagram URL for edit mode
-  useEffect(() => {
-    if (formData.profilePicture && isInstagramPostUrl(formData.profilePicture)) {
-      convertInstagramUrl(formData.profilePicture).then(setConvertedEditImageUrl).catch(() => {
-        setConvertedEditImageUrl(formData.profilePicture || '');
-      });
-    } else {
-      setConvertedEditImageUrl(formData.profilePicture || '');
-    }
-  }, [formData.profilePicture]);
+  }, [cadet?.profilePicture, formData.profilePicture, isEditing]);
 
   // Close tooltip when clicking outside
   useEffect(() => {
@@ -225,32 +246,74 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                 />
                 {isInstagramPostUrl(formData.profilePicture || '') && (
                   <p className="text-xs text-gray-500">
-                    Instagram post detected. Will be converted to image URL automatically.
-                    <br />
-                    <span className="text-gray-400">Tip: If image doesn't load, right-click the Instagram image and "Copy image address" for direct URL.</span>
+                    Instagram post detected. Will be embedded as an Instagram post.
                   </p>
                 )}
                 <div className="flex justify-center">
+                  {formData.profilePicture && isInstagramPostUrl(formData.profilePicture) ? (
+                    <div className="w-full max-w-md" ref={instagramEmbedRef}>
+                      <blockquote
+                        className="instagram-media"
+                        data-instgrm-permalink={formData.profilePicture}
+                        data-instgrm-version="14"
+                        style={{
+                          background: '#FFF',
+                          border: 0,
+                          borderRadius: '3px',
+                          boxShadow: '0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15)',
+                          margin: '1px',
+                          maxWidth: '540px',
+                          minWidth: '326px',
+                          padding: 0,
+                          width: '99.375%'
+                        }}
+                      >
+                      </blockquote>
+                    </div>
+                  ) : (
+                    <img 
+                      src={formData.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                      alt={`${cadet.firstName} ${cadet.lastName}`} 
+                      className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                {cadet.profilePicture && isInstagramPostUrl(cadet.profilePicture) ? (
+                  <div className="w-full max-w-md" ref={instagramEmbedRef}>
+                    <blockquote
+                      className="instagram-media"
+                      data-instgrm-permalink={cadet.profilePicture}
+                      data-instgrm-version="14"
+                      style={{
+                        background: '#FFF',
+                        border: 0,
+                        borderRadius: '3px',
+                        boxShadow: '0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15)',
+                        margin: '1px',
+                        maxWidth: '540px',
+                        minWidth: '326px',
+                        padding: 0,
+                        width: '99.375%'
+                      }}
+                    >
+                    </blockquote>
+                  </div>
+                ) : (
                   <img 
-                    src={convertedEditImageUrl || formData.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                    src={cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
                     alt={`${cadet.firstName} ${cadet.lastName}`} 
                     className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
                     }}
                   />
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center">
-                <img 
-                  src={convertedImageUrl || cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
-                  alt={`${cadet.firstName} ${cadet.lastName}`} 
-                  className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
-                  }}
-                />
+                )}
               </div>
             )}
           </div>
