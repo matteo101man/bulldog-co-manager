@@ -29,9 +29,8 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    // Validate all fields are filled
-    if (!formData.firstName || !formData.lastName || !formData.age || 
-        !formData.position || !formData.phoneNumber || !formData.email) {
+    // Validate required fields are filled
+    if (!formData.firstName || !formData.lastName || !formData.position) {
       alert('Please fill in all required fields.');
       return;
     }
@@ -41,14 +40,14 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
       await addCadet({
         firstName: formData.firstName,
         lastName: formData.lastName,
-        age: parseInt(formData.age),
+        age: formData.age ? parseInt(formData.age) : undefined,
         dateOfBirth: formData.dateOfBirth || undefined,
         shirtSize: formData.shirtSize || undefined,
         position: formData.position,
         company: formData.company,
         militaryScienceLevel: formData.militaryScienceLevel,
-        phoneNumber: formData.phoneNumber,
-        email: formData.email,
+        phoneNumber: formData.phoneNumber || undefined,
+        email: formData.email || undefined,
         contracted: formData.contracted
       });
       alert('Cadet added successfully!');
@@ -102,11 +101,10 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
+            <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">Age</label>
             <input
               id="age"
               type="number"
-              required
               value={formData.age}
               onChange={(e) => setFormData({ ...formData, age: e.target.value })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
@@ -186,11 +184,10 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
             <input
               id="phoneNumber"
               type="tel"
-              required
               value={formData.phoneNumber}
               onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
@@ -198,11 +195,10 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               id="email"
               type="email"
-              required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
