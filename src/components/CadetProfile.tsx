@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getCadetById, updateCadet, deleteCadet } from '../services/cadetService';
 import { getTotalUnexcusedAbsences, getUnexcusedAbsenceDates } from '../services/attendanceService';
 import { formatDateWithDay } from '../utils/dates';
-import { isInstagramPostUrl } from '../utils/imageUtils';
+import { isInstagramPostUrl, extractInstagramUrl } from '../utils/imageUtils';
 import { Cadet, Company } from '../types';
 
 // Type declaration for Instagram embed API
@@ -240,7 +240,12 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                 <input
                   type="url"
                   value={formData.profilePicture || ''}
-                  onChange={(e) => setFormData({ ...formData, profilePicture: e.target.value })}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    // Extract Instagram URL if HTML blockquote was pasted
+                    const extractedUrl = extractInstagramUrl(inputValue);
+                    setFormData({ ...formData, profilePicture: extractedUrl });
+                  }}
                   placeholder="Enter image URL or Instagram post URL..."
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
@@ -254,7 +259,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                     <div className="w-full max-w-md" ref={instagramEmbedRef}>
                       <blockquote
                         className="instagram-media"
-                        data-instgrm-permalink={formData.profilePicture}
+                        data-instgrm-permalink={extractInstagramUrl(formData.profilePicture)}
                         data-instgrm-version="14"
                         style={{
                           background: '#FFF',
@@ -288,7 +293,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                   <div className="w-full max-w-md" ref={instagramEmbedRef}>
                     <blockquote
                       className="instagram-media"
-                      data-instgrm-permalink={cadet.profilePicture}
+                      data-instgrm-permalink={extractInstagramUrl(cadet.profilePicture)}
                       data-instgrm-version="14"
                       style={{
                         background: '#FFF',
