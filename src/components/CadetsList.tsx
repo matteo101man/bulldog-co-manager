@@ -8,7 +8,7 @@ interface CadetsListProps {
   onAddCadet?: () => void;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
 
 export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: CadetsListProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
@@ -49,17 +49,12 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
     });
   };
 
-  // Filter cadets based on search query, company, and contracted status
-  const filteredCadets = cadets.filter(cadet => {
+  // Filter cadets based on search query and company (for summary stats)
+  const companyFilteredCadets = cadets.filter(cadet => {
     // Company filter
     if (!selectedCompanies.has(cadet.company)) {
       return false;
     }
-
-    // Contracted status filter
-    const isContracted = cadet.contracted === 'Y';
-    if (isContracted && !showContracted) return false;
-    if (!isContracted && !showUncontracted) return false;
 
     // Search query filter
     if (!searchQuery.trim()) return true;
@@ -72,6 +67,15 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
       fullName.includes(query) ||
       lastNameFirst.includes(query)
     );
+  });
+
+  // Filter cadets based on search query, company, and contracted status
+  const filteredCadets = companyFilteredCadets.filter(cadet => {
+    // Contracted status filter
+    const isContracted = cadet.contracted === 'Y';
+    if (isContracted && !showContracted) return false;
+    if (!isContracted && !showUncontracted) return false;
+    return true;
   });
 
   // Group cadets by MS level and sort alphabetically
@@ -262,13 +266,13 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-700">Total Contracted:</span>
                       <span className="text-sm font-semibold text-gray-900">
-                        {cadets.filter(c => c.contracted === 'Y').length}
+                        {companyFilteredCadets.filter(c => c.contracted === 'Y').length}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-700">Total Uncontracted:</span>
                       <span className="text-sm font-semibold text-gray-900">
-                        {cadets.filter(c => c.contracted !== 'Y').length}
+                        {companyFilteredCadets.filter(c => c.contracted !== 'Y').length}
                       </span>
                     </div>
                   </>
