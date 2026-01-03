@@ -30,7 +30,7 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
     e.preventDefault();
     
     // Validate required fields are filled
-    if (!formData.firstName || !formData.lastName || !formData.position) {
+    if (!formData.firstName || !formData.lastName) {
       alert('Please fill in all required fields.');
       return;
     }
@@ -43,7 +43,7 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
         age: formData.age ? parseInt(formData.age) : undefined,
         dateOfBirth: formData.dateOfBirth || undefined,
         shirtSize: formData.shirtSize || undefined,
-        position: formData.position,
+        position: formData.position || undefined,
         company: formData.company,
         militaryScienceLevel: formData.militaryScienceLevel,
         phoneNumber: formData.phoneNumber || undefined,
@@ -157,11 +157,10 @@ export default function AddCadet({ onBack, onSuccess }: AddCadetProps) {
           </div>
 
           <div>
-            <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">Position *</label>
+            <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">Position</label>
             <input
               id="position"
               type="text"
-              required
               value={formData.position}
               onChange={(e) => setFormData({ ...formData, position: e.target.value })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
