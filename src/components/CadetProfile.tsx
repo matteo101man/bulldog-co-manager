@@ -51,6 +51,14 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   useEffect(() => {
     const profilePicture = isEditing ? formData.profilePicture : cadet?.profilePicture;
     if (profilePicture && isInstagramPostUrl(profilePicture)) {
+      const processEmbeds = () => {
+        setTimeout(() => {
+          if (window.instgrm) {
+            window.instgrm.Embeds.process();
+          }
+        }, 100);
+      };
+
       // Check if script is already loaded
       if (!window.instgrm) {
         const existingScript = document.querySelector('script[src="//www.instagram.com/embed.js"]');
@@ -60,25 +68,30 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
           script.async = true;
           document.body.appendChild(script);
           
-          script.onload = () => {
-            // Process embeds after script loads
-            setTimeout(() => {
-              if (window.instgrm) {
-                window.instgrm.Embeds.process();
-              }
-            }, 100);
-          };
+          script.onload = processEmbeds;
+        } else {
+          // Script exists but not loaded yet, wait for it
+          existingScript.addEventListener('load', processEmbeds);
         }
       } else {
         // Script already loaded, just process embeds
-        setTimeout(() => {
-          if (window.instgrm) {
-            window.instgrm.Embeds.process();
-          }
-        }, 100);
+        processEmbeds();
       }
     }
   }, [cadet?.profilePicture, formData.profilePicture, isEditing]);
+
+  // Process embeds when component mounts or when switching between edit/view modes
+  useEffect(() => {
+    if (cadet?.profilePicture && isInstagramPostUrl(cadet.profilePicture) && !isEditing) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        if (window.instgrm) {
+          window.instgrm.Embeds.process();
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [cadet?.profilePicture, isEditing]);
 
   // Close tooltip when clicking outside
   useEffect(() => {
@@ -258,6 +271,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                   {formData.profilePicture && isInstagramPostUrl(formData.profilePicture) ? (
                     <div className="w-full max-w-md" ref={instagramEmbedRef}>
                       <blockquote
+                        key={`edit-${extractInstagramUrl(formData.profilePicture)}`}
                         className="instagram-media"
                         data-instgrm-permalink={extractInstagramUrl(formData.profilePicture)}
                         data-instgrm-version="14"
@@ -292,6 +306,7 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                 {cadet.profilePicture && isInstagramPostUrl(cadet.profilePicture) ? (
                   <div className="w-full max-w-md" ref={instagramEmbedRef}>
                     <blockquote
+                      key={`view-${extractInstagramUrl(cadet.profilePicture)}`}
                       className="instagram-media"
                       data-instgrm-permalink={extractInstagramUrl(cadet.profilePicture)}
                       data-instgrm-version="14"

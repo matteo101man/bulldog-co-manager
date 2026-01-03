@@ -49,3 +49,10 @@ a {
   min-width: 44px;
 }
 
+/* Hide Instagram embed captions */
+.instagram-media p:last-child,
+.instagram-media > div > p,
+blockquote.instagram-media p {
+  display: none !important;
+}
+
