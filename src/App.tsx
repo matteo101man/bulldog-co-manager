@@ -45,7 +45,52 @@ function App() {
     
     // Initialize notifications on app load
     initializeNotifications();
+    
+    // Check for service worker updates and force refresh if needed
+    checkForUpdates();
   }, []);
+
+  async function checkForUpdates() {
+    // Only run in production and if service workers are supported
+    if (import.meta.env.DEV || !('serviceWorker' in navigator)) {
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      // Check for updates periodically
+      registration.update();
+      
+      // Listen for service worker updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            // When the new service worker is installed and waiting
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Force a hard refresh to get the new version
+              // Use location.reload(true) for hard refresh (bypasses cache)
+              window.location.reload();
+            }
+          });
+        }
+      });
+
+      // Also check if there's already a waiting service worker
+      if (registration.waiting) {
+        // If there's a waiting service worker, reload immediately
+        window.location.reload();
+      }
+
+      // Periodically check for updates (every 5 minutes)
+      setInterval(() => {
+        registration.update();
+      }, 5 * 60 * 1000);
+    } catch (error) {
+      console.error('Error checking for service worker updates:', error);
+    }
+  }
 
   async function initializeNotifications() {
     // Only run in browser environment
