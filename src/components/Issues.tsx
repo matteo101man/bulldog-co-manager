@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllAttendanceForWeek } from '../services/attendanceService';
 import { getCadetsByCompany } from '../services/cadetService';
-import { getCurrentWeekStart, getWeekDatesForWeek, formatDateWithOrdinal } from '../utils/dates';
+import { getWeekDatesForWeek, formatDateWithOrdinal } from '../utils/dates';
 import { Cadet, AttendanceRecord, DayOfWeek, AttendanceType } from '../types';
 
 interface Issue {
@@ -15,11 +15,45 @@ interface IssuesProps {
   onBack: () => void;
 }
 
+/**
+ * Get the Monday of the week for a given date
+ */
+function getWeekStart(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayOfWeek = date.getDay();
+  const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  date.setDate(date.getDate() - daysToSubtract);
+  
+  const weekYear = date.getFullYear();
+  const weekMonth = String(date.getMonth() + 1).padStart(2, '0');
+  const weekDay = String(date.getDate()).padStart(2, '0');
+  return `${weekYear}-${weekMonth}-${weekDay}`;
+}
+
+/**
+ * Get all week start dates between two dates
+ */
+function getWeekStartsBetween(startDate: Date, endDate: Date): string[] {
+  const weekStarts = new Set<string>();
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const weekStart = getWeekStart(dateStr);
+    weekStarts.add(weekStart);
+    current.setDate(current.getDate() + 7); // Move to next week
+  }
+  
+  return Array.from(weekStarts).sort();
+}
+
 export default function Issues({ onBack }: IssuesProps) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
-  const currentWeekStart = getCurrentWeekStart();
-  const weekDates = getWeekDatesForWeek(currentWeekStart);
 
   useEffect(() => {
     loadIssues();
@@ -31,69 +65,85 @@ export default function Issues({ onBack }: IssuesProps) {
       // Get all cadets (Master includes all cadets from all companies)
       const allCadetsList = await getCadetsByCompany('Master');
       
-      // Get all attendance records for current week
-      const attendanceMap = await getAllAttendanceForWeek(currentWeekStart);
+      // Date range: January 20, 2026 to April 22, 2026
+      const startDate = new Date('2026-01-20');
+      const endDate = new Date('2026-04-22');
       
-      // Find missing attendance
+      // Get all week start dates in the range
+      const weekStarts = getWeekStartsBetween(startDate, endDate);
+      
+      // Find missing attendance across all weeks
       const missingIssues: Issue[] = [];
       
-      allCadetsList.forEach(cadet => {
-        const record = attendanceMap.get(cadet.id);
+      // Process each week
+      for (const weekStart of weekStarts) {
+        const weekDates = getWeekDatesForWeek(weekStart);
+        const attendanceMap = await getAllAttendanceForWeek(weekStart);
         
-        // Check PT attendance (Tuesday, Wednesday, Thursday)
-        const dayMap: Record<DayOfWeek, string> = {
-          tuesday: weekDates.tuesday,
-          wednesday: weekDates.wednesday,
-          thursday: weekDates.thursday
-        };
-        
-        // Check PT Tuesday
-        if (record?.ptTuesday === null || record?.ptTuesday === undefined) {
-          missingIssues.push({
-            cadetName: `${cadet.firstName} ${cadet.lastName}`,
-            day: 'tuesday',
-            date: dayMap.tuesday,
-            attendanceType: 'PT'
-          });
-        }
-        
-        // Check PT Wednesday
-        if (record?.ptWednesday === null || record?.ptWednesday === undefined) {
-          missingIssues.push({
-            cadetName: `${cadet.firstName} ${cadet.lastName}`,
-            day: 'wednesday',
-            date: dayMap.wednesday,
-            attendanceType: 'PT'
-          });
-        }
-        
-        // Check PT Thursday
-        if (record?.ptThursday === null || record?.ptThursday === undefined) {
-          missingIssues.push({
-            cadetName: `${cadet.firstName} ${cadet.lastName}`,
-            day: 'thursday',
-            date: dayMap.thursday,
-            attendanceType: 'PT'
-          });
-        }
-        
-        // Check Lab Thursday
-        if (record?.labThursday === null || record?.labThursday === undefined) {
-          missingIssues.push({
-            cadetName: `${cadet.firstName} ${cadet.lastName}`,
-            day: 'thursday',
-            date: dayMap.thursday,
-            attendanceType: 'Lab'
-          });
-        }
-      });
+        allCadetsList.forEach(cadet => {
+          const record = attendanceMap.get(cadet.id);
+          
+          // Check PT Tuesday
+          if (record?.ptTuesday === null || record?.ptTuesday === undefined) {
+            missingIssues.push({
+              cadetName: `${cadet.firstName} ${cadet.lastName}`,
+              day: 'tuesday',
+              date: weekDates.tuesday,
+              attendanceType: 'PT'
+            });
+          }
+          
+          // Check PT Wednesday
+          if (record?.ptWednesday === null || record?.ptWednesday === undefined) {
+            missingIssues.push({
+              cadetName: `${cadet.firstName} ${cadet.lastName}`,
+              day: 'wednesday',
+              date: weekDates.wednesday,
+              attendanceType: 'PT'
+            });
+          }
+          
+          // Check PT Thursday
+          if (record?.ptThursday === null || record?.ptThursday === undefined) {
+            missingIssues.push({
+              cadetName: `${cadet.firstName} ${cadet.lastName}`,
+              day: 'thursday',
+              date: weekDates.thursday,
+              attendanceType: 'PT'
+            });
+          }
+          
+          // Check Lab Thursday
+          if (record?.labThursday === null || record?.labThursday === undefined) {
+            missingIssues.push({
+              cadetName: `${cadet.firstName} ${cadet.lastName}`,
+              day: 'thursday',
+              date: weekDates.thursday,
+              attendanceType: 'Lab'
+            });
+          }
+          
+          // Check Tactics Tuesday (MS3 only)
+          if (cadet.militaryScienceLevel === 'MS3') {
+            if (record?.tacticsTuesday === null || record?.tacticsTuesday === undefined) {
+              missingIssues.push({
+                cadetName: `${cadet.firstName} ${cadet.lastName}`,
+                day: 'tuesday',
+                date: weekDates.tuesday,
+                attendanceType: 'Tactics'
+              });
+            }
+          }
+        });
+      }
       
-      // Sort by cadet name, then by day
+      // Sort by date, then cadet name, then by attendance type
       missingIssues.sort((a, b) => {
+        const dateCompare = a.date.localeCompare(b.date);
+        if (dateCompare !== 0) return dateCompare;
         const nameCompare = a.cadetName.localeCompare(b.cadetName);
         if (nameCompare !== 0) return nameCompare;
-        const dayOrder: Record<DayOfWeek, number> = { tuesday: 1, wednesday: 2, thursday: 3 };
-        return dayOrder[a.day] - dayOrder[b.day];
+        return a.attendanceType.localeCompare(b.attendanceType);
       });
       
       setIssues(missingIssues);
@@ -130,7 +180,7 @@ export default function Issues({ onBack }: IssuesProps) {
               
               {issues.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  No missing attendance data for the current week.
+                  No missing attendance data from January 20th to April 22nd.
                 </div>
               ) : (
                 <div className="space-y-2">
