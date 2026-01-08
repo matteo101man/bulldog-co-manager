@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { getCadetsByMSLevel } from './cadetService';
 import { getAllAttendanceForWeek } from './attendanceService';
 import { Cadet, AttendanceStatus, AttendanceRecord } from '../types';
@@ -168,8 +168,8 @@ export async function exportAttendanceToExcel(): Promise<void> {
   // Create worksheet data
   const wsData: any[][] = [];
   
-  // Header row
-  const headerRow = ['NAME', ...allDates.map(d => {
+  // Header row with better formatting
+  const headerRow = ['Name', ...allDates.map(d => {
     const [year, month, day] = d.split('-');
     return `${month}/${day}/${year}`;
   }), 'Total Present', 'Total Excused', 'Total Unexcused'];
@@ -180,9 +180,9 @@ export async function exportAttendanceToExcel(): Promise<void> {
     const cadets = cadetsByLevel.get(level);
     if (!cadets || cadets.length === 0) continue;
     
-    // MS Level header row
+    // MS Level header row with better formatting
     const levelHeaderRow = new Array(headerRow.length).fill('');
-    levelHeaderRow[0] = level;
+    levelHeaderRow[0] = level; // MS1, MS2, etc.
     wsData.push(levelHeaderRow);
     
     // Add cadet rows
@@ -194,8 +194,8 @@ export async function exportAttendanceToExcel(): Promise<void> {
         `${cadet.lastName}, ${cadet.firstName}`,
         ...allDates.map(dateStr => {
           const status = data.dates.get(dateStr);
-          if (status === null || status === undefined) return '';
-          return status === 'present' ? 'P' : status === 'excused' ? 'E' : 'U';
+          // Return empty string but we'll color the cell based on status
+          return status === null || status === undefined ? '' : '';
         }),
         data.totalPresent,
         data.totalExcused,
@@ -217,18 +217,43 @@ export async function exportAttendanceToExcel(): Promise<void> {
     { wch: 15 }  // Total Unexcused
   ];
   
-  // Apply colors to cells using xlsx styling
-  // Note: xlsx has limited styling support, but we'll apply what we can
+  // Apply colors and styling to cells
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
   
-  // Style header row (row 0)
+  // Style header row (row 0) - "Name" and date headers
   for (let C = 0; C <= range.e.c; C++) {
     const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
     if (!ws[cellAddress]) continue;
     ws[cellAddress].s = {
       fill: { fgColor: { rgb: 'FFD3D3D3' } },
-      font: { bold: true, sz: 11 }
+      font: { bold: true, sz: 12, color: { rgb: 'FF000000' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'FF000000' } },
+        bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+        left: { style: 'thin', color: { rgb: 'FF000000' } },
+        right: { style: 'thin', color: { rgb: 'FF000000' } }
+      }
     };
+  }
+  
+  // Build map of row indices to cadet data
+  const cadetRowMap = new Map<number, Map<string, AttendanceStatus | null>>();
+  let rowIndex = 1; // Start after header row (row 0)
+  
+  for (const level of msLevels) {
+    const cadets = cadetsByLevel.get(level);
+    if (!cadets || cadets.length === 0) continue;
+    
+    rowIndex++; // MS level header row
+    
+    for (const cadet of cadets) {
+      const data = cadetAttendanceData.get(cadet.id);
+      if (data) {
+        cadetRowMap.set(rowIndex, data.dates);
+      }
+      rowIndex++;
+    }
   }
   
   // Apply colors to data cells
@@ -236,13 +261,20 @@ export async function exportAttendanceToExcel(): Promise<void> {
     const row = wsData[R];
     if (!row) continue;
     
-    // Style MS level header rows
+    // Style MS level header rows (MS1, MS2, etc.)
     if (msLevels.includes(row[0])) {
       const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
       if (ws[cellAddress]) {
         ws[cellAddress].s = {
           fill: { fgColor: { rgb: 'FFD3D3D3' } },
-          font: { bold: true, sz: 11 }
+          font: { bold: true, sz: 12, color: { rgb: 'FF000000' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } }
+          }
         };
       }
       continue;
@@ -251,30 +283,95 @@ export async function exportAttendanceToExcel(): Promise<void> {
     // Skip if not a cadet row
     if (row[0] === '' || !row[0]) continue;
     
+    // Get cadet data for this row
+    const cadetDates = cadetRowMap.get(R);
+    
     // Color date cells based on attendance status
     for (let C = 1; C <= allDates.length; C++) {
       const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-      const cell = ws[cellAddress];
-      if (!cell) continue;
+      if (!ws[cellAddress]) continue;
       
-      const value = cell.v;
-      if (value === 'P') {
+      const dateStr = allDates[C - 1];
+      const status = cadetDates?.get(dateStr);
+      
+      // Set cell style based on status
+      if (status === 'present') {
         // Green for present
-        cell.s = {
-          fill: { fgColor: { rgb: 'FF90EE90' } },
-          font: { color: { rgb: 'FF000000' }, sz: 10 }
+        ws[cellAddress].s = {
+          fill: { fgColor: { rgb: 'FF90EE90' } }, // Light green
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } }
+          }
         };
-      } else if (value === 'E') {
+      } else if (status === 'excused') {
         // Yellow for excused
-        cell.s = {
-          fill: { fgColor: { rgb: 'FFFFFF00' } },
-          font: { color: { rgb: 'FF000000' }, sz: 10 }
+        ws[cellAddress].s = {
+          fill: { fgColor: { rgb: 'FFFFFF00' } }, // Yellow
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } }
+          }
         };
-      } else if (value === 'U') {
+      } else if (status === 'unexcused') {
         // Red for unexcused
-        cell.s = {
-          fill: { fgColor: { rgb: 'FFFF6B6B' } },
-          font: { color: { rgb: 'FF000000' }, sz: 10 }
+        ws[cellAddress].s = {
+          fill: { fgColor: { rgb: 'FFFF6B6B' } }, // Light red
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } }
+          }
+        };
+      } else {
+        // Empty cell - white background
+        ws[cellAddress].s = {
+          fill: { fgColor: { rgb: 'FFFFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } }
+          }
+        };
+      }
+    }
+    
+    // Style name column
+    const nameCellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+    if (ws[nameCellAddress]) {
+      ws[nameCellAddress].s = {
+        alignment: { horizontal: 'left', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'FF000000' } },
+          bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+          left: { style: 'thin', color: { rgb: 'FF000000' } },
+          right: { style: 'thin', color: { rgb: 'FF000000' } }
+        }
+      };
+    }
+    
+    // Style total columns
+    for (let C = allDates.length + 1; C <= range.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      if (ws[cellAddress]) {
+        ws[cellAddress].s = {
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } }
+          }
         };
       }
     }
