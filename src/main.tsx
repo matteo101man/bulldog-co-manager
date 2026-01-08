@@ -15,6 +15,27 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
 
 // Check for service worker updates and force refresh if needed (production only)
 if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
+  // Use sessionStorage to prevent infinite reload loops
+  const RELOAD_KEY = 'sw-reload-attempted';
+  let reloadInProgress = false;
+  
+  function checkAndReload(registration: ServiceWorkerRegistration) {
+    // Prevent multiple reload attempts
+    if (reloadInProgress || sessionStorage.getItem(RELOAD_KEY)) {
+      return;
+    }
+    
+    if (registration.waiting) {
+      reloadInProgress = true;
+      sessionStorage.setItem(RELOAD_KEY, 'true');
+      // Clear the flag after a delay to allow future updates
+      setTimeout(() => {
+        sessionStorage.removeItem(RELOAD_KEY);
+      }, 30000); // Clear after 30 seconds
+      window.location.reload();
+    }
+  }
+  
   // Check for updates when page becomes visible (user reopens app)
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible') {
@@ -22,27 +43,21 @@ if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
         const registration = await navigator.serviceWorker.ready;
         // Check for updates
         await registration.update();
-        
-        // If there's a waiting service worker, reload to get the new version
-        if (registration.waiting) {
-          // Force hard refresh by bypassing cache
-          window.location.reload();
-        }
+        // Check if we need to reload
+        checkAndReload(registration);
       } catch (error) {
         console.error('Error checking for updates:', error);
       }
     }
   });
 
-  // Also check on initial load
+  // Check on initial load
   navigator.serviceWorker.ready.then(async (registration) => {
     // Check for updates
     await registration.update();
     
-    // If there's a waiting service worker, reload immediately
-    if (registration.waiting) {
-      window.location.reload();
-    }
+    // Check if there's already a waiting service worker
+    checkAndReload(registration);
     
     // Listen for new service worker installation
     registration.addEventListener('updatefound', () => {
@@ -51,8 +66,7 @@ if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
         newWorker.addEventListener('statechange', () => {
           // When new service worker is installed and we have an active controller
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Force hard refresh to get the new version
-            window.location.reload();
+            checkAndReload(registration);
           }
         });
       }
