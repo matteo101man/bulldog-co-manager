@@ -364,7 +364,39 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               ) : (
-                <div className="text-gray-900">{cadet.phoneNumber || '—'}</div>
+                cadet.phoneNumber ? (
+                  <a
+                    href={`tel:${cadet.phoneNumber.replace(/\s/g, '')}`}
+                    onClick={(e) => {
+                      // On mobile, try to add to contacts via vCard download
+                      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                      if (isMobile) {
+                        e.preventDefault();
+                        const vCard = `BEGIN:VCARD
+VERSION:3.0
+FN:${cadet.firstName} ${cadet.lastName}
+N:${cadet.lastName};${cadet.firstName};;;
+TEL:${cadet.phoneNumber.replace(/\s/g, '')}
+EMAIL:${cadet.email || ''}
+END:VCARD`;
+                        const blob = new Blob([vCard], { type: 'text/vcard' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${cadet.firstName}_${cadet.lastName}.vcf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                      }
+                    }}
+                    className="text-blue-600 hover:text-blue-800 underline cursor-pointer touch-manipulation"
+                  >
+                    {cadet.phoneNumber}
+                  </a>
+                ) : (
+                  <div className="text-gray-900">—</div>
+                )
               )}
             </div>
 
@@ -378,7 +410,16 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               ) : (
-                <div className="text-gray-900">{cadet.email || '—'}</div>
+                cadet.email ? (
+                  <a
+                    href={`mailto:${cadet.email}`}
+                    className="text-blue-600 hover:text-blue-800 underline cursor-pointer touch-manipulation"
+                  >
+                    {cadet.email}
+                  </a>
+                ) : (
+                  <div className="text-gray-900">—</div>
+                )
               )}
             </div>
 
