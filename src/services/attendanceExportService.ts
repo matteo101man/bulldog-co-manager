@@ -339,20 +339,24 @@ export async function exportAttendanceToExcel(): Promise<void> {
   // Create workbook
   const wb = XLSX.utils.book_new();
   
-  // Header row template
-  const headerRow = ['Name', ...allDates.map(d => {
-    const [year, month, day] = d.split('-');
-    return `${month}/${day}/${year}`;
-  }), 'Total Present', 'Total Excused', 'Total Unexcused'];
+  // Filter dates by day of week for Lab (Thursday = 4) and Tactics (Tuesday = 2)
+  const labDates = allDates.filter(dateStr => getDayOfWeek(dateStr) === 4); // Thursdays only
+  const tacticsDates = allDates.filter(dateStr => getDayOfWeek(dateStr) === 2); // Tuesdays only
   
   // Create sheets for PT, Lab, and Tactics
-  const attendanceTypes: Array<{ type: 'PT' | 'Lab' | 'Tactics', name: string }> = [
-    { type: 'PT', name: 'PT' },
-    { type: 'Lab', name: 'Lab' },
-    { type: 'Tactics', name: 'Tactics' }
+  const attendanceTypes: Array<{ type: 'PT' | 'Lab' | 'Tactics', name: string, dates: string[] }> = [
+    { type: 'PT', name: 'PT', dates: allDates },
+    { type: 'Lab', name: 'Lab', dates: labDates },
+    { type: 'Tactics', name: 'Tactics', dates: tacticsDates }
   ];
   
-  for (const { type, name } of attendanceTypes) {
+  for (const { type, name, dates: sheetDates } of attendanceTypes) {
+    // Header row for this sheet
+    const headerRow = ['Name', ...sheetDates.map(d => {
+      const [year, month, day] = d.split('-');
+      return `${month}/${day}/${year}`;
+    }), 'Total Present', 'Total Excused', 'Total Unexcused'];
+    
     // Get attendance data for this type
     const cadetAttendanceData = new Map<string, CadetAttendanceData>();
     
@@ -368,9 +372,8 @@ export async function exportAttendanceToExcel(): Promise<void> {
         let totalExcused = 0;
         let totalUnexcused = 0;
         
-        // Get attendance for each date
-        for (const dateStr of allDates) {
-          const dayOfWeek = getDayOfWeek(dateStr);
+        // Get attendance only for relevant dates for this sheet
+        for (const dateStr of sheetDates) {
           const weekStart = getWeekStart(dateStr);
           const weekRecords = attendanceRecordsByWeek.get(weekStart);
           const record = weekRecords?.get(cadet.id) ?? null;
@@ -430,7 +433,7 @@ export async function exportAttendanceToExcel(): Promise<void> {
         
         const row = [
           `${cadet.lastName}, ${cadet.firstName}`,
-          ...allDates.map(dateStr => {
+          ...sheetDates.map(dateStr => {
             // Return empty string - we'll color the cell based on status
             return '';
           }),
@@ -443,7 +446,7 @@ export async function exportAttendanceToExcel(): Promise<void> {
     }
     
     // Create and style the worksheet
-    const ws = createAttendanceSheet(wsData, cadetAttendanceData, allDates, msLevels);
+    const ws = createAttendanceSheet(wsData, cadetAttendanceData, sheetDates, msLevels);
     
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, name);
