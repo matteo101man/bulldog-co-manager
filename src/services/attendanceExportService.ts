@@ -339,13 +339,20 @@ export async function exportAttendanceToExcel(): Promise<void> {
   // Create workbook
   const wb = XLSX.utils.book_new();
   
-  // Filter dates by day of week for Lab (Thursday = 4) and Tactics (Tuesday = 2)
-  const labDates = allDates.filter(dateStr => getDayOfWeek(dateStr) === 4); // Thursdays only
-  const tacticsDates = allDates.filter(dateStr => getDayOfWeek(dateStr) === 2); // Tuesdays only
+  // Filter dates by day of week
+  // PT: Tuesday (2), Wednesday (3), Thursday (4)
+  const ptDates = allDates.filter(dateStr => {
+    const dayOfWeek = getDayOfWeek(dateStr);
+    return dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4;
+  });
+  // Lab: Thursday (4) only
+  const labDates = allDates.filter(dateStr => getDayOfWeek(dateStr) === 4);
+  // Tactics: Tuesday (2) only
+  const tacticsDates = allDates.filter(dateStr => getDayOfWeek(dateStr) === 2);
   
   // Create sheets for PT, Lab, and Tactics
   const attendanceTypes: Array<{ type: 'PT' | 'Lab' | 'Tactics', name: string, dates: string[] }> = [
-    { type: 'PT', name: 'PT', dates: allDates },
+    { type: 'PT', name: 'PT', dates: ptDates },
     { type: 'Lab', name: 'Lab', dates: labDates },
     { type: 'Tactics', name: 'Tactics', dates: tacticsDates }
   ];
