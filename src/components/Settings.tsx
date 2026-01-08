@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { clearAllAttendance } from '../services/attendanceService';
 import { 
   sendNotificationToAll, 
@@ -6,6 +6,12 @@ import {
   isNotificationSupported,
   getNotificationPermission 
 } from '../services/notificationService';
+import { 
+  exportDatabase, 
+  downloadBackup, 
+  importDatabase, 
+  readBackupFile 
+} from '../services/backupService';
 
 interface SettingsProps {
   onBack: () => void;
@@ -17,6 +23,9 @@ export default function Settings({ onBack }: SettingsProps) {
   const [sending, setSending] = useState(false);
   const [notificationSupported, setNotificationSupported] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setNotificationSupported(isNotificationSupported());
@@ -71,6 +80,65 @@ export default function Settings({ onBack }: SettingsProps) {
     }
   }
 
+  async function handleExportDatabase() {
+    setExporting(true);
+    try {
+      const backup = await exportDatabase();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+      downloadBackup(backup, `bulldog-co-manager-backup-${timestamp}.json`);
+      alert('Database exported successfully! The backup file has been downloaded.');
+    } catch (error) {
+      console.error('Error exporting database:', error);
+      alert(`Error exporting database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleImportDatabase() {
+    if (!fileInputRef.current) return;
+
+    const file = fileInputRef.current.files?.[0];
+    if (!file) {
+      alert('Please select a backup file to import.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'WARNING: This will replace all existing data with the backup data. This action cannot be undone. Are you sure you want to continue?'
+    );
+
+    if (!confirmed) {
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const backup = await readBackupFile(file);
+      await importDatabase(backup, true);
+      alert('Database imported successfully! The page will now reload to show the restored data.');
+      // Reload the page to show the restored data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error importing database:', error);
+      alert(`Error importing database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setImporting(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }
+
+  function handleImportButtonClick() {
+    fileInputRef.current?.click();
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-safe-area-inset-bottom">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
@@ -93,6 +161,50 @@ export default function Settings({ onBack }: SettingsProps) {
           <div className="space-y-4">
             <div>
               <p className="text-sm text-gray-600 mb-2">
+                Export all database data to a JSON backup file. This includes cadets, attendance records, PT plans, training events, and notifications.
+              </p>
+              <button
+                onClick={handleExportDatabase}
+                disabled={exporting}
+                className={`w-full py-3 px-4 rounded-lg font-semibold text-white touch-manipulation min-h-[44px] ${
+                  exporting
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                }`}
+              >
+                {exporting ? 'Exporting...' : 'Export Database'}
+              </button>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Import a backup file to restore the database. This will replace all existing data with the backup data.
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportDatabase}
+                className="hidden"
+              />
+              <button
+                onClick={handleImportButtonClick}
+                disabled={importing}
+                className={`w-full py-3 px-4 rounded-lg font-semibold text-white touch-manipulation min-h-[44px] ${
+                  importing
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800'
+                }`}
+              >
+                {importing ? 'Importing...' : 'Import Database'}
+              </button>
+              <p className="text-xs text-red-600 mt-2">
+                ⚠️ Warning: Importing will replace all existing data. Make sure to export a backup first if you want to keep current data.
+              </p>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-sm text-gray-600 mb-2">
                 Clear all attendance data. This will reset all attendance records to blank (—) for all cadets and all weeks.
               </p>
               <button
@@ -104,7 +216,7 @@ export default function Settings({ onBack }: SettingsProps) {
                     : 'bg-red-600 hover:bg-red-700 active:bg-red-800'
                 }`}
               >
-                {clearing ? 'Clearing...' : 'Clear Database'}
+                {clearing ? 'Clearing...' : 'Clear Attendance Data'}
               </button>
             </div>
           </div>
