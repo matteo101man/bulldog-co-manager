@@ -34,21 +34,9 @@ export default function Attendance({ onBack, onSelectCompany, onTactics, onIssue
     <div className="min-h-screen bg-gray-50 pb-safe-area-inset-bottom">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
         <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-gray-900">
-              Attendance
-            </h1>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`text-sm font-medium touch-manipulation min-h-[44px] px-3 ${
-                activeTab === 'settings'
-                  ? 'text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Settings
-            </button>
-          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            Attendance
+          </h1>
           <button
             onClick={onBack}
             className="text-sm text-blue-600 font-medium touch-manipulation min-h-[44px] min-w-[44px]"
@@ -80,6 +68,16 @@ export default function Attendance({ onBack, onSelectCompany, onTactics, onIssue
             className="flex-1 px-4 py-3 text-sm font-medium touch-manipulation min-h-[44px] text-gray-600 hover:text-gray-900"
           >
             Issues
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex-1 px-4 py-3 text-sm font-medium touch-manipulation min-h-[44px] ${
+              activeTab === 'settings'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Settings
           </button>
         </div>
       </header>
