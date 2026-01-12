@@ -13,6 +13,7 @@ import {
   readBackupFile 
 } from '../services/backupService';
 import { exportAttendanceToExcel } from '../services/attendanceExportService';
+import { logout } from '../services/authService';
 
 interface SettingsProps {
   onBack: () => void;
@@ -154,6 +155,15 @@ export default function Settings({ onBack }: SettingsProps) {
     }
   }
 
+  function handleLogout() {
+    const confirmed = window.confirm('Are you sure you want to log out?');
+    if (confirmed) {
+      logout();
+      // Reload the page to trigger authentication check
+      window.location.reload();
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-safe-area-inset-bottom">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
@@ -161,8 +171,7 @@ export default function Settings({ onBack }: SettingsProps) {
           <h1 className="text-xl font-bold text-gray-900">Settings</h1>
           <button
             onClick={onBack}
-            className="text-sm text-blue-600 font-medium touch-manipulation"
-            style={{ minHeight: '44px', minWidth: '44px' }}
+            className="text-sm text-blue-600 font-medium touch-manipulation min-h-[44px] min-w-[44px]"
           >
             Home
           </button>
@@ -218,6 +227,8 @@ export default function Settings({ onBack }: SettingsProps) {
                 accept=".json"
                 onChange={handleImportDatabase}
                 className="hidden"
+                aria-label="Import database backup file"
+                title="Import database backup file"
               />
               <button
                 onClick={handleImportButtonClick}
@@ -299,6 +310,22 @@ export default function Settings({ onBack }: SettingsProps) {
 
             <p className="text-xs text-gray-500">
               This will send a push notification to all users who have enabled notifications.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Account</h2>
+          
+          <div className="space-y-4">
+            <button
+              onClick={handleLogout}
+              className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 touch-manipulation min-h-[44px]"
+            >
+              Log Out
+            </button>
+            <p className="text-xs text-gray-500">
+              Log out of your account. You will need to sign in again to access the application.
             </p>
           </div>
         </div>

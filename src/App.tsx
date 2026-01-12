@@ -17,7 +17,9 @@ import WeatherData from './components/WeatherData';
 import Forms from './components/Forms';
 import ExpenseRequestForm from './components/ExpenseRequestForm';
 import NotificationPrompt from './components/NotificationPrompt';
+import Login from './components/Login';
 import { Company } from './types';
+import { isAuthenticated } from './services/authService';
 import { 
   requestNotificationPermission, 
   isNotificationSupported,
@@ -38,14 +40,28 @@ function App() {
   const [rosterRefreshKey, setRosterRefreshKey] = useState(0);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
   const [fromTactics, setFromTactics] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
+    // Check authentication status on mount
+    setAuthenticated(isAuthenticated());
+    setCheckingAuth(false);
+    
     // Small delay to ensure DOM is ready
     setIsLoading(false);
     
-    // Initialize notifications on app load
-    initializeNotifications();
+    // Initialize notifications on app load (only if authenticated)
+    if (isAuthenticated()) {
+      initializeNotifications();
+    }
   }, []);
+
+  const handleLoginSuccess = () => {
+    setAuthenticated(true);
+    // Initialize notifications after successful login
+    initializeNotifications();
+  };
 
   async function initializeNotifications() {
     // Only run in browser environment
@@ -89,12 +105,18 @@ function App() {
     }
   }
 
-  if (isLoading) {
+  // Show loading while checking authentication
+  if (checkingAuth || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>
       </div>
     );
+  }
+
+  // Show login page if not authenticated
+  if (!authenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   if (attendanceCompany && currentView === 'attendance-company') {
