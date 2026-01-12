@@ -188,7 +188,7 @@ export default function TrainingEventDetail({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               {isEditing ? (
                 <input
                   type="date"
@@ -198,6 +198,49 @@ export default function TrainingEventDetail({
                 />
               ) : (
                 <div className="text-gray-900">{new Date(event.date).toLocaleDateString()}</div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              {isEditing ? (
+                <input
+                  type="date"
+                  value={editedEvent.endDate || ''}
+                  onChange={(e) => setEditedEvent({ ...editedEvent, endDate: e.target.value || undefined })}
+                  min={editedEvent.date || undefined}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              ) : (
+                <div className="text-gray-900">
+                  {event.endDate ? new Date(event.endDate).toLocaleDateString() : 'Not set'}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hit Time</label>
+              {isEditing ? (
+                <input
+                  type="time"
+                  value={editedEvent.hitTime || ''}
+                  onChange={(e) => setEditedEvent({ ...editedEvent, hitTime: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              ) : (
+                <div className="text-gray-900">
+                  {event.hitTime ? (() => {
+                    // Format time display - handle both HH:mm and HHmm formats
+                    const time = event.hitTime;
+                    if (time.includes(':')) {
+                      return time;
+                    } else if (time.length === 4) {
+                      // Format as HH:mm
+                      return `${time.substring(0, 2)}:${time.substring(2)}`;
+                    }
+                    return time;
+                  })() : 'Not set'}
+                </div>
               )}
             </div>
 

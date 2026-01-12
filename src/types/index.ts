@@ -55,6 +55,8 @@ export interface TrainingEvent {
   id: string;
   name: string;
   date: string; // ISO date string
+  endDate?: string; // ISO date string for multi-day events
+  hitTime?: string; // Hit time (e.g., "0600", "14:30")
   oicId?: string; // Cadet ID
   ncoicId?: string; // Cadet ID
   ao?: string; // Area of Operations

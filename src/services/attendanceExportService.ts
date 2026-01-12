@@ -467,7 +467,7 @@ export async function exportAttendanceToExcel(): Promise<void> {
 }
 
 /**
- * Export last week absences to Excel
+ * Export last week absences to Excel with separate sheets for PT, Lab, and Tactics
  * Only includes cadets who were absent (unexcused or excused) in the last week
  * Shows which specific days they were absent and total absences for the semester
  * Includes Tuesday of the current week
@@ -494,21 +494,30 @@ export async function exportLastWeekAbsences(): Promise<void> {
   currentTuesday.setDate(currentTuesday.getDate() + 1); // Monday + 1 = Tuesday
   const currentTuesdayStr = `${currentTuesday.getFullYear()}-${String(currentTuesday.getMonth() + 1).padStart(2, '0')}-${String(currentTuesday.getDate()).padStart(2, '0')}`;
   
-  // Get dates for last week (Tuesday, Wednesday, Thursday)
+  // Get dates for last week
   const lastWeekDates: string[] = [];
   for (let i = 0; i < 7; i++) {
     const date = new Date(lastWeekStartDate);
     date.setDate(date.getDate() + i);
-    const dayOfWeek = date.getDay();
-    // Only include Tuesday (2), Wednesday (3), Thursday (4)
-    if (dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) {
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      lastWeekDates.push(dateStr);
-    }
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    lastWeekDates.push(dateStr);
   }
   
-  // Add current week Tuesday
-  const datesToShow = [...lastWeekDates, currentTuesdayStr];
+  // Filter dates by attendance type
+  // PT: Tuesday (2), Wednesday (3), Thursday (4)
+  const ptDates = lastWeekDates.filter(dateStr => {
+    const dayOfWeek = getDayOfWeek(dateStr);
+    return dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4;
+  });
+  // Lab: Thursday (4) only
+  const labDates = lastWeekDates.filter(dateStr => getDayOfWeek(dateStr) === 4);
+  // Tactics: Tuesday (2) only
+  const tacticsDates = lastWeekDates.filter(dateStr => getDayOfWeek(dateStr) === 2);
+  
+  // Add current week Tuesday to PT and Tactics
+  const ptDatesToShow = [...ptDates, currentTuesdayStr];
+  const tacticsDatesToShow = [...tacticsDates, currentTuesdayStr];
+  const labDatesToShow = [...labDates]; // Lab doesn't include current week Tuesday
   
   // Get all cadets
   const msLevels = ['MS1', 'MS2', 'MS3', 'MS4', 'MS5'];
@@ -538,205 +547,201 @@ export async function exportLastWeekAbsences(): Promise<void> {
     allSemesterRecords.set(weekStart, weekRecords);
   }
   
-  // Find cadets who were absent in last week
-  const absentCadets = new Map<string, {
-    cadet: Cadet;
-    absences: Map<string, AttendanceStatus>; // date -> status (excused/unexcused) for all dates to show
-    semesterTotalAbsences: number;
-  }>();
-  
-  for (const [level, cadets] of cadetsByLevel) {
-    for (const cadet of cadets) {
-      const lastWeekRecord = lastWeekRecords.get(cadet.id);
-      const currentWeekRecord = currentWeekRecords.get(cadet.id);
-      const absences = new Map<string, AttendanceStatus>();
-      let hadAbsence = false;
-      
-      // Check last week dates
-      for (const dateStr of lastWeekDates) {
-        const dayOfWeek = getDayOfWeek(dateStr);
-        let status: AttendanceStatus | null = null;
-        
-        if (dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) {
-          status = getPTAttendanceForDate(lastWeekRecord, dateStr);
-        }
-        
-        // Only count excused or unexcused as absences
-        if (status === 'excused' || status === 'unexcused') {
-          absences.set(dateStr, status);
-          hadAbsence = true;
-        }
-      }
-      
-      // Check current week Tuesday
-      const currentTuesdayStatus = getPTAttendanceForDate(currentWeekRecord, currentTuesdayStr);
-      if (currentTuesdayStatus === 'excused' || currentTuesdayStatus === 'unexcused') {
-        absences.set(currentTuesdayStr, currentTuesdayStatus);
-        // Include in export even if they weren't absent last week but are absent this Tuesday
-        if (!hadAbsence) hadAbsence = true;
-      }
-      
-      // Only include if they had at least one absence last week or current Tuesday
-      if (hadAbsence) {
-        // Calculate total semester absences
-        let semesterTotalAbsences = 0;
-        for (const [weekStart, weekRecords] of allSemesterRecords) {
-          const record = weekRecords.get(cadet.id);
-          if (!record) continue;
-          
-          // Count PT absences (Tuesday, Wednesday, Thursday)
-          if (record.ptTuesday === 'excused' || record.ptTuesday === 'unexcused') semesterTotalAbsences++;
-          if (record.ptWednesday === 'excused' || record.ptWednesday === 'unexcused') semesterTotalAbsences++;
-          if (record.ptThursday === 'excused' || record.ptThursday === 'unexcused') semesterTotalAbsences++;
-        }
-        
-        absentCadets.set(cadet.id, {
-          cadet,
-          absences,
-          semesterTotalAbsences
-        });
-      }
-    }
-  }
-  
   // Create workbook
   const wb = XLSX.utils.book_new();
   
-  // Header row
-  const headerRow = [
-    'Name',
-    ...datesToShow.map(d => {
-      const [year, month, day] = d.split('-');
-      return `${month}/${day}/${year}`;
-    }),
-    'Total Semester Absences'
-  ];
-  
-  // Create worksheet data
-  const wsData: any[][] = [];
-  wsData.push(headerRow);
-  
-  // Add data for each MS level
-  for (const level of msLevels) {
-    const cadets = cadetsByLevel.get(level);
-    if (!cadets || cadets.length === 0) continue;
-    
-    // Filter to only absent cadets
-    const absentCadetsForLevel = cadets.filter(c => absentCadets.has(c.id));
-    if (absentCadetsForLevel.length === 0) continue;
-    
-    // MS Level header row
-    const levelHeaderRow = new Array(headerRow.length).fill('');
-    levelHeaderRow[0] = level;
-    wsData.push(levelHeaderRow);
-    
-    // Add cadet rows
-    for (const cadet of absentCadetsForLevel) {
-      const data = absentCadets.get(cadet.id);
-      if (!data) continue;
-      
-      const row = [
-        `${cadet.lastName}, ${cadet.firstName}`,
-        ...datesToShow.map(dateStr => {
-          const absence = data.absences.get(dateStr);
-          if (absence === 'unexcused') return 'U';
-          if (absence === 'excused') return 'E';
-          return '';
-        }),
-        data.semesterTotalAbsences
-      ];
-      wsData.push(row);
-    }
-  }
-  
-  // Create worksheet
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  
-  // Set column widths
-  ws['!cols'] = [
-    { wch: 20 }, // Name column
-    ...datesToShow.map(() => ({ wch: 12 })), // Date columns
-    { wch: 20 } // Total absences column
-  ];
-  
-  // Apply styling
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  
-  // Style header row
-  for (let C = 0; C <= range.e.c; C++) {
-    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (!ws[cellAddress]) continue;
-    ws[cellAddress].s = {
-      fill: { fgColor: { rgb: 'FFD3D3D3' } },
-      font: { bold: true, sz: 12, color: { rgb: 'FF000000' } },
-      alignment: { horizontal: 'center', vertical: 'center' },
-      border: {
-        top: { style: 'thin', color: { rgb: 'FF000000' } },
-        bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-        left: { style: 'thin', color: { rgb: 'FF000000' } },
-        right: { style: 'thin', color: { rgb: 'FF000000' } }
+  // Create sheets for PT, Lab, and Tactics
+  const attendanceTypes: Array<{ 
+    type: 'PT' | 'Lab' | 'Tactics', 
+    name: string, 
+    dates: string[],
+    getStatus: (record: AttendanceRecord | null, dateStr: string, cadetMSLevel?: string) => AttendanceStatus | null,
+    getSemesterTotal: (record: AttendanceRecord | null) => number
+  }> = [
+    { 
+      type: 'PT', 
+      name: 'PT', 
+      dates: ptDatesToShow,
+      getStatus: (record, dateStr) => getPTAttendanceForDate(record, dateStr),
+      getSemesterTotal: (record) => {
+        if (!record) return 0;
+        let total = 0;
+        if (record.ptTuesday === 'excused' || record.ptTuesday === 'unexcused') total++;
+        if (record.ptWednesday === 'excused' || record.ptWednesday === 'unexcused') total++;
+        if (record.ptThursday === 'excused' || record.ptThursday === 'unexcused') total++;
+        return total;
       }
-    };
-  }
+    },
+    { 
+      type: 'Lab', 
+      name: 'Lab', 
+      dates: labDatesToShow,
+      getStatus: (record, dateStr) => getLabAttendanceForDate(record, dateStr),
+      getSemesterTotal: (record) => {
+        if (!record) return 0;
+        return (record.labThursday === 'excused' || record.labThursday === 'unexcused') ? 1 : 0;
+      }
+    },
+    { 
+      type: 'Tactics', 
+      name: 'Tactics', 
+      dates: tacticsDatesToShow,
+      getStatus: (record, dateStr, cadetMSLevel) => getTacticsAttendanceForDate(record, dateStr, cadetMSLevel),
+      getSemesterTotal: (record) => {
+        if (!record) return 0;
+        return (record.tacticsTuesday === 'excused' || record.tacticsTuesday === 'unexcused') ? 1 : 0;
+      }
+    }
+  ];
   
-  // Style data rows
-  for (let R = 1; R <= range.e.r; R++) {
-    const row = wsData[R];
-    if (!row) continue;
+  for (const { type, name, dates: sheetDates, getStatus, getSemesterTotal } of attendanceTypes) {
+    // Find cadets who were absent in last week for this type
+    const absentCadets = new Map<string, {
+      cadet: Cadet;
+      absences: Map<string, AttendanceStatus>;
+      semesterTotalAbsences: number;
+    }>();
     
-    // Style MS level header rows
-    if (msLevels.includes(row[0])) {
-      const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
-      if (ws[cellAddress]) {
-        ws[cellAddress].s = {
-          fill: { fgColor: { rgb: 'FFD3D3D3' } },
-          font: { bold: true, sz: 12, color: { rgb: 'FF000000' } },
-          alignment: { horizontal: 'center', vertical: 'center' },
-          border: {
-            top: { style: 'thin', color: { rgb: 'FF000000' } },
-            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-            left: { style: 'thin', color: { rgb: 'FF000000' } },
-            right: { style: 'thin', color: { rgb: 'FF000000' } }
+    for (const [level, cadets] of cadetsByLevel) {
+      for (const cadet of cadets) {
+        // For Tactics, only include MS3 cadets
+        if (type === 'Tactics' && cadet.militaryScienceLevel !== 'MS3') {
+          continue;
+        }
+        
+        const lastWeekRecord = lastWeekRecords.get(cadet.id);
+        const currentWeekRecord = currentWeekRecords.get(cadet.id);
+        const absences = new Map<string, AttendanceStatus>();
+        let hadAbsence = false;
+        
+        // Check last week dates for this type
+        for (const dateStr of sheetDates) {
+          // Skip current week Tuesday if it's not in the last week dates
+          if (dateStr === currentTuesdayStr && !lastWeekDates.includes(dateStr)) {
+            const status = getStatus(currentWeekRecord, dateStr, cadet.militaryScienceLevel);
+            if (status === 'excused' || status === 'unexcused') {
+              absences.set(dateStr, status);
+              hadAbsence = true;
+            }
+          } else if (lastWeekDates.includes(dateStr)) {
+            const status = getStatus(lastWeekRecord, dateStr, cadet.militaryScienceLevel);
+            if (status === 'excused' || status === 'unexcused') {
+              absences.set(dateStr, status);
+              hadAbsence = true;
+            }
           }
-        };
+        }
+        
+        // Only include if they had at least one absence
+        if (hadAbsence) {
+          // Calculate total semester absences for this type
+          let semesterTotalAbsences = 0;
+          for (const [weekStart, weekRecords] of allSemesterRecords) {
+            const record = weekRecords.get(cadet.id);
+            semesterTotalAbsences += getSemesterTotal(record);
+          }
+          
+          absentCadets.set(cadet.id, {
+            cadet,
+            absences,
+            semesterTotalAbsences
+          });
+        }
       }
-      continue;
     }
     
-    // Style cadet rows
-    for (let C = 0; C <= range.e.c; C++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-      if (!ws[cellAddress]) continue;
+    // Header row
+    const headerRow = [
+      'Name',
+      ...sheetDates.map(d => {
+        const [year, month, day] = d.split('-');
+        return `${month}/${day}/${year}`;
+      }),
+      'Total Semester Absences'
+    ];
+    
+    // Create worksheet data
+    const wsData: any[][] = [];
+    wsData.push(headerRow);
+    
+    // Add data for each MS level
+    for (const level of msLevels) {
+      const cadets = cadetsByLevel.get(level);
+      if (!cadets || cadets.length === 0) continue;
       
-      // Color absence cells
-      if (C > 0 && C <= datesToShow.length) {
-        const value = row[C];
-        if (value === 'U') {
+      // Filter to only absent cadets for this type
+      const filteredCadets = type === 'Tactics' 
+        ? cadets.filter(c => c.militaryScienceLevel === 'MS3' && absentCadets.has(c.id))
+        : cadets.filter(c => absentCadets.has(c.id));
+      
+      if (filteredCadets.length === 0) continue;
+      
+      // MS Level header row
+      const levelHeaderRow = new Array(headerRow.length).fill('');
+      levelHeaderRow[0] = level;
+      wsData.push(levelHeaderRow);
+      
+      // Add cadet rows
+      for (const cadet of filteredCadets) {
+        const data = absentCadets.get(cadet.id);
+        if (!data) continue;
+        
+        const row = [
+          `${cadet.lastName}, ${cadet.firstName}`,
+          ...sheetDates.map(dateStr => {
+            const absence = data.absences.get(dateStr);
+            if (absence === 'unexcused') return 'U';
+            if (absence === 'excused') return 'E';
+            return '';
+          }),
+          data.semesterTotalAbsences
+        ];
+        wsData.push(row);
+      }
+    }
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 20 }, // Name column
+      ...sheetDates.map(() => ({ wch: 12 })), // Date columns
+      { wch: 20 } // Total absences column
+    ];
+    
+    // Apply styling
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    
+    // Style header row
+    for (let C = 0; C <= range.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!ws[cellAddress]) continue;
+      ws[cellAddress].s = {
+        fill: { fgColor: { rgb: 'FFD3D3D3' } },
+        font: { bold: true, sz: 12, color: { rgb: 'FF000000' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'FF000000' } },
+          bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+          left: { style: 'thin', color: { rgb: 'FF000000' } },
+          right: { style: 'thin', color: { rgb: 'FF000000' } }
+        }
+      };
+    }
+    
+    // Style data rows
+    for (let R = 1; R <= range.e.r; R++) {
+      const row = wsData[R];
+      if (!row) continue;
+      
+      // Style MS level header rows
+      if (msLevels.includes(row[0])) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+        if (ws[cellAddress]) {
           ws[cellAddress].s = {
-            fill: { fgColor: { rgb: 'FFFF6B6B' } },
-            font: { bold: true, color: { rgb: 'FF000000' } },
-            alignment: { horizontal: 'center', vertical: 'center' },
-            border: {
-              top: { style: 'thin', color: { rgb: 'FF000000' } },
-              bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-              left: { style: 'thin', color: { rgb: 'FF000000' } },
-              right: { style: 'thin', color: { rgb: 'FF000000' } }
-            }
-          };
-        } else if (value === 'E') {
-          ws[cellAddress].s = {
-            fill: { fgColor: { rgb: 'FFFFFF00' } },
-            font: { bold: true, color: { rgb: 'FF000000' } },
-            alignment: { horizontal: 'center', vertical: 'center' },
-            border: {
-              top: { style: 'thin', color: { rgb: 'FF000000' } },
-              bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-              left: { style: 'thin', color: { rgb: 'FF000000' } },
-              right: { style: 'thin', color: { rgb: 'FF000000' } }
-            }
-          };
-        } else {
-          ws[cellAddress].s = {
+            fill: { fgColor: { rgb: 'FFD3D3D3' } },
+            font: { bold: true, sz: 12, color: { rgb: 'FF000000' } },
             alignment: { horizontal: 'center', vertical: 'center' },
             border: {
               top: { style: 'thin', color: { rgb: 'FF000000' } },
@@ -746,23 +751,70 @@ export async function exportLastWeekAbsences(): Promise<void> {
             }
           };
         }
-      } else {
-        // Name and total columns
-        ws[cellAddress].s = {
-          alignment: { horizontal: C === 0 ? 'left' : 'center', vertical: 'center' },
-          border: {
-            top: { style: 'thin', color: { rgb: 'FF000000' } },
-            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-            left: { style: 'thin', color: { rgb: 'FF000000' } },
-            right: { style: 'thin', color: { rgb: 'FF000000' } }
+        continue;
+      }
+      
+      // Style cadet rows
+      for (let C = 0; C <= range.e.c; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cellAddress]) continue;
+        
+        // Color absence cells
+        if (C > 0 && C <= sheetDates.length) {
+          const value = row[C];
+          if (value === 'U') {
+            ws[cellAddress].s = {
+              fill: { fgColor: { rgb: 'FFFF6B6B' } },
+              font: { bold: true, color: { rgb: 'FF000000' } },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: 'FF000000' } },
+                bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+                left: { style: 'thin', color: { rgb: 'FF000000' } },
+                right: { style: 'thin', color: { rgb: 'FF000000' } }
+              }
+            };
+          } else if (value === 'E') {
+            ws[cellAddress].s = {
+              fill: { fgColor: { rgb: 'FFFFFF00' } },
+              font: { bold: true, color: { rgb: 'FF000000' } },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: 'FF000000' } },
+                bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+                left: { style: 'thin', color: { rgb: 'FF000000' } },
+                right: { style: 'thin', color: { rgb: 'FF000000' } }
+              }
+            };
+          } else {
+            ws[cellAddress].s = {
+              alignment: { horizontal: 'center', vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: 'FF000000' } },
+                bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+                left: { style: 'thin', color: { rgb: 'FF000000' } },
+                right: { style: 'thin', color: { rgb: 'FF000000' } }
+              }
+            };
           }
-        };
+        } else {
+          // Name and total columns
+          ws[cellAddress].s = {
+            alignment: { horizontal: C === 0 ? 'left' : 'center', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: 'FF000000' } },
+              bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+              left: { style: 'thin', color: { rgb: 'FF000000' } },
+              right: { style: 'thin', color: { rgb: 'FF000000' } }
+            }
+          };
+        }
       }
     }
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, name);
   }
-  
-  // Add worksheet to workbook
-  XLSX.utils.book_append_sheet(wb, ws, 'Last Week Absences');
   
   // Generate filename
   const filename = `last_week_absences_${lastWeekStart}.xlsx`;

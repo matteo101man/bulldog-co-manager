@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { addTrainingEvent, updateTrainingEvent } from '../services/trainingEventService';
-import { TrainingEvent, PlanningStatus } from '../types';
+import { getCadetsByCompany } from '../services/cadetService';
+import { TrainingEvent, PlanningStatus, Cadet } from '../types';
 
 interface AddTrainingEventProps {
   eventId?: string; // If provided, we're editing
@@ -11,10 +12,29 @@ interface AddTrainingEventProps {
 export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrainingEventProps) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [hitTime, setHitTime] = useState('');
+  const [oicId, setOicId] = useState('');
+  const [ncoicId, setNcoicId] = useState('');
   const [planningStatus, setPlanningStatus] = useState<PlanningStatus>('in-progress');
+  const [cadets, setCadets] = useState<Cadet[]>([]);
   const [loading, setLoading] = useState(!!eventId);
 
   useEffect(() => {
+    async function loadCadets() {
+      try {
+        const cadetsData = await getCadetsByCompany('Master');
+        setCadets(cadetsData.sort((a, b) => {
+          const lastNameCompare = a.lastName.localeCompare(b.lastName);
+          if (lastNameCompare !== 0) return lastNameCompare;
+          return a.firstName.localeCompare(b.firstName);
+        }));
+      } catch (error) {
+        console.error('Error loading cadets:', error);
+      }
+    }
+    loadCadets();
+
     if (eventId) {
       // Load existing event data if editing
       // This would require getTrainingEventById, but for now we'll just set defaults
@@ -36,7 +56,11 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
       const eventData: Omit<TrainingEvent, 'id'> = {
         name: name.trim(),
         date,
-        planningStatus
+        planningStatus,
+        ...(endDate && { endDate }),
+        ...(hitTime && { hitTime }),
+        ...(oicId && { oicId }),
+        ...(ncoicId && { ncoicId })
       };
 
       if (eventId) {
@@ -95,7 +119,7 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date <span className="text-red-500">*</span>
+              Start Date <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -104,6 +128,67 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              End Date (Optional - for multi-day events)
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={date || undefined}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Hit Time (Optional)
+            </label>
+            <input
+              type="time"
+              value={hitTime}
+              onChange={(e) => setHitTime(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              OIC (Optional)
+            </label>
+            <select
+              value={oicId}
+              onChange={(e) => setOicId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select OIC</option>
+              {cadets.map(cadet => (
+                <option key={cadet.id} value={cadet.id}>
+                  {cadet.lastName}, {cadet.firstName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              NCOIC (Optional)
+            </label>
+            <select
+              value={ncoicId}
+              onChange={(e) => setNcoicId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select NCOIC</option>
+              {cadets.map(cadet => (
+                <option key={cadet.id} value={cadet.id}>
+                  {cadet.lastName}, {cadet.firstName}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
