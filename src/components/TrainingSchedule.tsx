@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  getAllTrainingEvents, 
+  subscribeToTrainingEvents, 
   deleteTrainingEvent 
 } from '../services/trainingEventService';
 import { TrainingEvent, PlanningStatus } from '../types';
@@ -20,21 +20,24 @@ export default function TrainingSchedule({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadEvents();
-  }, []);
+    // Set up real-time listener
+    const unsubscribe = subscribeToTrainingEvents(
+      (updatedEvents) => {
+        setEvents(updatedEvents);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error in training events subscription:', error);
+        alert(`Error loading events: ${error.message}`);
+        setLoading(false);
+      }
+    );
 
-  async function loadEvents() {
-    setLoading(true);
-    try {
-      const allEvents = await getAllTrainingEvents();
-      setEvents(allEvents);
-    } catch (error) {
-      console.error('Error loading training events:', error);
-      alert(`Error loading events: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
-  }
+    // Cleanup: unsubscribe when component unmounts
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   async function handleDelete(eventId: string, eventName: string) {
     if (!confirm(`Are you sure you want to delete "${eventName}"?`)) {
@@ -42,7 +45,7 @@ export default function TrainingSchedule({
     }
     try {
       await deleteTrainingEvent(eventId);
-      await loadEvents();
+      // No need to reload - real-time listener will update automatically
     } catch (error) {
       console.error('Error deleting event:', error);
       alert(`Error deleting event: ${error instanceof Error ? error.message : 'Unknown error'}`);

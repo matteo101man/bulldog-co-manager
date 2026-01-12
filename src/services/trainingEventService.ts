@@ -8,7 +8,9 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  Timestamp 
+  Timestamp,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { TrainingEvent } from '../types';
@@ -28,6 +30,37 @@ export async function getAllTrainingEvents(): Promise<TrainingEvent[]> {
     id: doc.id,
     ...doc.data()
   } as TrainingEvent));
+}
+
+/**
+ * Subscribe to real-time updates for all training events
+ * Returns an unsubscribe function that should be called when done listening
+ */
+export function subscribeToTrainingEvents(
+  onUpdate: (events: TrainingEvent[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, TRAINING_EVENTS_COLLECTION),
+    orderBy('date', 'desc')
+  );
+  
+  return onSnapshot(
+    q,
+    (querySnapshot) => {
+      const events = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as TrainingEvent));
+      onUpdate(events);
+    },
+    (error) => {
+      console.error('Error in training events subscription:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  );
 }
 
 /**
