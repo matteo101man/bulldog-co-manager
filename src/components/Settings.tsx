@@ -12,7 +12,6 @@ import {
   importDatabase, 
   readBackupFile 
 } from '../services/backupService';
-import { exportAttendanceToExcel } from '../services/attendanceExportService';
 import { logout } from '../services/authService';
 
 interface SettingsProps {
@@ -27,7 +26,6 @@ export default function Settings({ onBack }: SettingsProps) {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [exportingAttendance, setExportingAttendance] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -142,19 +140,6 @@ export default function Settings({ onBack }: SettingsProps) {
     fileInputRef.current?.click();
   }
 
-  async function handleExportAttendance() {
-    setExportingAttendance(true);
-    try {
-      await exportAttendanceToExcel();
-      alert('Attendance exported successfully! The Excel file has been downloaded.');
-    } catch (error) {
-      console.error('Error exporting attendance:', error);
-      alert(`Error exporting attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setExportingAttendance(false);
-    }
-  }
-
   function handleLogout() {
     const confirmed = window.confirm('Are you sure you want to log out?');
     if (confirmed) {
@@ -184,23 +169,6 @@ export default function Settings({ onBack }: SettingsProps) {
           
           <div className="space-y-4">
             <div>
-              <p className="text-sm text-gray-600 mb-2">
-                Export attendance data to an Excel spreadsheet. Includes all cadets grouped by MS level with dates from January 20, 2026 to April 23, 2026.
-              </p>
-              <button
-                onClick={handleExportAttendance}
-                disabled={exportingAttendance}
-                className={`w-full py-3 px-4 rounded-lg font-semibold text-white touch-manipulation min-h-[44px] ${
-                  exportingAttendance
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700 active:bg-green-800'
-                }`}
-              >
-                {exportingAttendance ? 'Exporting...' : 'Export Attendance'}
-              </button>
-            </div>
-
-            <div className="border-t border-gray-200 pt-4">
               <p className="text-sm text-gray-600 mb-2">
                 Export all database data to a JSON backup file. This includes cadets, attendance records, PT plans, training events, and notifications.
               </p>
