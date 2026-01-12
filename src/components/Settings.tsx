@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { clearAllAttendance } from '../services/attendanceService';
 import { 
   sendNotificationToAll, 
   requestNotificationPermission, 
@@ -19,7 +18,6 @@ interface SettingsProps {
 }
 
 export default function Settings({ onBack }: SettingsProps) {
-  const [clearing, setClearing] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [notificationSupported, setNotificationSupported] = useState(false);
@@ -32,25 +30,6 @@ export default function Settings({ onBack }: SettingsProps) {
     setNotificationSupported(isNotificationSupported());
     setNotificationPermission(getNotificationPermission());
   }, []);
-
-  async function handleClearDatabase() {
-    const confirmed = window.confirm(
-      'Are you sure you want to clear all attendance data? This will reset all attendance records to blank (—). This action cannot be undone.'
-    );
-
-    if (!confirmed) return;
-
-    setClearing(true);
-    try {
-      await clearAllAttendance();
-      alert('All attendance data has been cleared successfully.');
-    } catch (error) {
-      console.error('Error clearing database:', error);
-      alert(`Error clearing database: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setClearing(false);
-    }
-  }
 
   async function handleSendNotification() {
     if (!notificationMessage.trim()) {
@@ -214,22 +193,6 @@ export default function Settings({ onBack }: SettingsProps) {
               </p>
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-sm text-gray-600 mb-2">
-                Clear all attendance data. This will reset all attendance records to blank (—) for all cadets and all weeks.
-              </p>
-              <button
-                onClick={handleClearDatabase}
-                disabled={clearing}
-                className={`w-full py-3 px-4 rounded-lg font-semibold text-white touch-manipulation min-h-[44px] ${
-                  clearing
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700 active:bg-red-800'
-                }`}
-              >
-                {clearing ? 'Clearing...' : 'Clear Attendance Data'}
-              </button>
-            </div>
           </div>
         </div>
 
