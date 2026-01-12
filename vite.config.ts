@@ -68,6 +68,29 @@ export default defineConfig({
       }
     })
   ],
-  base: '/bulldog-co-manager/'
+  base: '/bulldog-co-manager/',
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            if (id.includes('firebase')) {
+              return 'firebase-vendor';
+            }
+            if (id.includes('xlsx-js-style')) {
+              return 'xlsx-vendor';
+            }
+            // Other node_modules go into a vendor chunk
+            return 'vendor';
+          }
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600
+  }
 });
 

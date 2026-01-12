@@ -11,7 +11,7 @@ interface AttendanceProps {
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Master'];
 
-type Tab = 'companies' | 'tactics' | 'issues' | 'settings';
+type Tab = 'companies' | 'issues' | 'settings';
 
 export default function Attendance({ onBack, onSelectCompany, onTactics, onIssues }: AttendanceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('companies');
@@ -58,12 +58,6 @@ export default function Attendance({ onBack, onSelectCompany, onTactics, onIssue
             Companies
           </button>
           <button
-            onClick={onTactics}
-            className="flex-1 px-4 py-3 text-sm font-medium touch-manipulation min-h-[44px] text-gray-600 hover:text-gray-900"
-          >
-            Tactics
-          </button>
-          <button
             onClick={onIssues}
             className="flex-1 px-4 py-3 text-sm font-medium touch-manipulation min-h-[44px] text-gray-600 hover:text-gray-900"
           >
@@ -100,6 +94,14 @@ export default function Attendance({ onBack, onSelectCompany, onTactics, onIssue
                   </span>
                 </button>
               ))}
+              <button
+                onClick={onTactics}
+                className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation min-h-[44px]"
+              >
+                <span className="text-lg font-semibold text-gray-900">
+                  Tactics
+                </span>
+              </button>
             </div>
           </>
         )}

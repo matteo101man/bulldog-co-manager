@@ -1,22 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import CompanySelector from './components/CompanySelector';
-import CompanyRoster from './components/CompanyRoster';
-import Settings from './components/Settings';
-import Issues from './components/Issues';
-import CadetsList from './components/CadetsList';
-import CadetProfile from './components/CadetProfile';
-import AddCadet from './components/AddCadet';
-import TrainingLanding from './components/TrainingLanding';
-import TrainingSchedule from './components/TrainingSchedule';
-import TrainingEventDetail from './components/TrainingEventDetail';
-import AddTrainingEvent from './components/AddTrainingEvent';
-import Attendance from './components/Attendance';
-import TacticsAttendance from './components/TacticsAttendance';
-import PTPlans from './components/PTPlans';
-import WeatherData from './components/WeatherData';
-import Forms from './components/Forms';
-import ExpenseRequestForm from './components/ExpenseRequestForm';
-import NotificationPrompt from './components/NotificationPrompt';
 import Login from './components/Login';
 import { Company } from './types';
 import { isAuthenticated } from './services/authService';
@@ -26,6 +9,32 @@ import {
   getNotificationPermission,
   onMessageListener 
 } from './services/notificationService';
+
+// Lazy load components for code splitting
+const CompanyRoster = React.lazy(() => import('./components/CompanyRoster'));
+const Settings = React.lazy(() => import('./components/Settings'));
+const Issues = React.lazy(() => import('./components/Issues'));
+const CadetsList = React.lazy(() => import('./components/CadetsList'));
+const CadetProfile = React.lazy(() => import('./components/CadetProfile'));
+const AddCadet = React.lazy(() => import('./components/AddCadet'));
+const TrainingLanding = React.lazy(() => import('./components/TrainingLanding'));
+const TrainingSchedule = React.lazy(() => import('./components/TrainingSchedule'));
+const TrainingEventDetail = React.lazy(() => import('./components/TrainingEventDetail'));
+const AddTrainingEvent = React.lazy(() => import('./components/AddTrainingEvent'));
+const Attendance = React.lazy(() => import('./components/Attendance'));
+const TacticsAttendance = React.lazy(() => import('./components/TacticsAttendance'));
+const PTPlans = React.lazy(() => import('./components/PTPlans'));
+const WeatherData = React.lazy(() => import('./components/WeatherData'));
+const Forms = React.lazy(() => import('./components/Forms'));
+const ExpenseRequestForm = React.lazy(() => import('./components/ExpenseRequestForm'));
+const NotificationPrompt = React.lazy(() => import('./components/NotificationPrompt'));
+
+// Loading component for Suspense fallback
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-gray-600">Loading...</div>
+  </div>
+);
 
 type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-landing' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans' | 'weather-data' | 'forms' | 'expense-request-form';
 
@@ -121,223 +130,261 @@ function App() {
 
   if (attendanceCompany && currentView === 'attendance-company') {
     return (
-      <CompanyRoster 
-        key={`${attendanceCompany}-${rosterRefreshKey}`}
-        company={attendanceCompany} 
-        onBack={() => {
-          setAttendanceCompany(null);
-          setCurrentView('attendance');
-        }}
-        onSelectCadet={(cadetId) => {
-          setSelectedCadetId(cadetId);
-          setCurrentView('cadet-profile');
-        }}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <CompanyRoster 
+          key={`${attendanceCompany}-${rosterRefreshKey}`}
+          company={attendanceCompany} 
+          onBack={() => {
+            setAttendanceCompany(null);
+            setCurrentView('attendance');
+          }}
+          onSelectCadet={(cadetId) => {
+            setSelectedCadetId(cadetId);
+            setCurrentView('cadet-profile');
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (selectedCompany && currentView !== 'cadet-profile' && currentView !== 'attendance' && currentView !== 'pt-plans' && currentView !== 'attendance-company') {
     return (
-      <CompanyRoster 
-        key={`${selectedCompany}-${rosterRefreshKey}`}
-        company={selectedCompany} 
-        onBack={() => setSelectedCompany(null)}
-        onSelectCadet={(cadetId) => {
-          setSelectedCadetId(cadetId);
-          setCurrentView('cadet-profile');
-        }}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <CompanyRoster 
+          key={`${selectedCompany}-${rosterRefreshKey}`}
+          company={selectedCompany} 
+          onBack={() => setSelectedCompany(null)}
+          onSelectCadet={(cadetId) => {
+            setSelectedCadetId(cadetId);
+            setCurrentView('cadet-profile');
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'settings') {
-    return <Settings onBack={() => setCurrentView('companies')} />;
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <Settings onBack={() => setCurrentView('companies')} />
+      </Suspense>
+    );
   }
 
   if (currentView === 'issues') {
-    return <Issues onBack={() => setCurrentView('attendance')} />;
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <Issues onBack={() => setCurrentView('attendance')} />
+      </Suspense>
+    );
   }
 
   if (currentView === 'cadets') {
     return (
-      <CadetsList
-        onSelectCadet={(cadetId) => {
-          setSelectedCadetId(cadetId);
-          setCurrentView('cadet-profile');
-        }}
-        onBack={() => setCurrentView('companies')}
-        onAddCadet={() => setCurrentView('add-cadet')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <CadetsList
+          onSelectCadet={(cadetId) => {
+            setSelectedCadetId(cadetId);
+            setCurrentView('cadet-profile');
+          }}
+          onBack={() => setCurrentView('companies')}
+          onAddCadet={() => setCurrentView('add-cadet')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'add-cadet') {
     return (
-      <AddCadet
-        onBack={() => setCurrentView('cadets')}
-        onSuccess={() => setCurrentView('cadets')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <AddCadet
+          onBack={() => setCurrentView('cadets')}
+          onSuccess={() => setCurrentView('cadets')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'training-landing') {
     return (
-      <TrainingLanding
-        onTrainingSchedule={() => setCurrentView('training-schedule')}
-        onWeatherData={() => setCurrentView('weather-data')}
-        onForms={() => setCurrentView('forms')}
-        onBack={() => setCurrentView('companies')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <TrainingLanding
+          onTrainingSchedule={() => setCurrentView('training-schedule')}
+          onWeatherData={() => setCurrentView('weather-data')}
+          onForms={() => setCurrentView('forms')}
+          onBack={() => setCurrentView('companies')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'training-schedule') {
     return (
-      <TrainingSchedule
-        key={scheduleRefreshKey}
-        onSelectEvent={(eventId) => {
-          setSelectedEventId(eventId);
-          setCurrentView('training-event-detail');
-        }}
-        onAddEvent={() => setCurrentView('add-training-event')}
-        onBack={() => setCurrentView('training-landing')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <TrainingSchedule
+          key={scheduleRefreshKey}
+          onSelectEvent={(eventId) => {
+            setSelectedEventId(eventId);
+            setCurrentView('training-event-detail');
+          }}
+          onAddEvent={() => setCurrentView('add-training-event')}
+          onBack={() => setCurrentView('training-landing')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'add-training-event') {
     return (
-      <AddTrainingEvent
-        onBack={() => setCurrentView('training-schedule')}
-        onSuccess={() => {
-          setScheduleRefreshKey(prev => prev + 1);
-          setCurrentView('training-schedule');
-        }}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <AddTrainingEvent
+          onBack={() => setCurrentView('training-schedule')}
+          onSuccess={() => {
+            setScheduleRefreshKey(prev => prev + 1);
+            setCurrentView('training-schedule');
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'weather-data') {
     return (
-      <WeatherData
-        onBack={() => setCurrentView('training-landing')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <WeatherData
+          onBack={() => setCurrentView('training-landing')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'training-event-detail' && selectedEventId) {
     return (
-      <TrainingEventDetail
-        eventId={selectedEventId}
-        onBack={() => {
-          setSelectedEventId(null);
-          setCurrentView('training-schedule');
-        }}
-        onRefresh={() => {
-          setScheduleRefreshKey(prev => prev + 1);
-        }}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <TrainingEventDetail
+          eventId={selectedEventId}
+          onBack={() => {
+            setSelectedEventId(null);
+            setCurrentView('training-schedule');
+          }}
+          onRefresh={() => {
+            setScheduleRefreshKey(prev => prev + 1);
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'attendance') {
     return (
-      <Attendance
-        onBack={() => setCurrentView('companies')}
-        onSelectCompany={(company) => {
-          setAttendanceCompany(company);
-          setCurrentView('attendance-company');
-        }}
-        onTactics={() => setCurrentView('tactics-attendance')}
-        onIssues={() => setCurrentView('issues')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <Attendance
+          onBack={() => setCurrentView('companies')}
+          onSelectCompany={(company) => {
+            setAttendanceCompany(company);
+            setCurrentView('attendance-company');
+          }}
+          onTactics={() => setCurrentView('tactics-attendance')}
+          onIssues={() => setCurrentView('issues')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'tactics-attendance') {
     return (
-      <TacticsAttendance
-        onBack={() => {
-          setFromTactics(false);
-          setCurrentView('attendance');
-        }}
-        onSelectCadet={(cadetId) => {
-          setSelectedCadetId(cadetId);
-          setFromTactics(true);
-          setCurrentView('cadet-profile');
-        }}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <TacticsAttendance
+          onBack={() => {
+            setFromTactics(false);
+            setCurrentView('attendance');
+          }}
+          onSelectCadet={(cadetId) => {
+            setSelectedCadetId(cadetId);
+            setFromTactics(true);
+            setCurrentView('cadet-profile');
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'pt-plans') {
     return (
-      <PTPlans
-        onBack={() => {
-          setPTCompany(null);
-          setCurrentView('companies');
-        }}
-        onSelectCompany={(company) => setPTCompany(company)}
-        selectedCompany={ptCompany}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <PTPlans
+          onBack={() => {
+            setPTCompany(null);
+            setCurrentView('companies');
+          }}
+          onSelectCompany={(company) => setPTCompany(company)}
+          selectedCompany={ptCompany}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'forms') {
     return (
-      <Forms
-        onExpenseRequest={() => setCurrentView('expense-request-form')}
-        onBack={() => setCurrentView('training-landing')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <Forms
+          onExpenseRequest={() => setCurrentView('expense-request-form')}
+          onBack={() => setCurrentView('training-landing')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'expense-request-form') {
     return (
-      <ExpenseRequestForm
-        onBack={() => setCurrentView('forms')}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <ExpenseRequestForm
+          onBack={() => setCurrentView('forms')}
+        />
+      </Suspense>
     );
   }
 
   if (currentView === 'cadet-profile' && selectedCadetId) {
     return (
-      <CadetProfile
-        cadetId={selectedCadetId}
-        onBack={() => {
-          // If we came from attendance, go back to attendance
-          if (attendanceCompany) {
-            setCurrentView('attendance-company');
-            // Don't clear attendanceCompany so we can return to it
-          } else if (fromTactics) {
-            setFromTactics(false);
-            setCurrentView('tactics-attendance');
-          } else if (selectedCompany) {
-            setCurrentView('companies');
-            // Don't clear selectedCompany so we can return to it
-          } else {
-            setCurrentView('cadets');
-          }
-        }}
-        onDelete={() => {
-          if (attendanceCompany) {
-            setAttendanceCompany(null);
-            setCurrentView('attendance');
-          } else if (selectedCompany) {
-            setSelectedCompany(null);
-            setCurrentView('companies');
-          } else {
-            setCurrentView('cadets');
-          }
-          setSelectedCadetId(null);
-        }}
-        onCompanyChange={(oldCompany, newCompany) => {
-          // Refresh the roster if we're viewing the old or new company
-          if (selectedCompany === oldCompany || selectedCompany === newCompany || attendanceCompany === oldCompany || attendanceCompany === newCompany) {
-            setRosterRefreshKey(prev => prev + 1);
-          }
-        }}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <CadetProfile
+          cadetId={selectedCadetId}
+          onBack={() => {
+            // If we came from attendance, go back to attendance
+            if (attendanceCompany) {
+              setCurrentView('attendance-company');
+              // Don't clear attendanceCompany so we can return to it
+            } else if (fromTactics) {
+              setFromTactics(false);
+              setCurrentView('tactics-attendance');
+            } else if (selectedCompany) {
+              setCurrentView('companies');
+              // Don't clear selectedCompany so we can return to it
+            } else {
+              setCurrentView('cadets');
+            }
+          }}
+          onDelete={() => {
+            if (attendanceCompany) {
+              setAttendanceCompany(null);
+              setCurrentView('attendance');
+            } else if (selectedCompany) {
+              setSelectedCompany(null);
+              setCurrentView('companies');
+            } else {
+              setCurrentView('cadets');
+            }
+            setSelectedCadetId(null);
+          }}
+          onCompanyChange={(oldCompany, newCompany) => {
+            // Refresh the roster if we're viewing the old or new company
+            if (selectedCompany === oldCompany || selectedCompany === newCompany || attendanceCompany === oldCompany || attendanceCompany === newCompany) {
+              setRosterRefreshKey(prev => prev + 1);
+            }
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -354,7 +401,9 @@ function App() {
         onAttendance={() => setCurrentView('attendance')}
         onPT={() => setCurrentView('pt-plans')}
       />
-      <NotificationPrompt />
+      <Suspense fallback={null}>
+        <NotificationPrompt />
+      </Suspense>
     </>
   );
 }
