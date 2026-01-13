@@ -320,8 +320,10 @@ export async function exportAttendanceToExcel(): Promise<void> {
   
   for (const level of msLevels) {
     const cadets = await getCadetsByMSLevel(level);
-    if (cadets.length > 0) {
-      cadetsByLevel.set(level, cadets);
+    // Filter out Grizzly Company cadets
+    const filteredCadets = cadets.filter(c => c.company !== 'Grizzly Company');
+    if (filteredCadets.length > 0) {
+      cadetsByLevel.set(level, filteredCadets);
     }
   }
   
@@ -527,8 +529,10 @@ export async function exportLastWeekAbsences(): Promise<void> {
   
   for (const level of msLevels) {
     const cadets = await getCadetsByMSLevel(level);
-    if (cadets.length > 0) {
-      cadetsByLevel.set(level, cadets);
+    // Filter out Grizzly Company cadets
+    const filteredCadets = cadets.filter(c => c.company !== 'Grizzly Company');
+    if (filteredCadets.length > 0) {
+      cadetsByLevel.set(level, filteredCadets);
     }
   }
   

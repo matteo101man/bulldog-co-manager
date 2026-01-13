@@ -6,136 +6,162 @@ import { Cadet, Company } from '../types';
  * Export all cadet data to Excel
  * Creates a master list with all cadet information in alphabetical order
  */
+/**
+ * Helper function to create a styled worksheet from cadet data
+ */
+function createCadetWorksheet(cadets: Cadet[]) {
+  // Create header row
+  const headerRow = [
+    'Last Name',
+    'First Name',
+    'Company',
+    'MS Level',
+    'Age',
+    'Date of Birth',
+    'Shirt Size',
+    'Position',
+    'Phone Number',
+    'Email',
+    'Contracted',
+  ];
+  
+  // Create worksheet data
+  const wsData: any[][] = [];
+  wsData.push(headerRow);
+  
+  // Add cadet rows
+  for (const cadet of cadets) {
+    const row = [
+      cadet.lastName || '',
+      cadet.firstName || '',
+      cadet.company || '',
+      cadet.militaryScienceLevel || '',
+      cadet.age ?? '',
+      cadet.dateOfBirth || '',
+      cadet.shirtSize || '',
+      cadet.position || '',
+      cadet.phoneNumber || '',
+      cadet.email || '',
+      cadet.contracted || '',
+    ];
+    wsData.push(row);
+  }
+  
+  // Add summary row
+  wsData.push([]); // Empty row
+  wsData.push(['Total Cadets:', cadets.length]);
+  
+  // Create worksheet
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 15 }, // Last Name
+    { wch: 15 }, // First Name
+    { wch: 20 }, // Company
+    { wch: 10 }, // MS Level
+    { wch: 8 },  // Age
+    { wch: 12 }, // Date of Birth
+    { wch: 10 }, // Shirt Size
+    { wch: 15 }, // Position
+    { wch: 15 }, // Phone Number
+    { wch: 30 }, // Email
+    { wch: 12 }, // Contracted
+  ];
+  
+  // Apply styling
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  
+  // Style header row
+  for (let C = 0; C <= range.e.c; C++) {
+    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!ws[cellAddress]) continue;
+    
+    ws[cellAddress].s = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '4472C4' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } },
+      },
+    };
+  }
+  
+  // Style data rows
+  for (let R = 1; R < wsData.length - 2; R++) {
+    for (let C = 0; C <= range.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!ws[cellAddress]) continue;
+      
+      ws[cellAddress].s = {
+        alignment: { vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D9D9D9' } },
+          bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
+          left: { style: 'thin', color: { rgb: 'D9D9D9' } },
+          right: { style: 'thin', color: { rgb: 'D9D9D9' } },
+        },
+      };
+    }
+  }
+  
+  // Style summary row
+  const summaryRow = wsData.length - 1;
+  const summaryCell = XLSX.utils.encode_cell({ r: summaryRow, c: 0 });
+  if (ws[summaryCell]) {
+    ws[summaryCell].s = {
+      font: { bold: true },
+      fill: { fgColor: { rgb: 'E7E6E6' } },
+    };
+  }
+  const summaryValueCell = XLSX.utils.encode_cell({ r: summaryRow, c: 1 });
+  if (ws[summaryValueCell]) {
+    ws[summaryValueCell].s = {
+      font: { bold: true },
+      fill: { fgColor: { rgb: 'E7E6E6' } },
+    };
+  }
+  
+  return ws;
+}
+
 export async function exportCadetData(): Promise<void> {
   try {
     // Get all cadets from Master list
     const cadets = await getCadetsByCompany('Master');
     
+    // Separate Grizzly Company cadets from others
+    const grizzlyCadets = cadets.filter(c => c.company === 'Grizzly Company');
+    const otherCadets = cadets.filter(c => c.company !== 'Grizzly Company');
+    
     // Sort cadets alphabetically by last name, then first name
-    const sortedCadets = [...cadets].sort((a, b) => {
+    const sortedOtherCadets = [...otherCadets].sort((a, b) => {
       const lastNameCompare = a.lastName.localeCompare(b.lastName);
       if (lastNameCompare !== 0) return lastNameCompare;
       return a.firstName.localeCompare(b.firstName);
     });
     
-    // Create header row
-    const headerRow = [
-      'Last Name',
-      'First Name',
-      'Company',
-      'MS Level',
-      'Age',
-      'Date of Birth',
-      'Shirt Size',
-      'Position',
-      'Phone Number',
-      'Email',
-      'Contracted',
-    ];
-    
-    // Create worksheet data
-    const wsData: any[][] = [];
-    wsData.push(headerRow);
-    
-    // Add cadet rows
-    for (const cadet of sortedCadets) {
-      const row = [
-        cadet.lastName || '',
-        cadet.firstName || '',
-        cadet.company || '',
-        cadet.militaryScienceLevel || '',
-        cadet.age ?? '',
-        cadet.dateOfBirth || '',
-        cadet.shirtSize || '',
-        cadet.position || '',
-        cadet.phoneNumber || '',
-        cadet.email || '',
-        cadet.contracted || '',
-      ];
-      wsData.push(row);
-    }
-    
-    // Add summary row
-    wsData.push([]); // Empty row
-    wsData.push(['Total Cadets:', sortedCadets.length]);
-    
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 15 }, // Last Name
-      { wch: 15 }, // First Name
-      { wch: 20 }, // Company
-      { wch: 10 }, // MS Level
-      { wch: 8 },  // Age
-      { wch: 12 }, // Date of Birth
-      { wch: 10 }, // Shirt Size
-      { wch: 15 }, // Position
-      { wch: 15 }, // Phone Number
-      { wch: 30 }, // Email
-      { wch: 12 }, // Contracted
-    ];
-    
-    // Apply styling
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    
-    // Style header row
-    for (let C = 0; C <= range.e.c; C++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-      if (!ws[cellAddress]) continue;
-      
-      ws[cellAddress].s = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '4472C4' } },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        border: {
-          top: { style: 'thin', color: { rgb: '000000' } },
-          bottom: { style: 'thin', color: { rgb: '000000' } },
-          left: { style: 'thin', color: { rgb: '000000' } },
-          right: { style: 'thin', color: { rgb: '000000' } },
-        },
-      };
-    }
-    
-    // Style data rows
-    for (let R = 1; R < wsData.length - 2; R++) {
-      for (let C = 0; C <= range.e.c; C++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-        if (!ws[cellAddress]) continue;
-        
-        ws[cellAddress].s = {
-          alignment: { vertical: 'center' },
-          border: {
-            top: { style: 'thin', color: { rgb: 'D9D9D9' } },
-            bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
-            left: { style: 'thin', color: { rgb: 'D9D9D9' } },
-            right: { style: 'thin', color: { rgb: 'D9D9D9' } },
-          },
-        };
-      }
-    }
-    
-    // Style summary row
-    const summaryRow = wsData.length - 1;
-    const summaryCell = XLSX.utils.encode_cell({ r: summaryRow, c: 0 });
-    if (ws[summaryCell]) {
-      ws[summaryCell].s = {
-        font: { bold: true },
-        fill: { fgColor: { rgb: 'E7E6E6' } },
-      };
-    }
-    const summaryValueCell = XLSX.utils.encode_cell({ r: summaryRow, c: 1 });
-    if (ws[summaryValueCell]) {
-      ws[summaryValueCell].s = {
-        font: { bold: true },
-        fill: { fgColor: { rgb: 'E7E6E6' } },
-      };
-    }
+    const sortedGrizzlyCadets = [...grizzlyCadets].sort((a, b) => {
+      const lastNameCompare = a.lastName.localeCompare(b.lastName);
+      if (lastNameCompare !== 0) return lastNameCompare;
+      return a.firstName.localeCompare(b.firstName);
+    });
     
     // Create workbook
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Cadet Data');
+    
+    // Create main cadet data sheet (excluding Grizzly Company)
+    const mainWs = createCadetWorksheet(sortedOtherCadets);
+    XLSX.utils.book_append_sheet(wb, mainWs, 'Cadet Data');
+    
+    // Create separate Grizzly Company sheet if there are any Grizzly cadets
+    if (sortedGrizzlyCadets.length > 0) {
+      const grizzlyWs = createCadetWorksheet(sortedGrizzlyCadets);
+      XLSX.utils.book_append_sheet(wb, grizzlyWs, 'Grizzly Company');
+    }
     
     // Generate filename with current date
     const today = new Date();
@@ -159,8 +185,8 @@ export async function exportCompanyRoster(): Promise<void> {
     // Get all cadets from Master list
     const allCadets = await getCadetsByCompany('Master');
     
-    // Companies to include in the roster
-    const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company', 'Grizzly Company'];
+    // Companies to include in the roster (excluding Grizzly Company)
+    const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
     
     // Helper function to find leadership by position
     function findLeadership(cadets: Cadet[], positionKeywords: string[]): Cadet | null {

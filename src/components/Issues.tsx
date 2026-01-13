@@ -31,13 +31,16 @@ export default function Issues({ onBack }: IssuesProps) {
       // Get all cadets (Master includes all cadets from all companies)
       const allCadetsList = await getCadetsByCompany('Master');
       
+      // Filter out Grizzly Company cadets
+      const filteredCadets = allCadetsList.filter(c => c.company !== 'Grizzly Company');
+      
       // Get all attendance records for current week
       const attendanceMap = await getAllAttendanceForWeek(currentWeekStart);
       
       // Find missing attendance
       const missingIssues: Issue[] = [];
       
-      allCadetsList.forEach(cadet => {
+      filteredCadets.forEach(cadet => {
         const record = attendanceMap.get(cadet.id);
         
         // Check PT attendance (Tuesday, Wednesday, Thursday)
