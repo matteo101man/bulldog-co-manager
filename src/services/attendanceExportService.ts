@@ -2,6 +2,8 @@ import * as XLSX from 'xlsx-js-style';
 import { getCadetsByMSLevel } from './cadetService';
 import { getAllAttendanceForWeek } from './attendanceService';
 import { Cadet, AttendanceStatus, AttendanceRecord } from '../types';
+import { collection, getDocs, query } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 interface CadetAttendanceData {
   cadet: Cadet;
@@ -544,12 +546,46 @@ export async function exportLastWeekAbsences(): Promise<void> {
   semesterWeekStarts.add(lastWeekStart);
   semesterWeekStarts.add(currentWeekStart);
   
-  // Fetch all attendance records for semester and recent weeks
+  // Fetch all attendance records for semester and recent weeks (for display)
   const allSemesterRecords = new Map<string, Map<string, AttendanceRecord>>();
   for (const weekStart of semesterWeekStarts) {
     const weekRecords = await getAllAttendanceForWeek(weekStart);
     allSemesterRecords.set(weekStart, weekRecords);
   }
+  
+  // Fetch ALL attendance records for total calculation (regardless of date)
+  // Get all unique cadet IDs first
+  const allCadetIds = new Set<string>();
+  for (const [level, cadets] of cadetsByLevel) {
+    cadets.forEach(cadet => allCadetIds.add(cadet.id));
+  }
+  
+  // Fetch all attendance records from database
+  const allAttendanceRecords = new Map<string, AttendanceRecord[]>();
+  const attendanceSnapshot = await getDocs(query(collection(db, 'attendance')));
+  
+  attendanceSnapshot.forEach(doc => {
+    const record = doc.data() as any;
+    // Migrate old records if needed
+    const migratedRecord: AttendanceRecord = !('ptTuesday' in record) ? {
+      cadetId: record.cadetId,
+      ptMonday: null,
+      ptTuesday: record.tuesday ?? null,
+      ptWednesday: record.wednesday ?? null,
+      ptThursday: record.thursday ?? null,
+      ptFriday: null,
+      labThursday: null,
+      tacticsTuesday: null,
+      weekStartDate: record.weekStartDate
+    } : record as AttendanceRecord;
+    
+    if (allCadetIds.has(migratedRecord.cadetId)) {
+      if (!allAttendanceRecords.has(migratedRecord.cadetId)) {
+        allAttendanceRecords.set(migratedRecord.cadetId, []);
+      }
+      allAttendanceRecords.get(migratedRecord.cadetId)!.push(migratedRecord);
+    }
+  });
   
   // Create workbook
   const wb = XLSX.utils.book_new();
@@ -638,36 +674,21 @@ export async function exportLastWeekAbsences(): Promise<void> {
         
         // Only include if they had at least one absence
         if (hadAbsence) {
-          // Calculate total semester absences for this type
-          // Count absences from ALL weeks in the semester date range
+          // Calculate total absences for this type - count ALL absences regardless of date
           let semesterTotalAbsences = 0;
           
-          // Get all dates for this attendance type in the semester
-          const semesterDatesForType = allSemesterDates.filter(dateStr => {
-            const dayOfWeek = getDayOfWeek(dateStr);
+          // Count absences from ALL attendance records for this cadet (all weeks, all dates)
+          const cadetRecords = allAttendanceRecords.get(cadet.id) || [];
+          for (const record of cadetRecords) {
+            // Count absences for this week based on attendance type
             if (type === 'PT') {
-              return dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4; // Tue, Wed, Thu
+              if (record.ptTuesday === 'excused' || record.ptTuesday === 'unexcused') semesterTotalAbsences++;
+              if (record.ptWednesday === 'excused' || record.ptWednesday === 'unexcused') semesterTotalAbsences++;
+              if (record.ptThursday === 'excused' || record.ptThursday === 'unexcused') semesterTotalAbsences++;
             } else if (type === 'Lab') {
-              return dayOfWeek === 4; // Thursday only
+              if (record.labThursday === 'excused' || record.labThursday === 'unexcused') semesterTotalAbsences++;
             } else if (type === 'Tactics') {
-              return dayOfWeek === 2; // Tuesday only
-            }
-            return false;
-          });
-          
-          // Count all absences (excused or unexcused) across all semester dates
-          for (const dateStr of semesterDatesForType) {
-            const weekStart = getWeekStart(dateStr);
-            const weekRecords = allSemesterRecords.get(weekStart);
-            if (!weekRecords) continue; // Skip if we don't have records for this week
-            
-            const record = weekRecords.get(cadet.id);
-            if (!record) continue; // Skip if cadet has no record for this week
-            
-            const status = getStatus(record, dateStr, cadet.militaryScienceLevel);
-            
-            if (status === 'excused' || status === 'unexcused') {
-              semesterTotalAbsences++;
+              if (record.tacticsTuesday === 'excused' || record.tacticsTuesday === 'unexcused') semesterTotalAbsences++;
             }
           }
           
