@@ -10,7 +10,7 @@ interface AttendanceProps {
   onIssues: () => void;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company', 'Master'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company', 'Grizzly Company', 'Master'];
 
 type Tab = 'companies' | 'issues' | 'settings';
 

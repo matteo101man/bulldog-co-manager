@@ -1069,12 +1069,13 @@ function SummaryStats({ company, cadets, records, mondayStats, tuesdayStats, wed
         getCadetsByCompany('Bravo'),
         getCadetsByCompany('Charlie'),
         getCadetsByCompany('Ranger'),
-        getCadetsByCompany('Headquarters Company')
+        getCadetsByCompany('Headquarters Company'),
+        getCadetsByCompany('Grizzly Company')
       ]);
       
       const statsMap = new Map<Company, { tuesday: { present: number; excused: number; unexcused: number }; wednesday: { present: number; excused: number; unexcused: number }; thursday: { present: number; excused: number; unexcused: number } }>();
       
-      (['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'] as Company[]).forEach((comp, idx) => {
+      (['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company', 'Grizzly Company'] as Company[]).forEach((comp, idx) => {
         const compCadets = allCadets[idx];
         const compCadetIds = new Set(compCadets.map(c => c.id));
         

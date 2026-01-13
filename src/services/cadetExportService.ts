@@ -160,7 +160,7 @@ export async function exportCompanyRoster(): Promise<void> {
     const allCadets = await getCadetsByCompany('Master');
     
     // Companies to include in the roster
-    const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
+    const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company', 'Grizzly Company'];
     
     // Helper function to find leadership by position
     function findLeadership(cadets: Cadet[], positionKeywords: string[]): Cadet | null {

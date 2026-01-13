@@ -9,7 +9,7 @@ interface CadetsListProps {
   onSettings?: () => void;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company', 'Grizzly Company'];
 
 export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettings }: CadetsListProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
@@ -19,6 +19,7 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
   const [selectedCompanies, setSelectedCompanies] = useState<Set<Company>>(new Set(COMPANIES));
   const [showContracted, setShowContracted] = useState(true);
   const [showUncontracted, setShowUncontracted] = useState(true);
+  const [showGrizzlyOnly, setShowGrizzlyOnly] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -67,9 +68,16 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
 
   // Filter cadets based on search query and company (for summary stats)
   const companyFilteredCadets = cadets.filter(cadet => {
-    // Company filter
-    if (!selectedCompanies.has(cadet.company)) {
-      return false;
+    // Grizzly Company filter - if enabled, show only Grizzly Company cadets
+    if (showGrizzlyOnly) {
+      if (cadet.company !== 'Grizzly Company') {
+        return false;
+      }
+    } else {
+      // Company filter (only apply when Grizzly filter is off)
+      if (!selectedCompanies.has(cadet.company)) {
+        return false;
+      }
     }
 
     // Search query filter
@@ -193,6 +201,25 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
                       </label>
                     ))}
                   </div>
+                </div>
+
+                {/* Grizzly Company Filter */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Special Filters</h3>
+                  <label className="flex items-center cursor-pointer touch-manipulation py-2">
+                    <input
+                      type="checkbox"
+                      checked={showGrizzlyOnly}
+                      onChange={(e) => setShowGrizzlyOnly(e.target.checked)}
+                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                    />
+                    <span className="ml-3 text-sm text-gray-900">Show Grizzly Company Only</span>
+                  </label>
+                  {showGrizzlyOnly && (
+                    <p className="ml-8 text-xs text-gray-500 mt-1">
+                      Showing only cadets from Grizzly Company (separate detachment)
+                    </p>
+                  )}
                 </div>
 
                 {/* Contracted Status Filter */}

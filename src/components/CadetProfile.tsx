@@ -12,7 +12,7 @@ interface CadetProfileProps {
 }
 
 const MS_LEVELS = ['MS1', 'MS2', 'MS3', 'MS4', 'MS5'];
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company', 'Grizzly Company'];
 const DEFAULT_PROFILE_PICTURE = 'https://t3.ftcdn.net/jpg/00/57/04/58/360_F_57045887_HHJml6DJVxNBMqMeDqVJ0ZQDnotp5rGD.jpg';
 
 export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChange }: CadetProfileProps) {
