@@ -36,9 +36,9 @@ interface TrainingEventData {
 }
 
 // Helper function to parse dates like "22-25 Jan", "03-04 FEB", "9th MAY", "21st MAR", etc.
-// Assumes current year (2025)
+// Assumes current year (2026)
 function parseDateRange(dateStr: string): { start: string; end: string } {
-  const currentYear = 2025;
+  const currentYear = 2026;
   const monthMap: { [key: string]: number } = {
     'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6,
     'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10, 'NOV': 11, 'DEC': 12
@@ -194,7 +194,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     conop: createConop('Ranger Challenge Competition', 'Tactics OICs', '', formatDate('22-25 JAN'), formatEndDate('22-25 JAN'))
   },
   {
-    name: 'AFT 1',
+    name: 'Army Fitness Test 1',
     date: formatDate('03-04 FEB'),
     endDate: formatEndDate('03-04 FEB'),
     hitTime: 'TBD',
@@ -202,7 +202,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Fagan/Maddux + protégé',
     ao: 'TBD',
     mission: 'Conduct Army Fitness Test (AFT) 1 to assess cadet physical fitness levels and readiness.',
-    conop: createConop('AFT 1', 'Fagan/Maddux + protégé', '', formatDate('03-04 FEB'), formatEndDate('03-04 FEB'))
+    conop: createConop('Army Fitness Test 1', 'Fagan/Maddux + protégé', '', formatDate('03-04 FEB'), formatEndDate('03-04 FEB'))
   },
   {
     name: 'Basic Rifle Marksmanship',
@@ -215,7 +215,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     conop: createConop('Basic Rifle Marksmanship', 'Fagan', '', formatDate('24 MAR'))
   },
   {
-    name: 'AFT 2',
+    name: 'Army Fitness Test 2',
     date: formatDate('14-15 APR'),
     endDate: formatEndDate('14-15 APR'),
     hitTime: 'TBD',
@@ -223,7 +223,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Fagan/Maddux + protégé',
     ao: 'TBD',
     mission: 'Conduct Army Fitness Test (AFT) 2 to reassess cadet physical fitness levels and track progress.',
-    conop: createConop('AFT 2', 'Fagan/Maddux + protégé', '', formatDate('14-15 APR'), formatEndDate('14-15 APR'))
+    conop: createConop('Army Fitness Test 2', 'Fagan/Maddux + protégé', '', formatDate('14-15 APR'), formatEndDate('14-15 APR'))
   },
   {
     name: 'Spring Field Training Exercise',
@@ -276,17 +276,6 @@ const NEW_EVENTS: TrainingEventData[] = [
     ao: 'TBD',
     mission: 'Conduct CAIT School tryouts to select cadets competing for slots at Army schools such as Airborne, Air Assault, and other advanced training opportunities.',
     conop: createConop('CAIT School Tryouts', 'Fagan, Evans, Guerra, Jackson', '', formatDate('17-20 FEB'), formatEndDate('17-20 FEB'))
-  },
-  {
-    name: 'FTX',
-    date: formatDate('16-19 APR'),
-    endDate: formatEndDate('16-19 APR'),
-    hitTime: 'TBD',
-    planningStatus: 'in-progress',
-    oicId: 'Cadre w/ Tactics OIC coord',
-    ao: 'TBD',
-    mission: 'Conduct Field Training Exercise (FTX) to provide comprehensive field training experience and evaluate cadet performance in tactical scenarios.',
-    conop: createConop('FTX', 'Cadre w/ Tactics OIC coord', '', formatDate('16-19 APR'), formatEndDate('16-19 APR'))
   },
   {
     name: '5K',
@@ -389,11 +378,11 @@ async function updateTrainingEvents() {
       console.log('Creating it as a new event...');
       const newMentorNight: TrainingEventData = {
         name: 'leadership lab - mentor night (test)',
-        date: '2025-01-15', // Placeholder date
+        date: '2026-01-15', // Placeholder date
         planningStatus: 'in-progress',
         ao: 'TBD',
         mission: 'Facilitate mentorship connections between MSIV cadets and underclassmen.',
-        conop: createConop('leadership lab - mentor night (test)', '', '', '2025-01-15')
+        conop: createConop('leadership lab - mentor night (test)', '', '', '2026-01-15')
       };
       await addDoc(collection(db, 'trainingEvents'), newMentorNight);
       console.log('✓ Created mentor night event');
