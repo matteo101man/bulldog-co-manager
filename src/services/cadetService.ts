@@ -51,13 +51,15 @@ async function fetchAndCacheCadets(company: Company): Promise<Cadet[]> {
   let cadets: Cadet[];
   
   if (company === 'Master') {
-    // Get all cadets
+    // Get all cadets, excluding Grizzly Company
     const q = query(collection(db, CADETS_COLLECTION));
     const querySnapshot = await getDocs(q);
-    cadets = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Cadet));
+    cadets = querySnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Cadet))
+      .filter(cadet => cadet.company !== 'Grizzly Company');
   } else {
     // Get cadets for specific company
     const q = query(
@@ -105,10 +107,15 @@ export function subscribeToCadets(
   return onSnapshot(
     q,
     async (querySnapshot) => {
-      const cadets = querySnapshot.docs.map(doc => ({
+      let cadets = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Cadet));
+      
+      // Filter out Grizzly Company for Master list
+      if (company === 'Master') {
+        cadets = cadets.filter(cadet => cadet.company !== 'Grizzly Company');
+      }
       
       // Sort if not Master
       if (company !== 'Master') {
