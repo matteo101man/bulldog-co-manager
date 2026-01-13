@@ -159,8 +159,8 @@ export async function exportCompanyRoster(): Promise<void> {
     // Get all cadets from Master list
     const allCadets = await getCadetsByCompany('Master');
     
-    // Companies to include in the roster (excluding Master and Headquarters Company)
-    const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
+    // Companies to include in the roster
+    const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
     
     // Helper function to find leadership by position
     function findLeadership(cadets: Cadet[], positionKeywords: string[]): Cadet | null {
@@ -169,8 +169,8 @@ export async function exportCompanyRoster(): Promise<void> {
         return positionKeywords.some(keyword => {
           const keywordLower = keyword.toLowerCase();
           
-          // For short codes like "1sg" and "co", match as whole words only
-          if (keywordLower === '1sg' || keywordLower === 'co') {
+          // For short codes like "1sg", "co", "csm", "bc", "xo", "s3", match as whole words only
+          if (['1sg', 'co', 'csm', 'bc', 'xo', 's3'].includes(keywordLower)) {
             // Split position by common delimiters and check each word
             const words = position.split(/[\s,;|/]+/).map(w => w.trim()).filter(w => w);
             return words.includes(keywordLower);
@@ -198,34 +198,86 @@ export async function exportCompanyRoster(): Promise<void> {
       
       if (companyCadets.length === 0) continue;
       
-      // Add table header (bold)
-      wsData.push(['Company', '1SG', 'CO:']);
-      
-      // Find 1SG and CO
-      const firstSergeant = findLeadership(companyCadets, ['1sg', 'first sergeant', '1st sergeant']);
-      const commandingOfficer = findLeadership(companyCadets, ['co', 'commanding officer', 'company commander']);
-      
-      // Add leadership row (bold)
-      const companyLetter = company === 'Ranger' ? 'Ranger' : company.charAt(0);
-      wsData.push([
-        companyLetter,
-        firstSergeant ? `${firstSergeant.lastName}` : '',
-        commandingOfficer ? `${commandingOfficer.lastName}` : ''
-      ]);
-      
-      // Get cadets excluding leadership
-      const regularCadets = companyCadets.filter(c => 
-        c.id !== firstSergeant?.id && c.id !== commandingOfficer?.id
-      );
-      
-      // Distribute cadets across rows (3 columns) - not bold
-      for (let i = 0; i < regularCadets.length; i += 3) {
-        const row = [
-          regularCadets[i]?.lastName || '',
-          regularCadets[i + 1]?.lastName || '',
-          regularCadets[i + 2]?.lastName || ''
-        ];
-        wsData.push(row);
+      // Handle Headquarters Company differently
+      if (company === 'Headquarters Company') {
+        // Add table header (bold)
+        wsData.push(['Company', 'CSM', 'BC']);
+        
+        // Find CSM and BC
+        const csm = findLeadership(companyCadets, ['csm', 'command sergeant major']);
+        const bc = findLeadership(companyCadets, ['bc', 'battalion commander']);
+        const xo = findLeadership(companyCadets, ['xo', 'executive officer']);
+        const s3 = findLeadership(companyCadets, ['s3', 'operations officer']);
+        
+        // Add CSM/BC row (bold)
+        wsData.push([
+          'Headquarters',
+          csm ? `${csm.lastName}` : '',
+          bc ? `${bc.lastName}` : ''
+        ]);
+        
+        // Add XO row (bold)
+        wsData.push([
+          'XO:',
+          xo ? `${xo.lastName}` : '',
+          ''
+        ]);
+        
+        // Add S3 row (bold)
+        wsData.push([
+          'S3:',
+          s3 ? `${s3.lastName}` : '',
+          ''
+        ]);
+        
+        // Get cadets excluding leadership
+        const regularCadets = companyCadets.filter(c => 
+          c.id !== csm?.id && 
+          c.id !== bc?.id && 
+          c.id !== xo?.id && 
+          c.id !== s3?.id
+        );
+        
+        // Distribute cadets across rows (3 columns) - not bold
+        for (let i = 0; i < regularCadets.length; i += 3) {
+          const row = [
+            regularCadets[i]?.lastName || '',
+            regularCadets[i + 1]?.lastName || '',
+            regularCadets[i + 2]?.lastName || ''
+          ];
+          wsData.push(row);
+        }
+      } else {
+        // Regular companies (Alpha, Bravo, Charlie, Ranger)
+        // Add table header (bold)
+        wsData.push(['Company', '1SG', 'CO:']);
+        
+        // Find 1SG and CO
+        const firstSergeant = findLeadership(companyCadets, ['1sg', 'first sergeant', '1st sergeant']);
+        const commandingOfficer = findLeadership(companyCadets, ['co', 'commanding officer', 'company commander']);
+        
+        // Add leadership row (bold)
+        const companyLetter = company === 'Ranger' ? 'Ranger' : company.charAt(0);
+        wsData.push([
+          companyLetter,
+          firstSergeant ? `${firstSergeant.lastName}` : '',
+          commandingOfficer ? `${commandingOfficer.lastName}` : ''
+        ]);
+        
+        // Get cadets excluding leadership
+        const regularCadets = companyCadets.filter(c => 
+          c.id !== firstSergeant?.id && c.id !== commandingOfficer?.id
+        );
+        
+        // Distribute cadets across rows (3 columns) - not bold
+        for (let i = 0; i < regularCadets.length; i += 3) {
+          const row = [
+            regularCadets[i]?.lastName || '',
+            regularCadets[i + 1]?.lastName || '',
+            regularCadets[i + 2]?.lastName || ''
+          ];
+          wsData.push(row);
+        }
       }
       
       // Add spacing between companies
@@ -251,12 +303,6 @@ export async function exportCompanyRoster(): Promise<void> {
       const companyCadets = allCadets.filter(c => c.company === company);
       if (companyCadets.length === 0) continue;
       
-      const firstSergeant = findLeadership(companyCadets, ['1sg', 'first sergeant', '1st sergeant']);
-      const commandingOfficer = findLeadership(companyCadets, ['co', 'commanding officer', 'company commander']);
-      const regularCadets = companyCadets.filter(c => 
-        c.id !== firstSergeant?.id && c.id !== commandingOfficer?.id
-      );
-      
       // Style table header row (bold)
       for (let C = 0; C < 3; C++) {
         const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: C });
@@ -275,31 +321,25 @@ export async function exportCompanyRoster(): Promise<void> {
       }
       currentRow++;
       
-      // Style leadership row (bold)
-      for (let C = 0; C < 3; C++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: C });
-        if (ws[cellAddress]) {
-          ws[cellAddress].s = {
-            font: { bold: true },
-            alignment: { vertical: 'center' },
-            border: {
-              top: { style: 'thin', color: { rgb: '000000' } },
-              bottom: { style: 'thin', color: { rgb: '000000' } },
-              left: { style: 'thin', color: { rgb: '000000' } },
-              right: { style: 'thin', color: { rgb: '000000' } },
-            },
-          };
-        }
-      }
-      currentRow++;
-      
-      // Style regular cadet rows (not bold)
-      const cadetRows = Math.ceil(regularCadets.length / 3);
-      for (let R = 0; R < cadetRows; R++) {
+      if (company === 'Headquarters Company') {
+        // Headquarters Company: CSM/BC row, XO row, S3 row (all bold)
+        const csm = findLeadership(companyCadets, ['csm', 'command sergeant major']);
+        const bc = findLeadership(companyCadets, ['bc', 'battalion commander']);
+        const xo = findLeadership(companyCadets, ['xo', 'executive officer']);
+        const s3 = findLeadership(companyCadets, ['s3', 'operations officer']);
+        const regularCadets = companyCadets.filter(c => 
+          c.id !== csm?.id && 
+          c.id !== bc?.id && 
+          c.id !== xo?.id && 
+          c.id !== s3?.id
+        );
+        
+        // Style CSM/BC row (bold)
         for (let C = 0; C < 3; C++) {
-          const cellAddress = XLSX.utils.encode_cell({ r: currentRow + R, c: C });
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: C });
           if (ws[cellAddress]) {
             ws[cellAddress].s = {
+              font: { bold: true },
               alignment: { vertical: 'center' },
               border: {
                 top: { style: 'thin', color: { rgb: '000000' } },
@@ -310,9 +350,111 @@ export async function exportCompanyRoster(): Promise<void> {
             };
           }
         }
+        currentRow++;
+        
+        // Style XO row (bold)
+        for (let C = 0; C < 3; C++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: C });
+          if (ws[cellAddress]) {
+            ws[cellAddress].s = {
+              font: { bold: true },
+              alignment: { vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: '000000' } },
+                bottom: { style: 'thin', color: { rgb: '000000' } },
+                left: { style: 'thin', color: { rgb: '000000' } },
+                right: { style: 'thin', color: { rgb: '000000' } },
+              },
+            };
+          }
+        }
+        currentRow++;
+        
+        // Style S3 row (bold)
+        for (let C = 0; C < 3; C++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: C });
+          if (ws[cellAddress]) {
+            ws[cellAddress].s = {
+              font: { bold: true },
+              alignment: { vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: '000000' } },
+                bottom: { style: 'thin', color: { rgb: '000000' } },
+                left: { style: 'thin', color: { rgb: '000000' } },
+                right: { style: 'thin', color: { rgb: '000000' } },
+              },
+            };
+          }
+        }
+        currentRow++;
+        
+        // Style regular cadet rows (not bold)
+        const cadetRows = Math.ceil(regularCadets.length / 3);
+        for (let R = 0; R < cadetRows; R++) {
+          for (let C = 0; C < 3; C++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: currentRow + R, c: C });
+            if (ws[cellAddress]) {
+              ws[cellAddress].s = {
+                alignment: { vertical: 'center' },
+                border: {
+                  top: { style: 'thin', color: { rgb: '000000' } },
+                  bottom: { style: 'thin', color: { rgb: '000000' } },
+                  left: { style: 'thin', color: { rgb: '000000' } },
+                  right: { style: 'thin', color: { rgb: '000000' } },
+                },
+              };
+            }
+          }
+        }
+        
+        currentRow += cadetRows + 2; // Move past cadet rows and spacing rows
+      } else {
+        // Regular companies
+        const firstSergeant = findLeadership(companyCadets, ['1sg', 'first sergeant', '1st sergeant']);
+        const commandingOfficer = findLeadership(companyCadets, ['co', 'commanding officer', 'company commander']);
+        const regularCadets = companyCadets.filter(c => 
+          c.id !== firstSergeant?.id && c.id !== commandingOfficer?.id
+        );
+        
+        // Style leadership row (bold)
+        for (let C = 0; C < 3; C++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: C });
+          if (ws[cellAddress]) {
+            ws[cellAddress].s = {
+              font: { bold: true },
+              alignment: { vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: '000000' } },
+                bottom: { style: 'thin', color: { rgb: '000000' } },
+                left: { style: 'thin', color: { rgb: '000000' } },
+                right: { style: 'thin', color: { rgb: '000000' } },
+              },
+            };
+          }
+        }
+        currentRow++;
+        
+        // Style regular cadet rows (not bold)
+        const cadetRows = Math.ceil(regularCadets.length / 3);
+        for (let R = 0; R < cadetRows; R++) {
+          for (let C = 0; C < 3; C++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: currentRow + R, c: C });
+            if (ws[cellAddress]) {
+              ws[cellAddress].s = {
+                alignment: { vertical: 'center' },
+                border: {
+                  top: { style: 'thin', color: { rgb: '000000' } },
+                  bottom: { style: 'thin', color: { rgb: '000000' } },
+                  left: { style: 'thin', color: { rgb: '000000' } },
+                  right: { style: 'thin', color: { rgb: '000000' } },
+                },
+              };
+            }
+          }
+        }
+        
+        currentRow += cadetRows + 2; // Move past cadet rows and spacing rows
       }
-      
-      currentRow += cadetRows + 2; // Move past cadet rows and spacing rows
     }
     
     // Create workbook
