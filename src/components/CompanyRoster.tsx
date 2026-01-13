@@ -392,7 +392,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 safe-area-inset-top">
         <div className="px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">
-            {company === 'Master' ? 'Master List' : `${company} Company`}
+            {company === 'Master' ? 'Master List' : company.includes('Company') ? company : `${company} Company`}
           </h1>
           <button
             onClick={onBack}
@@ -590,7 +590,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
 
         {cadets.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No cadets found for {company} Company
+            No cadets found for {company.includes('Company') ? company : `${company} Company`}
           </div>
         )}
 

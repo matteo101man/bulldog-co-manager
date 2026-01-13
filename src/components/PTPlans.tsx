@@ -111,7 +111,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                 style={{ minHeight: '44px' }}
               >
                 <span className="text-lg font-semibold text-gray-900">
-                  {company} Company
+                  {company.includes('Company') ? company : `${company} Company`}
                 </span>
               </button>
             ))}
