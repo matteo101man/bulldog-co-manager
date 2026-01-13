@@ -16,6 +16,9 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
   const [hitTime, setHitTime] = useState('');
   const [oicId, setOicId] = useState('');
   const [ncoicId, setNcoicId] = useState('');
+  const [ao, setAo] = useState('');
+  const [uniform, setUniform] = useState('');
+  const [mission, setMission] = useState('');
   const [planningStatus, setPlanningStatus] = useState<PlanningStatus>('in-progress');
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [loading, setLoading] = useState(!!eventId);
@@ -60,7 +63,10 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
         ...(endDate && { endDate }),
         ...(hitTime && { hitTime }),
         ...(oicId && { oicId }),
-        ...(ncoicId && { ncoicId })
+        ...(ncoicId && { ncoicId }),
+        ...(ao.trim() && { ao: ao.trim() }),
+        ...(uniform.trim() && { uniform: uniform.trim() }),
+        ...(mission.trim() && { mission: mission.trim() })
       };
 
       if (eventId) {
@@ -189,6 +195,45 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              AO (Area of Operations) (Optional)
+            </label>
+            <input
+              type="text"
+              value={ao}
+              onChange={(e) => setAo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter area of operations"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Uniform (Optional)
+            </label>
+            <input
+              type="text"
+              value={uniform}
+              onChange={(e) => setUniform(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter uniform requirement"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mission (Optional)
+            </label>
+            <textarea
+              value={mission}
+              onChange={(e) => setMission(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter mission description"
+            />
           </div>
 
           <div>

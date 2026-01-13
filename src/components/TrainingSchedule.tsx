@@ -126,7 +126,11 @@ export default function TrainingSchedule({
       <div className="space-y-6">
         {sortedDates.map(dateKey => {
           const dateEvents = grouped.get(dateKey)!;
-          const displayDate = formatDate(dateKey);
+          // Check if any event in this group has an end date
+          const eventWithEndDate = dateEvents.find(e => e.endDate);
+          const displayDate = eventWithEndDate && eventWithEndDate.endDate
+            ? `${formatDate(dateKey)} - ${formatDate(eventWithEndDate.endDate)}`
+            : formatDate(dateKey);
           
           return (
             <div key={dateKey}>
