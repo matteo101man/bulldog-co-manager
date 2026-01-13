@@ -713,6 +713,7 @@ export async function exportLastWeekAbsences(): Promise<void> {
     
     // Create worksheet data
     const wsData: any[][] = [];
+    const cadetRowMap = new Map<number, Cadet>(); // Track which cadet is in each row
     wsData.push(headerRow);
     
     // Add data for each MS level
@@ -760,7 +761,9 @@ export async function exportLastWeekAbsences(): Promise<void> {
           }),
           data.semesterTotalAbsences
         ];
+        const rowIndex = wsData.length;
         wsData.push(row);
+        cadetRowMap.set(rowIndex, cadet); // Track which cadet is in this row
       }
     }
     
@@ -879,7 +882,12 @@ export async function exportLastWeekAbsences(): Promise<void> {
           }
         } else {
           // Name and total columns
+          const isNameCell = C === 0;
+          const cadet = cadetRowMap.get(R);
+          const isContracted = cadet?.contracted === true;
+          
           ws[cellAddress].s = {
+            fill: isNameCell && isContracted ? { fgColor: { rgb: 'FFFFFF00' } } : undefined,
             alignment: { horizontal: C === 0 ? 'left' : 'center', vertical: 'center' },
             border: {
               top: { style: 'thin', color: { rgb: 'FF000000' } },
