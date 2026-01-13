@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && node -e \"require('fs').writeFileSync('dist/.nojekyll', '')\" && gh-pages -d dist",
+    "deploy:firebase": "npm run build && firebase deploy --only hosting",
     "import-cadets": "tsx scripts/importCadets.ts",
     "postinstall": "npm run build"
   },
