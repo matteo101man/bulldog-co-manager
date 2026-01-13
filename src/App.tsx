@@ -72,6 +72,31 @@ function App() {
     initializeNotifications();
   };
 
+  // Check for service worker updates periodically
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    async function checkForUpdates() {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          // Force update check
+          await registration.update();
+        }
+      } catch (error) {
+        console.error('Error checking for service worker updates:', error);
+      }
+    }
+
+    // Check immediately on load
+    checkForUpdates();
+
+    // Check every 2 minutes for updates
+    const updateInterval = setInterval(checkForUpdates, 2 * 60 * 1000);
+
+    return () => clearInterval(updateInterval);
+  }, []);
+
   async function initializeNotifications() {
     // Only run in browser environment
     if (typeof window === 'undefined') return;

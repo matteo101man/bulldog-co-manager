@@ -17,7 +17,9 @@ export default defineConfig({
         // Skip waiting and claim clients immediately on update
         skipWaiting: true,
         clientsClaim: true,
-        // Use network-first strategy for HTML to always get latest
+        // Clean up old caches on update
+        cleanupOutdatedCaches: true,
+        // Use network-first strategy for all resources to always get latest
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.html$/,
@@ -25,16 +27,22 @@ export default defineConfig({
             options: {
               cacheName: 'html-cache',
               expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              }
+                maxEntries: 5,
+                maxAgeSeconds: 60 * 5 // 5 minutes - much shorter for faster updates
+              },
+              networkTimeoutSeconds: 3 // Fallback to cache after 3 seconds if network fails
             }
           },
           {
             urlPattern: /^https:\/\/.*\.(js|css)$/,
-            handler: 'StaleWhileRevalidate',
+            handler: 'NetworkFirst',
             options: {
-              cacheName: 'static-resources'
+              cacheName: 'static-resources',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 10 // 10 minutes
+              },
+              networkTimeoutSeconds: 3
             }
           }
         ]
