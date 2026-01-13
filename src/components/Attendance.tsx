@@ -125,7 +125,7 @@ export default function Attendance({ onBack, onSelectCompany, onTactics, onIssue
                   className="w-full bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation min-h-[44px]"
                 >
                   <span className="text-lg font-semibold text-gray-900">
-                    {company === 'Master' ? 'Master List' : company.includes('Company') ? company : `${company} Company`}
+                    {company === 'Master' ? 'Master List' : company.endsWith('Company') ? company : `${company} Company`}
                   </span>
                 </button>
               ))}
