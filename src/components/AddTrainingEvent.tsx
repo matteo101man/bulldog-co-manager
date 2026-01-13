@@ -24,7 +24,8 @@ function SearchableSelect({ value, onChange, cadets, placeholder, label }: Searc
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedCadet = cadets.find(c => c.id === value);
-  const displayValue = selectedCadet ? `${selectedCadet.lastName}, ${selectedCadet.firstName}` : '';
+  // If value is a cadet ID, show cadet name; otherwise show the value as text
+  const displayValue = selectedCadet ? `${selectedCadet.lastName}, ${selectedCadet.firstName}` : (value || '');
 
   // Filter cadets based on search query
   const filteredCadets = cadets.filter(cadet => {
@@ -44,13 +45,18 @@ function SearchableSelect({ value, onChange, cadets, placeholder, label }: Searc
         !inputRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        setSearchQuery('');
+        // If there's a search query and no cadet selected, save it as text
+        if (searchQuery && !selectedCadet) {
+          onChange(searchQuery);
+        } else {
+          setSearchQuery('');
+        }
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [searchQuery, selectedCadet, onChange]);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const query = e.target.value;
@@ -60,6 +66,16 @@ function SearchableSelect({ value, onChange, cadets, placeholder, label }: Searc
     // If user clears the input, clear the selection
     if (!query) {
       onChange('');
+    } else {
+      // Update immediately for free text (not a cadet selection)
+      // Check if it matches a cadet exactly
+      const exactMatch = cadets.find(c => 
+        `${c.lastName}, ${c.firstName}`.toLowerCase() === query.toLowerCase()
+      );
+      if (!exactMatch) {
+        // Allow free text input
+        onChange(query);
+      }
     }
   }
 
@@ -69,11 +85,35 @@ function SearchableSelect({ value, onChange, cadets, placeholder, label }: Searc
     setSearchQuery('');
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && isOpen && filteredCadets.length === 0 && searchQuery) {
+      // Save as text if Enter pressed and no cadet matches
+      onChange(searchQuery);
+      setIsOpen(false);
+      setSearchQuery('');
+      e.preventDefault();
+    }
+  }
+
   function handleFocus() {
     setIsOpen(true);
     if (!value) {
       setSearchQuery('');
+    } else if (!selectedCadet) {
+      // If it's free text, show it in search query
+      setSearchQuery(value);
     }
+  }
+
+  function handleBlur() {
+    // Small delay to allow dropdown clicks to register
+    setTimeout(() => {
+      setIsOpen(false);
+      if (searchQuery && !selectedCadet) {
+        onChange(searchQuery);
+      }
+      setSearchQuery('');
+    }, 200);
   }
 
   return (
@@ -87,6 +127,8 @@ function SearchableSelect({ value, onChange, cadets, placeholder, label }: Searc
         value={isOpen && searchQuery !== '' ? searchQuery : displayValue}
         onChange={handleInputChange}
         onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
@@ -114,7 +156,9 @@ function SearchableSelect({ value, onChange, cadets, placeholder, label }: Searc
           ref={dropdownRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg"
         >
-          <div className="px-3 py-2 text-gray-500 text-sm">No cadets found</div>
+          <div className="px-3 py-2 text-gray-500 text-sm">
+            Press Enter to save as text, or select a cadet above
+          </div>
         </div>
       )}
     </div>
