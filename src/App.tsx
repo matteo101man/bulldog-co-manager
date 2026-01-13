@@ -28,6 +28,7 @@ const WeatherData = React.lazy(() => import('./components/WeatherData'));
 const Forms = React.lazy(() => import('./components/Forms'));
 const ExpenseRequestForm = React.lazy(() => import('./components/ExpenseRequestForm'));
 const NotificationPrompt = React.lazy(() => import('./components/NotificationPrompt'));
+const CadetSettings = React.lazy(() => import('./components/CadetSettings'));
 
 // Loading component for Suspense fallback
 const LoadingFallback = () => (
@@ -36,7 +37,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'training-landing' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans' | 'weather-data' | 'forms' | 'expense-request-form';
+type View = 'companies' | 'issues' | 'cadets' | 'settings' | 'cadet-profile' | 'add-cadet' | 'cadet-settings' | 'training-landing' | 'training-schedule' | 'training-event-detail' | 'add-training-event' | 'attendance' | 'attendance-company' | 'tactics-attendance' | 'pt-plans' | 'weather-data' | 'forms' | 'expense-request-form';
 
 function App() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -214,7 +215,16 @@ function App() {
           }}
           onBack={() => setCurrentView('companies')}
           onAddCadet={() => setCurrentView('add-cadet')}
+          onSettings={() => setCurrentView('cadet-settings')}
         />
+      </Suspense>
+    );
+  }
+
+  if (currentView === 'cadet-settings') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <CadetSettings onBack={() => setCurrentView('cadets')} />
       </Suspense>
     );
   }

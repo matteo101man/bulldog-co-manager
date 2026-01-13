@@ -6,11 +6,12 @@ interface CadetsListProps {
   onSelectCadet: (cadetId: string) => void;
   onBack: () => void;
   onAddCadet?: () => void;
+  onSettings?: () => void;
 }
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
 
-export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: CadetsListProps) {
+export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettings }: CadetsListProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -134,6 +135,15 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
             >
               Filter
             </button>
+            {onSettings && (
+              <button
+                onClick={onSettings}
+                className="text-sm text-blue-600 font-medium touch-manipulation px-3 py-2 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors"
+                style={{ minHeight: '44px', minWidth: '44px' }}
+              >
+                Settings
+              </button>
+            )}
             <button
               onClick={onBack}
               className="text-sm text-blue-600 font-medium touch-manipulation"
