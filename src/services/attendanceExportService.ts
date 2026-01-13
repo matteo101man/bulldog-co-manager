@@ -634,11 +634,32 @@ export async function exportLastWeekAbsences(): Promise<void> {
         
         // Only include if they had at least one absence
         if (hadAbsence) {
-          // Calculate total semester absences for this type
+          // Calculate total semester absences for this type across ALL weeks
           let semesterTotalAbsences = 0;
-          for (const [weekStart, weekRecords] of allSemesterRecords) {
-            const record = weekRecords.get(cadet.id);
-            semesterTotalAbsences += getSemesterTotal(record);
+          
+          // Get all dates for this attendance type in the semester
+          const semesterDatesForType = allSemesterDates.filter(dateStr => {
+            const dayOfWeek = getDayOfWeek(dateStr);
+            if (type === 'PT') {
+              return dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4; // Tue, Wed, Thu
+            } else if (type === 'Lab') {
+              return dayOfWeek === 4; // Thursday only
+            } else if (type === 'Tactics') {
+              return dayOfWeek === 2; // Tuesday only
+            }
+            return false;
+          });
+          
+          // Count all absences (excused or unexcused) across all semester dates
+          for (const dateStr of semesterDatesForType) {
+            const weekStart = getWeekStart(dateStr);
+            const weekRecords = allSemesterRecords.get(weekStart);
+            const record = weekRecords?.get(cadet.id) ?? null;
+            const status = getStatus(record, dateStr, cadet.militaryScienceLevel);
+            
+            if (status === 'excused' || status === 'unexcused') {
+              semesterTotalAbsences++;
+            }
           }
           
           absentCadets.set(cadet.id, {
@@ -686,12 +707,25 @@ export async function exportLastWeekAbsences(): Promise<void> {
         const data = absentCadets.get(cadet.id);
         if (!data) continue;
         
+        // Get status for each date (including present/excused, not just absences)
+        const dateStatuses = sheetDates.map(dateStr => {
+          // Check if it's current week Tuesday
+          if (dateStr === currentTuesdayStr && !lastWeekDates.includes(dateStr)) {
+            const status = getStatus(currentWeekRecords.get(cadet.id) ?? null, dateStr, cadet.militaryScienceLevel);
+            return status;
+          } else if (lastWeekDates.includes(dateStr)) {
+            const status = getStatus(lastWeekRecords.get(cadet.id) ?? null, dateStr, cadet.militaryScienceLevel);
+            return status;
+          }
+          return null;
+        });
+        
         const row = [
           `${cadet.lastName}, ${cadet.firstName}`,
-          ...sheetDates.map(dateStr => {
-            const absence = data.absences.get(dateStr);
-            if (absence === 'unexcused') return 'U';
-            if (absence === 'excused') return 'E';
+          ...dateStatuses.map(status => {
+            if (status === 'present') return 'P';
+            if (status === 'excused') return 'E';
+            if (status === 'unexcused') return 'U';
             return '';
           }),
           data.semesterTotalAbsences
@@ -759,12 +793,13 @@ export async function exportLastWeekAbsences(): Promise<void> {
         const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
         if (!ws[cellAddress]) continue;
         
-        // Color absence cells
+        // Color status cells (present/excused/unexcused)
         if (C > 0 && C <= sheetDates.length) {
           const value = row[C];
-          if (value === 'U') {
+          if (value === 'P') {
+            // Present - Green
             ws[cellAddress].s = {
-              fill: { fgColor: { rgb: 'FFFF6B6B' } },
+              fill: { fgColor: { rgb: 'FF90EE90' } },
               font: { bold: true, color: { rgb: 'FF000000' } },
               alignment: { horizontal: 'center', vertical: 'center' },
               border: {
@@ -775,6 +810,7 @@ export async function exportLastWeekAbsences(): Promise<void> {
               }
             };
           } else if (value === 'E') {
+            // Excused - Yellow
             ws[cellAddress].s = {
               fill: { fgColor: { rgb: 'FFFFFF00' } },
               font: { bold: true, color: { rgb: 'FF000000' } },
@@ -786,7 +822,21 @@ export async function exportLastWeekAbsences(): Promise<void> {
                 right: { style: 'thin', color: { rgb: 'FF000000' } }
               }
             };
+          } else if (value === 'U') {
+            // Unexcused - Red
+            ws[cellAddress].s = {
+              fill: { fgColor: { rgb: 'FFFF6B6B' } },
+              font: { bold: true, color: { rgb: 'FF000000' } },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: 'FF000000' } },
+                bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+                left: { style: 'thin', color: { rgb: 'FF000000' } },
+                right: { style: 'thin', color: { rgb: 'FF000000' } }
+              }
+            };
           } else {
+            // Empty/Not marked - White
             ws[cellAddress].s = {
               alignment: { horizontal: 'center', vertical: 'center' },
               border: {
