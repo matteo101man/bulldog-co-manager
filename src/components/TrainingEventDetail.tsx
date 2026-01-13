@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   getTrainingEventById, 
   updateTrainingEvent 
@@ -10,6 +10,224 @@ interface TrainingEventDetailProps {
   eventId: string;
   onBack: () => void;
   onRefresh: () => void;
+}
+
+interface SearchableSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  cadets: Cadet[];
+  placeholder: string;
+  label: string;
+}
+
+function SearchableSelect({ value, onChange, cadets, placeholder, label }: SearchableSelectProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedCadet = cadets.find(c => c.id === value);
+  const displayValue = selectedCadet ? `${selectedCadet.lastName}, ${selectedCadet.firstName}` : '';
+
+  const filteredCadets = cadets.filter(cadet => {
+    const fullName = `${cadet.lastName}, ${cadet.firstName}`.toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
+    return fullName.includes(searchLower) || 
+           cadet.firstName.toLowerCase().includes(searchLower) ||
+           cadet.lastName.toLowerCase().includes(searchLower);
+  });
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+        setSearchQuery('');
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const query = e.target.value;
+    setSearchQuery(query);
+    setIsOpen(true);
+    if (!query) {
+      onChange('');
+    }
+  }
+
+  function handleSelect(cadetId: string) {
+    onChange(cadetId);
+    setIsOpen(false);
+    setSearchQuery('');
+  }
+
+  function handleFocus() {
+    setIsOpen(true);
+    if (!value) {
+      setSearchQuery('');
+    }
+  }
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        type="text"
+        value={isOpen && searchQuery !== '' ? searchQuery : displayValue}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+      {isOpen && filteredCadets.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto"
+        >
+          {filteredCadets.map(cadet => (
+            <button
+              key={cadet.id}
+              type="button"
+              onClick={() => handleSelect(cadet.id)}
+              className={`w-full text-left px-3 py-2 hover:bg-blue-50 ${
+                value === cadet.id ? 'bg-blue-100' : ''
+              }`}
+            >
+              {cadet.lastName}, {cadet.firstName}
+            </button>
+          ))}
+        </div>
+      )}
+      {isOpen && searchQuery && filteredCadets.length === 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg"
+        >
+          <div className="px-3 py-2 text-gray-500 text-sm">No cadets found</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface SearchableSelectNameProps {
+  value: string;
+  onChange: (value: string) => void;
+  cadets: Cadet[];
+  placeholder: string;
+  label: string;
+}
+
+function SearchableSelectName({ value, onChange, cadets, placeholder, label }: SearchableSelectNameProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredCadets = cadets.filter(cadet => {
+    const fullName = `${cadet.lastName}, ${cadet.firstName}`.toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
+    return fullName.includes(searchLower) || 
+           cadet.firstName.toLowerCase().includes(searchLower) ||
+           cadet.lastName.toLowerCase().includes(searchLower);
+  });
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+        setSearchQuery('');
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const query = e.target.value;
+    setSearchQuery(query);
+    setIsOpen(true);
+    if (!query) {
+      onChange('');
+    }
+  }
+
+  function handleSelect(fullName: string) {
+    onChange(fullName);
+    setIsOpen(false);
+    setSearchQuery('');
+  }
+
+  function handleFocus() {
+    setIsOpen(true);
+    if (!value) {
+      setSearchQuery('');
+    }
+  }
+
+  return (
+    <div className="relative">
+      <label className="block text-xs text-gray-600 mb-1">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        type="text"
+        value={isOpen && searchQuery !== '' ? searchQuery : value}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        placeholder={placeholder}
+        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+      />
+      {isOpen && filteredCadets.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto"
+        >
+          {filteredCadets.map(cadet => {
+            const fullName = `${cadet.lastName}, ${cadet.firstName}`;
+            return (
+              <button
+                key={cadet.id}
+                type="button"
+                onClick={() => handleSelect(fullName)}
+                className={`w-full text-left px-2 py-1 text-sm hover:bg-blue-50 ${
+                  value === fullName ? 'bg-blue-100' : ''
+                }`}
+              >
+                {fullName}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {isOpen && searchQuery && filteredCadets.length === 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg"
+        >
+          <div className="px-2 py-1 text-gray-500 text-xs">No cadets found</div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function TrainingEventDetail({ 
@@ -244,45 +462,35 @@ export default function TrainingEventDetail({
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">OIC</label>
-              {isEditing ? (
-                <select
+            {isEditing ? (
+              <>
+                <SearchableSelect
                   value={editedEvent.oicId || ''}
-                  onChange={(e) => setEditedEvent({ ...editedEvent, oicId: e.target.value || undefined })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select OIC</option>
-                  {cadets.map(cadet => (
-                    <option key={cadet.id} value={cadet.id}>
-                      {cadet.lastName}, {cadet.firstName}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="text-gray-900">{getCadetName(event.oicId) || 'Not assigned'}</div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">NCOIC</label>
-              {isEditing ? (
-                <select
+                  onChange={(value) => setEditedEvent({ ...editedEvent, oicId: value || undefined })}
+                  cadets={cadets}
+                  placeholder="Type to search for OIC..."
+                  label="OIC"
+                />
+                <SearchableSelect
                   value={editedEvent.ncoicId || ''}
-                  onChange={(e) => setEditedEvent({ ...editedEvent, ncoicId: e.target.value || undefined })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select NCOIC</option>
-                  {cadets.map(cadet => (
-                    <option key={cadet.id} value={cadet.id}>
-                      {cadet.lastName}, {cadet.firstName}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="text-gray-900">{getCadetName(event.ncoicId) || 'Not assigned'}</div>
-              )}
-            </div>
+                  onChange={(value) => setEditedEvent({ ...editedEvent, ncoicId: value || undefined })}
+                  cadets={cadets}
+                  placeholder="Type to search for NCOIC..."
+                  label="NCOIC"
+                />
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">OIC</label>
+                  <div className="text-gray-900">{getCadetName(event.oicId) || 'Not assigned'}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">NCOIC</label>
+                  <div className="text-gray-900">{getCadetName(event.ncoicId) || 'Not assigned'}</div>
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">AO (Area of Operations)</label>
@@ -556,44 +764,35 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <h3 className="font-bold text-gray-900 mb-2">SITUATION</h3>
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">OIC:</label>
-            {isEditing ? (
-              <select
+          {isEditing ? (
+            <>
+              <SearchableSelectName
                 value={conop.situation?.oic || ''}
-                onChange={(e) => updateSituation('oic', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select</option>
-                {cadets.map(c => (
-                  <option key={c.id} value={`${c.lastName}, ${c.firstName}`}>
-                    {c.lastName}, {c.firstName}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="text-sm text-gray-700">{conop.situation?.oic || ''}</div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">NCOIC:</label>
-            {isEditing ? (
-              <select
+                onChange={(value) => updateSituation('oic', value)}
+                cadets={cadets}
+                placeholder="Type to search..."
+                label="OIC:"
+              />
+              <SearchableSelectName
                 value={conop.situation?.ncoic || ''}
-                onChange={(e) => updateSituation('ncoic', e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select</option>
-                {cadets.map(c => (
-                  <option key={c.id} value={`${c.lastName}, ${c.firstName}`}>
-                    {c.lastName}, {c.firstName}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="text-sm text-gray-700">{conop.situation?.ncoic || ''}</div>
-            )}
-          </div>
+                onChange={(value) => updateSituation('ncoic', value)}
+                cadets={cadets}
+                placeholder="Type to search..."
+                label="NCOIC:"
+              />
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">OIC:</label>
+                <div className="text-sm text-gray-700">{conop.situation?.oic || ''}</div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">NCOIC:</label>
+                <div className="text-sm text-gray-700">{conop.situation?.ncoic || ''}</div>
+              </div>
+            </>
+          )}
           <div>
             <label className="block text-xs text-gray-600 mb-1">DATE:</label>
             {isEditing ? (

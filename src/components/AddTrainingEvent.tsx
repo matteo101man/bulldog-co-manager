@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { addTrainingEvent, updateTrainingEvent } from '../services/trainingEventService';
 import { getCadetsByCompany } from '../services/cadetService';
 import { TrainingEvent, PlanningStatus, Cadet } from '../types';
@@ -7,6 +7,118 @@ interface AddTrainingEventProps {
   eventId?: string; // If provided, we're editing
   onBack: () => void;
   onSuccess: () => void;
+}
+
+interface SearchableSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  cadets: Cadet[];
+  placeholder: string;
+  label: string;
+}
+
+function SearchableSelect({ value, onChange, cadets, placeholder, label }: SearchableSelectProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedCadet = cadets.find(c => c.id === value);
+  const displayValue = selectedCadet ? `${selectedCadet.lastName}, ${selectedCadet.firstName}` : '';
+
+  // Filter cadets based on search query
+  const filteredCadets = cadets.filter(cadet => {
+    const fullName = `${cadet.lastName}, ${cadet.firstName}`.toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
+    return fullName.includes(searchLower) || 
+           cadet.firstName.toLowerCase().includes(searchLower) ||
+           cadet.lastName.toLowerCase().includes(searchLower);
+  });
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+        setSearchQuery('');
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const query = e.target.value;
+    setSearchQuery(query);
+    setIsOpen(true);
+    
+    // If user clears the input, clear the selection
+    if (!query) {
+      onChange('');
+    }
+  }
+
+  function handleSelect(cadetId: string) {
+    onChange(cadetId);
+    setIsOpen(false);
+    setSearchQuery('');
+  }
+
+  function handleFocus() {
+    setIsOpen(true);
+    if (!value) {
+      setSearchQuery('');
+    }
+  }
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        type="text"
+        value={isOpen && searchQuery !== '' ? searchQuery : displayValue}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+      {isOpen && filteredCadets.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto"
+        >
+          {filteredCadets.map(cadet => (
+            <button
+              key={cadet.id}
+              type="button"
+              onClick={() => handleSelect(cadet.id)}
+              className={`w-full text-left px-3 py-2 hover:bg-blue-50 ${
+                value === cadet.id ? 'bg-blue-100' : ''
+              }`}
+            >
+              {cadet.lastName}, {cadet.firstName}
+            </button>
+          ))}
+        </div>
+      )}
+      {isOpen && searchQuery && filteredCadets.length === 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg"
+        >
+          <div className="px-3 py-2 text-gray-500 text-sm">No cadets found</div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrainingEventProps) {
@@ -161,41 +273,21 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              OIC (Optional)
-            </label>
-            <select
-              value={oicId}
-              onChange={(e) => setOicId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select OIC</option>
-              {cadets.map(cadet => (
-                <option key={cadet.id} value={cadet.id}>
-                  {cadet.lastName}, {cadet.firstName}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SearchableSelect
+            value={oicId}
+            onChange={setOicId}
+            cadets={cadets}
+            placeholder="Type to search for OIC..."
+            label="OIC (Optional)"
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              NCOIC (Optional)
-            </label>
-            <select
-              value={ncoicId}
-              onChange={(e) => setNcoicId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select NCOIC</option>
-              {cadets.map(cadet => (
-                <option key={cadet.id} value={cadet.id}>
-                  {cadet.lastName}, {cadet.firstName}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SearchableSelect
+            value={ncoicId}
+            onChange={setNcoicId}
+            cadets={cadets}
+            placeholder="Type to search for NCOIC..."
+            label="NCOIC (Optional)"
+          />
 
           {/* AO (Location), Uniform, and Mission fields */}
           <div>
