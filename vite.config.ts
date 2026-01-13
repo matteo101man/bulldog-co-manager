@@ -76,7 +76,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/bulldog-co-manager/',
+  base: '/',
   build: {
     rollupOptions: {
       output: {

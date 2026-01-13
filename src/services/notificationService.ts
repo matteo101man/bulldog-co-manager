@@ -56,13 +56,14 @@ async function getFCMToken(): Promise<string | null> {
     try {
       // Get the service worker registration for Firebase Messaging
       // We need to register the firebase-messaging-sw.js service worker
-      const basePath = '/bulldog-co-manager';
+      // Use Vite's BASE_URL which will be '/' for Firebase Hosting or '/bulldog-co-manager/' for GitHub Pages
+      const basePath = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
       let registration;
       
       // Check if there's already a service worker registered
       const existingRegistrations = await navigator.serviceWorker.getRegistrations();
       const firebaseSW = existingRegistrations.find(reg => 
-        reg.scope.includes(basePath) && reg.active?.scriptURL?.includes('firebase-messaging-sw')
+        reg.active?.scriptURL?.includes('firebase-messaging-sw')
       );
       
       if (firebaseSW) {
@@ -75,7 +76,7 @@ async function getFCMToken(): Promise<string | null> {
           scope: `${basePath}/`
         });
         // Wait for it to be ready
-        await navigator.serviceWorker.ready;
+        await registration.update(); // Update if needed
       }
     
     // Get FCM token with VAPID key
