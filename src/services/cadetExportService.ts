@@ -165,8 +165,20 @@ export async function exportCompanyRoster(): Promise<void> {
     // Helper function to find leadership by position
     function findLeadership(cadets: Cadet[], positionKeywords: string[]): Cadet | null {
       return cadets.find(cadet => {
-        const position = (cadet.position || '').toLowerCase();
-        return positionKeywords.some(keyword => position.includes(keyword.toLowerCase()));
+        const position = (cadet.position || '').toLowerCase().trim();
+        return positionKeywords.some(keyword => {
+          const keywordLower = keyword.toLowerCase();
+          
+          // For short codes like "1sg" and "co", match as whole words only
+          if (keywordLower === '1sg' || keywordLower === 'co') {
+            // Split position by common delimiters and check each word
+            const words = position.split(/[\s,;|/]+/).map(w => w.trim()).filter(w => w);
+            return words.includes(keywordLower);
+          }
+          
+          // For longer phrases like "first sergeant" or "commanding officer", use includes
+          return position.includes(keywordLower);
+        });
       }) || null;
     }
     
