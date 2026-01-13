@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx-js-style';
 import { getCadetsByCompany } from './cadetService';
-import { Cadet } from '../types';
+import { Cadet, Company } from '../types';
 
 /**
  * Export all cadet data to Excel
@@ -146,6 +146,172 @@ export async function exportCadetData(): Promise<void> {
     XLSX.writeFile(wb, filename);
   } catch (error) {
     console.error('Error exporting cadet data:', error);
+    throw error;
+  }
+}
+
+/**
+ * Export company roster organized by company
+ * Creates a formatted roster with company headers, leadership, and cadet lists
+ */
+export async function exportCompanyRoster(): Promise<void> {
+  try {
+    // Get all cadets from Master list
+    const allCadets = await getCadetsByCompany('Master');
+    
+    // Companies to include in the roster (excluding Master and Headquarters Company)
+    const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
+    
+    // Helper function to find leadership by position
+    function findLeadership(cadets: Cadet[], positionKeywords: string[]): Cadet | null {
+      return cadets.find(cadet => {
+        const position = (cadet.position || '').toLowerCase();
+        return positionKeywords.some(keyword => position.includes(keyword.toLowerCase()));
+      }) || null;
+    }
+    
+    // Prepare worksheet data
+    const wsData: any[][] = [];
+    
+    // Process each company
+    for (const company of companies) {
+      // Filter cadets for this company
+      const companyCadets = allCadets
+        .filter(c => c.company === company)
+        .sort((a, b) => {
+          const lastNameCompare = a.lastName.localeCompare(b.lastName);
+          if (lastNameCompare !== 0) return lastNameCompare;
+          return a.firstName.localeCompare(b.firstName);
+        });
+      
+      if (companyCadets.length === 0) continue;
+      
+      // Add company header
+      wsData.push([`${company} Company`]);
+      wsData.push([]); // Empty row
+      
+      // Add table header
+      wsData.push(['Company', '1SG', 'CO:']);
+      
+      // Find 1SG and CO
+      const firstSergeant = findLeadership(companyCadets, ['1sg', 'first sergeant', '1st sergeant']);
+      const commandingOfficer = findLeadership(companyCadets, ['co', 'commanding officer', 'company commander']);
+      
+      // Add leadership row
+      const companyLetter = company === 'Ranger' ? 'Ranger' : company.charAt(0);
+      wsData.push([
+        companyLetter,
+        firstSergeant ? `${firstSergeant.lastName}` : '',
+        commandingOfficer ? `${commandingOfficer.lastName}` : ''
+      ]);
+      
+      // Get cadets excluding leadership
+      const regularCadets = companyCadets.filter(c => 
+        c.id !== firstSergeant?.id && c.id !== commandingOfficer?.id
+      );
+      
+      // Distribute cadets across rows (3 columns)
+      for (let i = 0; i < regularCadets.length; i += 3) {
+        const row = [
+          regularCadets[i]?.lastName || '',
+          regularCadets[i + 1]?.lastName || '',
+          regularCadets[i + 2]?.lastName || ''
+        ];
+        wsData.push(row);
+      }
+      
+      // Add spacing between companies
+      wsData.push([]);
+      wsData.push([]);
+    }
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 20 }, // Company column
+      { wch: 20 }, // 1SG column
+      { wch: 20 }, // CO column
+    ];
+    
+    // Apply styling
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    let currentRow = 0;
+    
+    for (const company of companies) {
+      // Style company header
+      const headerCell = XLSX.utils.encode_cell({ r: currentRow, c: 0 });
+      if (ws[headerCell]) {
+        ws[headerCell].s = {
+          font: { bold: true, sz: 14 },
+          fill: { fgColor: { rgb: 'D9E1F2' } },
+        };
+      }
+      currentRow += 2; // Skip empty row
+      
+      // Style table header
+      for (let C = 0; C < 3; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: C });
+        if (ws[cellAddress]) {
+          ws[cellAddress].s = {
+            font: { bold: true, color: { rgb: 'FFFFFF' } },
+            fill: { fgColor: { rgb: '4472C4' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: '000000' } },
+              bottom: { style: 'thin', color: { rgb: '000000' } },
+              left: { style: 'thin', color: { rgb: '000000' } },
+              right: { style: 'thin', color: { rgb: '000000' } },
+            },
+          };
+        }
+      }
+      currentRow++;
+      
+      // Find where this company's data ends
+      const companyCadets = allCadets.filter(c => c.company === company);
+      const firstSergeant = findLeadership(companyCadets, ['1sg', 'first sergeant', '1st sergeant']);
+      const commandingOfficer = findLeadership(companyCadets, ['co', 'commanding officer', 'company commander']);
+      const regularCadets = companyCadets.filter(c => 
+        c.id !== firstSergeant?.id && c.id !== commandingOfficer?.id
+      );
+      const dataRows = Math.ceil(regularCadets.length / 3) + 1; // +1 for leadership row
+      
+      // Style data rows
+      for (let R = 0; R < dataRows; R++) {
+        for (let C = 0; C < 3; C++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow + R, c: C });
+          if (ws[cellAddress]) {
+            ws[cellAddress].s = {
+              alignment: { vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: 'D9D9D9' } },
+                bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
+                left: { style: 'thin', color: { rgb: 'D9D9D9' } },
+                right: { style: 'thin', color: { rgb: 'D9D9D9' } },
+              },
+            };
+          }
+        }
+      }
+      
+      currentRow += dataRows + 2; // Move past data and spacing rows
+    }
+    
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Company Roster');
+    
+    // Generate filename with current date
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    const filename = `company_roster_${dateStr}.xlsx`;
+    
+    // Write file
+    XLSX.writeFile(wb, filename);
+  } catch (error) {
+    console.error('Error exporting company roster:', error);
     throw error;
   }
 }
