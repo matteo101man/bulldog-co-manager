@@ -1,9 +1,15 @@
 name: Deploy to GitHub Pages
 
+# Disabled - using manual deployment only
+# Uncomment the 'on:' section below to re-enable automatic deployments
+# on:
+#   push:
+#     branches:
+#       - main
+
+# Workflow will only run when manually triggered
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
