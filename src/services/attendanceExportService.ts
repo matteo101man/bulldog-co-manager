@@ -540,7 +540,11 @@ export async function exportLastWeekAbsences(): Promise<void> {
     semesterWeekStarts.add(getWeekStart(dateStr));
   }
   
-  // Fetch all attendance records for semester
+  // Also include last week and current week (they might be before semester start)
+  semesterWeekStarts.add(lastWeekStart);
+  semesterWeekStarts.add(currentWeekStart);
+  
+  // Fetch all attendance records for semester and recent weeks
   const allSemesterRecords = new Map<string, Map<string, AttendanceRecord>>();
   for (const weekStart of semesterWeekStarts) {
     const weekRecords = await getAllAttendanceForWeek(weekStart);
@@ -634,7 +638,8 @@ export async function exportLastWeekAbsences(): Promise<void> {
         
         // Only include if they had at least one absence
         if (hadAbsence) {
-          // Calculate total semester absences for this type across ALL weeks
+          // Calculate total semester absences for this type
+          // Count absences from ALL weeks in the semester date range
           let semesterTotalAbsences = 0;
           
           // Get all dates for this attendance type in the semester
@@ -654,7 +659,11 @@ export async function exportLastWeekAbsences(): Promise<void> {
           for (const dateStr of semesterDatesForType) {
             const weekStart = getWeekStart(dateStr);
             const weekRecords = allSemesterRecords.get(weekStart);
-            const record = weekRecords?.get(cadet.id) ?? null;
+            if (!weekRecords) continue; // Skip if we don't have records for this week
+            
+            const record = weekRecords.get(cadet.id);
+            if (!record) continue; // Skip if cadet has no record for this week
+            
             const status = getStatus(record, dateStr, cadet.militaryScienceLevel);
             
             if (status === 'excused' || status === 'unexcused') {
