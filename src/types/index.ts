@@ -1,4 +1,4 @@
-export type Company = 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' | 'Master';
+export type Company = 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' | 'Headquarters Company' | 'Master';
 
 export type AttendanceStatus = 'present' | 'excused' | 'unexcused' | null;
 

@@ -21,7 +21,7 @@ const firebaseConfig = {
 };
 
 interface CadetData {
-  company: 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger';
+  company: 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' | 'Headquarters Company';
   firstName: string;
   lastName: string;
   militaryScienceLevel: string;

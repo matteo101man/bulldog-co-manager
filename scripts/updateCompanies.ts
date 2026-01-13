@@ -17,7 +17,7 @@ const firebaseConfig = {
 };
 
 // Company assignments by last name
-const COMPANY_ASSIGNMENTS: { [lastName: string]: 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' } = {
+const COMPANY_ASSIGNMENTS: { [lastName: string]: 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' | 'Headquarters Company' } = {
   // Alpha
   'Le': 'Alpha',
   'Phillips': 'Alpha',

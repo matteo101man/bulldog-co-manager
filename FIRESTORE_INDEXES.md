@@ -4,57 +4,65 @@ To ensure optimal performance with multiple concurrent users, you need to create
 
 ## How to Create Indexes
 
-1. Go to Firebase Console → Firestore Database → Indexes
-2. Click "Create Index"
-3. Enter the collection name and fields as specified below
-4. Click "Create"
+### Important: Single-Field vs Composite Indexes
 
-Alternatively, Firestore will automatically prompt you to create indexes when you run queries that need them. You can click the link in the error message to create them automatically.
+**Single-Field Indexes**: Firestore creates these **automatically** - you don't need to create them manually! The "Automatic index settings" you see in the console shows that single-field indexes are enabled by default.
+
+**Composite Indexes**: These **must be created manually** - these are the ones you need to create.
+
+### Steps to Create Composite Indexes
+
+1. Go to Firebase Console → Firestore Database → Indexes
+2. Make sure you're on the **"Composite"** tab (not "Single field")
+3. Click "Create Index"
+4. Enter the collection name and fields as specified below
+5. Click "Create"
+
+**Note**: You can ignore the "Exemptions" section - that's only for advanced use cases where you want to disable automatic indexing for specific fields.
+
+Alternatively, Firestore will automatically prompt you to create composite indexes when you run queries that need them. You can click the link in the error message to create them automatically.
 
 ## Required Indexes
 
+**Important**: The single-field indexes (like `weekStartDate`, `cadetId`, `company`, etc.) are created **automatically** by Firestore. You only need to create the **composite indexes** listed below.
+
 ### 1. Attendance Collection
 
-#### Index 1: Week-based queries
-- **Collection ID**: `attendance`
-- **Fields to index**:
-  - `weekStartDate` (Ascending)
-- **Query scope**: Collection
+#### ⚠️ Single-Field Indexes (Automatic - No Action Needed)
+These are created automatically:
+- `weekStartDate` (Ascending) - ✅ Automatic
+- `cadetId` (Ascending) - ✅ Automatic
 
-#### Index 2: Cadet-based queries  
-- **Collection ID**: `attendance`
-- **Fields to index**:
-  - `cadetId` (Ascending)
-- **Query scope**: Collection
-
-#### Index 3: Week and Cadet composite (for efficient lookups)
+#### ✅ Composite Index to Create: Week and Cadet
 - **Collection ID**: `attendance`
 - **Fields to index**:
   - `weekStartDate` (Ascending)
   - `cadetId` (Ascending)
 - **Query scope**: Collection
+- **Why**: Needed for efficient queries that filter by both week and cadet
 
 ### 2. Cadets Collection
 
-#### Index 1: Company-based queries
-- **Collection ID**: `cadets`
-- **Fields to index**:
-  - `company` (Ascending)
-- **Query scope**: Collection
+#### ⚠️ Single-Field Indexes (Automatic - No Action Needed)
+These are created automatically:
+- `company` (Ascending) - ✅ Automatic
+- `militaryScienceLevel` (Ascending) - ✅ Automatic
 
-#### Index 2: MS Level queries
-- **Collection ID**: `cadets`
-- **Fields to index**:
-  - `militaryScienceLevel` (Ascending)
-- **Query scope**: Collection
+#### ✅ No Composite Indexes Required
+The cadets collection only needs single-field indexes, which are automatic.
 
 ### 3. Training Events Collection
 
-#### Index 1: Date-based queries (already exists if using orderBy)
-- **Collection ID**: `trainingEvents`
-- **Fields to index**:
-  - `date` (Descending)
-- **Query scope**: Collection
+#### ⚠️ Single-Field Index (Automatic - No Action Needed)
+- `date` (Descending) - ✅ Automatic (created when you use `orderBy`)
+
+#### ✅ No Composite Indexes Required
+The training events collection only needs single-field indexes, which are automatic.
+
+## Summary: What You Actually Need to Create
+
+**Only 1 composite index needs to be created manually:**
+- **Attendance collection**: `weekStartDate` + `cadetId` (composite)
 
 ## Performance Benefits
 
@@ -64,9 +72,28 @@ These indexes will:
 - **Enable efficient filtering** without full collection scans
 - **Reduce Firestore read costs** by making queries more efficient
 
-## Automatic Index Creation
+## Understanding Automatic vs Manual Indexes
 
-Firestore will automatically create single-field indexes, but composite indexes (multiple fields) must be created manually. The app will work without these indexes, but queries will be slower and may hit rate limits with multiple concurrent users.
+### Automatic (Single-Field) Indexes
+- **Created automatically** by Firestore for all fields
+- **No action needed** - they're enabled by default
+- Covers: equality queries, single-field sorting, array queries
+- The "Automatic index settings" in the console shows these are enabled
+
+### Manual (Composite) Indexes
+- **Must be created manually** when queries use multiple fields
+- **Action required**: Create the composite index listed above
+- Needed for: queries that filter/sort by multiple fields
+
+### About Exemptions
+The "Exemptions" section you see is for **advanced use cases only**. You can ignore it - it's used to disable automatic indexing for specific fields if you want to save storage space. For this application, you don't need to use exemptions.
+
+## What Happens Without Composite Indexes
+
+The app will work without the composite index, but:
+- Queries will be slower (may take seconds instead of milliseconds)
+- May hit rate limits with multiple concurrent users
+- Firestore will show an error in the browser console with a link to create the index
 
 ## Where to Find Index Error Messages
 

@@ -8,7 +8,7 @@ interface CadetsListProps {
   onAddCadet?: () => void;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
 
 export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: CadetsListProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);

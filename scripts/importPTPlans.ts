@@ -20,7 +20,7 @@ const firebaseConfig = {
 };
 
 interface PTPlanData {
-  company: 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger';
+  company: 'Alpha' | 'Bravo' | 'Charlie' | 'Ranger' | 'Headquarters Company';
   weekStartDate: string; // ISO date string for the Monday of the week
   day: 'tuesday' | 'wednesday' | 'thursday';
   title: string;
