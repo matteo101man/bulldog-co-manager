@@ -47,7 +47,7 @@ export default defineConfig({
           }
         ]
       },
-      includeAssets: ['favicon.ico', 'favicon-96x96.png', 'apple-touch-icon.png', 'firebase-messaging-sw.js'],
+      includeAssets: ['favicon.ico', 'favicon-96x96.png', 'apple-touch-icon.png', 'firebase-messaging-sw.js', '.nojekyll'],
       manifest: {
         name: 'Bulldog CO Manager',
         short_name: 'CO Manager',
