@@ -19,7 +19,7 @@ Mobile-first Progressive Web App for managing ROTC cadet attendance, training ev
 - Cadet profiles with personal details, attendance history, contracted status, and position
 - Add and edit cadet records
 - Company assignment
-- Filtering by company, MS level, contracted status, and name search
+- Filtering by company, MS level (MS1-MS5), contracted status, and name search
 
 ### Training Events
 - Training schedule calendar view
@@ -170,6 +170,7 @@ src/
 - MS2 - Sophomore
 - MS3 - Junior
 - MS4 - Senior
+- MS5 - Graduate/Extended
 
 ## Contributing
 
