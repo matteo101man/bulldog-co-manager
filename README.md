@@ -118,7 +118,7 @@ firebase deploy --only hosting
 
 ### Automatic Deployment
 
-Deploys automatically on push to `main`. See [FIREBASE_HOSTING_SETUP.md](./FIREBASE_HOSTING_SETUP.md) for configuration.
+Deploys automatically on push to `main`.
 
 ## Tech Stack
 
