@@ -86,9 +86,24 @@ function formatEndDate(dateStr: string): string {
   return end;
 }
 
+// Helper function to format date with abbreviated month (e.g., "22-25 JAN 2025")
+function formatDateWithAbbrMonth(dateStr: string, endDateStr?: string): string {
+  const monthAbbr = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  
+  function formatSingleDate(isoDate: string): string {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    return `${day}${monthAbbr[month - 1]}${year}`;
+  }
+  
+  if (endDateStr && endDateStr !== dateStr) {
+    return `${formatSingleDate(dateStr)} - ${formatSingleDate(endDateStr)}`;
+  }
+  return formatSingleDate(dateStr);
+}
+
 // Helper function to create CONOPS based on event type
 function createConop(eventName: string, oic: string, ncoic: string, date: string, endDate?: string): any {
-  const dateStr = endDate ? `${date} - ${endDate}` : date;
+  const dateStr = formatDateWithAbbrMonth(date, endDate);
   
   return {
     purpose: `To execute ${eventName.toLowerCase()} in accordance with ROTC training requirements.`,
@@ -158,7 +173,17 @@ function createConop(eventName: string, oic: string, ncoic: string, date: string
 // New training events based on user requirements
 const NEW_EVENTS: TrainingEventData[] = [
   {
-    name: 'RC Competition',
+    name: 'Welcome Back Lab',
+    date: formatDate('15 JAN'),
+    hitTime: 'TBD',
+    planningStatus: 'in-progress',
+    oicId: 'Tactics OICs',
+    ao: 'TBD',
+    mission: 'Welcome cadets back for the spring semester with orientation and training updates.',
+    conop: createConop('Welcome Back Lab', 'Tactics OICs', '', formatDate('15 JAN'))
+  },
+  {
+    name: 'Ranger Challenge Competition',
     date: formatDate('22-25 JAN'),
     endDate: formatEndDate('22-25 JAN'),
     hitTime: 'TBD',
@@ -166,7 +191,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Tactics OICs',
     ao: 'TBD',
     mission: 'Conduct Ranger Challenge Competition to evaluate cadet tactical skills, physical fitness, and leadership capabilities in a competitive environment.',
-    conop: createConop('RC Competition', 'Tactics OICs', '', '22-25 JAN')
+    conop: createConop('Ranger Challenge Competition', 'Tactics OICs', '', formatDate('22-25 JAN'), formatEndDate('22-25 JAN'))
   },
   {
     name: 'AFT 1',
@@ -177,26 +202,17 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Fagan/Maddux + protégé',
     ao: 'TBD',
     mission: 'Conduct Army Fitness Test (AFT) 1 to assess cadet physical fitness levels and readiness.',
-    conop: createConop('AFT 1', 'Fagan/Maddux + protégé', '', '03-04 FEB')
+    conop: createConop('AFT 1', 'Fagan/Maddux + protégé', '', formatDate('03-04 FEB'), formatEndDate('03-04 FEB'))
   },
   {
-    name: 'Spring Break',
-    date: formatDate('09-13 MAR'),
-    endDate: formatEndDate('09-13 MAR'),
-    planningStatus: 'in-progress',
-    ao: 'TBD',
-    mission: 'Spring break period - no scheduled training activities.',
-    conop: createConop('Spring Break', '', '', '09-13 MAR')
-  },
-  {
-    name: 'BRM',
+    name: 'Basic Rifle Marksmanship',
     date: formatDate('24 MAR'),
     hitTime: 'TBD',
     planningStatus: 'in-progress',
     oicId: 'Fagan',
     ao: 'TBD',
     mission: 'Conduct Basic Rifle Marksmanship (BRM) training to develop cadet marksmanship skills and weapons handling proficiency.',
-    conop: createConop('BRM', 'Fagan', '', '24 MAR')
+    conop: createConop('Basic Rifle Marksmanship', 'Fagan', '', formatDate('24 MAR'))
   },
   {
     name: 'AFT 2',
@@ -207,10 +223,10 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Fagan/Maddux + protégé',
     ao: 'TBD',
     mission: 'Conduct Army Fitness Test (AFT) 2 to reassess cadet physical fitness levels and track progress.',
-    conop: createConop('AFT 2', 'Fagan/Maddux + protégé', '', '14-15 APR')
+    conop: createConop('AFT 2', 'Fagan/Maddux + protégé', '', formatDate('14-15 APR'), formatEndDate('14-15 APR'))
   },
   {
-    name: 'Spring FTX',
+    name: 'Spring Field Training Exercise',
     date: formatDate('16-19 APR'),
     endDate: formatEndDate('16-19 APR'),
     hitTime: 'TBD',
@@ -218,7 +234,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Cadre w/ Tactics OIC coord',
     ao: 'TBD',
     mission: 'Conduct Spring Field Training Exercise (FTX) to provide comprehensive field training experience and evaluate cadet performance in tactical scenarios.',
-    conop: createConop('Spring FTX', 'Cadre w/ Tactics OIC coord', '', '16-19 APR')
+    conop: createConop('Spring Field Training Exercise', 'Cadre w/ Tactics OIC coord', '', formatDate('16-19 APR'), formatEndDate('16-19 APR'))
   },
   {
     name: '8 Mile Ruck',
@@ -228,17 +244,17 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Tactics OICs',
     ao: 'TBD',
     mission: 'Conduct 8-mile ruck march to build cadet endurance, mental toughness, and tactical movement capabilities.',
-    conop: createConop('8 Mile Ruck', 'Tactics OICs', '', '18 FEB')
+    conop: createConop('8 Mile Ruck', 'Tactics OICs', '', formatDate('18 FEB'))
   },
   {
-    name: 'EoS Lab 12 Mile',
+    name: 'End of Semester 12 Mile Ruck',
     date: formatDate('23 APR'),
     hitTime: 'TBD',
     planningStatus: 'in-progress',
     oicId: 'Tactics OICs',
     ao: 'TBD',
     mission: 'Conduct End of Semester Lab 12-mile ruck march as a culminating physical training event.',
-    conop: createConop('EoS Lab 12 Mile', 'Tactics OICs', '', '23 APR')
+    conop: createConop('End of Semester 12 Mile Ruck', 'Tactics OICs', '', formatDate('23 APR'))
   },
   {
     name: 'Day/Night Lab',
@@ -248,7 +264,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Tactics OICs',
     ao: 'TBD',
     mission: 'Conduct Day/Night Lab training for MS3 cadets focusing on tactical operations in varying light conditions.',
-    conop: createConop('Day/Night Lab', 'Tactics OICs', '', '02 APR')
+    conop: createConop('Day/Night Lab', 'Tactics OICs', '', formatDate('02 APR'))
   },
   {
     name: 'CAIT School Tryouts',
@@ -258,8 +274,8 @@ const NEW_EVENTS: TrainingEventData[] = [
     planningStatus: 'in-progress',
     oicId: 'Fagan, Evans, Guerra, Jackson',
     ao: 'TBD',
-    mission: 'Conduct CAIT School tryouts to select cadets for advanced training opportunities.',
-    conop: createConop('CAIT School Tryouts', 'Fagan, Evans, Guerra, Jackson', '', '17-20 FEB')
+    mission: 'Conduct CAIT School tryouts to select cadets competing for slots at Army schools such as Airborne, Air Assault, and other advanced training opportunities.',
+    conop: createConop('CAIT School Tryouts', 'Fagan, Evans, Guerra, Jackson', '', formatDate('17-20 FEB'), formatEndDate('17-20 FEB'))
   },
   {
     name: 'FTX',
@@ -270,7 +286,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     oicId: 'Cadre w/ Tactics OIC coord',
     ao: 'TBD',
     mission: 'Conduct Field Training Exercise (FTX) to provide comprehensive field training experience and evaluate cadet performance in tactical scenarios.',
-    conop: createConop('FTX', 'Cadre w/ Tactics OIC coord', '', '16-19 APR')
+    conop: createConop('FTX', 'Cadre w/ Tactics OIC coord', '', formatDate('16-19 APR'), formatEndDate('16-19 APR'))
   },
   {
     name: '5K',
@@ -281,7 +297,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     ncoicId: 'Donahoe',
     ao: 'TBD',
     mission: 'Conduct 5K run event to promote physical fitness and unit cohesion.',
-    conop: createConop('5K', 'McFadden', 'Donahoe', '21 MAR')
+    conop: createConop('5K', 'McFadden', 'Donahoe', formatDate('21 MAR'))
   },
   {
     name: 'Commissioning',
@@ -292,7 +308,7 @@ const NEW_EVENTS: TrainingEventData[] = [
     ncoicId: 'Phillips',
     ao: 'TBD',
     mission: 'Conduct commissioning ceremony to recognize and celebrate cadets transitioning to commissioned officers.',
-    conop: createConop('Commissioning', 'Bubak', 'Phillips', '09 MAY')
+    conop: createConop('Commissioning', 'Bubak', 'Phillips', formatDate('09 MAY'))
   },
   {
     name: 'Mill Ball / Awards',
@@ -303,17 +319,17 @@ const NEW_EVENTS: TrainingEventData[] = [
     ncoicId: 'Adkinson',
     ao: 'TBD',
     mission: 'Conduct Military Ball and Awards ceremony to recognize cadet achievements and celebrate unit accomplishments.',
-    conop: createConop('Mill Ball / Awards', 'Navarro', 'Adkinson', '09 APR')
+    conop: createConop('Mill Ball / Awards', 'Navarro', 'Adkinson', formatDate('09 APR'))
   },
   {
-    name: 'H/W & CST Layout',
+    name: 'Height/Weight & CST Layout',
     date: formatDate('11 FEB'),
     hitTime: 'TBD',
     planningStatus: 'in-progress',
     oicId: 'Tactics OICs',
     ao: 'TBD',
-    mission: 'Conduct Height/Weight and CST Layout to assess cadet physical standards and prepare for advanced training.',
-    conop: createConop('H/W & CST Layout', 'Tactics OICs', '', '11 FEB')
+    mission: 'Conduct Height/Weight assessment and CST (Cadet Summer Training) Layout to assess cadet physical standards and layout equipment for MS3s preparing for Cadet Summer Training.',
+    conop: createConop('Height/Weight & CST Layout', 'Tactics OICs', '', formatDate('11 FEB'))
   }
 ];
 
