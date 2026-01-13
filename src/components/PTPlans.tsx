@@ -9,7 +9,7 @@ interface PTPlansProps {
   selectedCompany?: Company | null;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Headquarters Company'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
 
 function getDaysForCompany(company: Company): DayOfWeek[] {
   if (company === 'Ranger') {
