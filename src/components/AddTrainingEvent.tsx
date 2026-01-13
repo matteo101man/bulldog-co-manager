@@ -197,6 +197,7 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
             </select>
           </div>
 
+          {/* AO, Uniform, and Mission fields */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               AO (Area of Operations) (Optional)
