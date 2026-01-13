@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord, AttendanceType } from '../types';
-import { getCadetsByCompany } from '../services/cadetService';
-import { getCompanyAttendance, updateAttendance, updateAttendanceRecord, getAllAttendanceForWeek } from '../services/attendanceService';
+import { getCadetsByCompany, subscribeToCadets } from '../services/cadetService';
+import { getCompanyAttendance, updateAttendance, updateAttendanceRecord, getAllAttendanceForWeek, subscribeToCompanyAttendance, batchUpdateAttendanceRecords } from '../services/attendanceService';
 import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithOrdinal, getCurrentDateStringEST } from '../utils/dates';
 import { getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
 import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from '../utils/stats';
@@ -30,7 +30,71 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
   const showMondayFriday = company === 'Ranger' && attendanceType === 'PT';
 
   useEffect(() => {
-    loadData();
+    setLoading(true);
+    
+    // Set up real-time listeners for better performance
+    const unsubscribeCadets = subscribeToCadets(
+      company,
+      (updatedCadets) => {
+        setCadets(updatedCadets);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error in cadets subscription:', error);
+        // Fallback to one-time fetch
+        getCadetsByCompany(company).then(setCadets).catch(err => {
+          console.error('Error loading cadets:', err);
+          alert(`Error loading data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }).finally(() => setLoading(false));
+      }
+    );
+
+    const unsubscribeAttendance = subscribeToCompanyAttendance(
+      company,
+      currentWeekStart,
+      (updatedAttendance) => {
+        setAttendanceMap(updatedAttendance);
+        // Only update local map if there are no unsaved changes
+        setLocalAttendanceMap(prev => {
+          const hasChanges = JSON.stringify(Array.from(updatedAttendance.entries()).sort()) !== 
+                           JSON.stringify(Array.from(prev.entries()).sort());
+          // If no changes, update from server; otherwise keep local changes
+          return hasChanges ? prev : new Map(updatedAttendance);
+        });
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error in attendance subscription:', error);
+        // Fallback to one-time fetch
+        getCompanyAttendance(company, currentWeekStart).then(attendance => {
+          setAttendanceMap(attendance);
+          setLocalAttendanceMap(new Map(attendance));
+        }).catch(err => {
+          console.error('Error loading attendance:', err);
+        }).finally(() => setLoading(false));
+      }
+    );
+
+    // Initial load (will be fast due to cache)
+    Promise.all([
+      getCadetsByCompany(company),
+      getCompanyAttendance(company, currentWeekStart)
+    ]).then(([cadetList, attendance]) => {
+      setCadets(cadetList);
+      setAttendanceMap(attendance);
+      setLocalAttendanceMap(new Map(attendance));
+      setLoading(false);
+    }).catch(error => {
+      console.error('Error loading data:', error);
+      alert(`Error loading data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check:\n1. Firestore is enabled in Firebase Console\n2. Internet connection is working\n3. Browser console for more details`);
+      setLoading(false);
+    });
+
+    // Cleanup subscriptions
+    return () => {
+      unsubscribeCadets();
+      unsubscribeAttendance();
+    };
   }, [company, currentWeekStart]);
 
   useEffect(() => {
@@ -39,25 +103,6 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       loadUnexcusedTotals();
     }
   }, [cadets]);
-
-  async function loadData() {
-    setLoading(true);
-    try {
-      const [cadetList, attendance] = await Promise.all([
-        getCadetsByCompany(company),
-        getCompanyAttendance(company, currentWeekStart)
-      ]);
-      setCadets(cadetList);
-      setAttendanceMap(attendance);
-      setLocalAttendanceMap(new Map(attendance)); // Initialize local map with server data
-    } catch (error) {
-      console.error('Error loading data:', error);
-      // Show user-friendly error message
-      alert(`Error loading data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check:\n1. Firestore is enabled in Firebase Console\n2. Internet connection is working\n3. Browser console for more details`);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function loadUnexcusedTotals() {
     try {
@@ -243,13 +288,16 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         }
       });
       
-      // Save all changes to the database - update each cadet's complete record at once
+      // Save all changes to the database using batch update for better performance
       // This prevents race conditions when updating multiple days for the same cadet
-      await Promise.all(
-        Array.from(changesByCadet.values()).map(record =>
-          updateAttendanceRecord(record)
-        )
-      );
+      const recordsToUpdate = Array.from(changesByCadet.values());
+      
+      // Use batch update for better performance (especially with multiple users)
+      if (recordsToUpdate.length > 1) {
+        await batchUpdateAttendanceRecords(recordsToUpdate);
+      } else if (recordsToUpdate.length === 1) {
+        await updateAttendanceRecord(recordsToUpdate[0]);
+      }
 
       // Update the server attendance map to match local
       setAttendanceMap(new Map(localAttendanceMap));

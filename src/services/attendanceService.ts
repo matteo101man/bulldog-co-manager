@@ -6,13 +6,17 @@ import {
   query,
   where,
   getDocs,
-  writeBatch
+  writeBatch,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { AttendanceRecord, AttendanceStatus, DayOfWeek, Company, AttendanceType } from '../types';
 import { getCadetsByCompany } from './cadetService';
+import { cacheService } from './cacheService';
 
 const ATTENDANCE_COLLECTION = 'attendance';
+const CACHE_MAX_AGE = 2 * 60 * 1000; // 2 minutes
 
 /**
  * Get attendance document ID for a cadet and week
@@ -115,12 +119,98 @@ export async function updateAttendanceRecord(record: AttendanceRecord): Promise<
     labThursday: record.labThursday ?? null,
     tacticsTuesday: record.tacticsTuesday ?? null,
   }, { merge: true });
+  
+  // Invalidate cache for this week
+  const cacheKey = `attendance_${record.weekStartDate}`;
+  // Cache will be updated by real-time listener
+}
+
+/**
+ * Batch update multiple attendance records at once
+ * This is more efficient than updating records one by one
+ * Firestore batch limit is 500 operations
+ */
+export async function batchUpdateAttendanceRecords(
+  records: AttendanceRecord[]
+): Promise<void> {
+  if (records.length === 0) return;
+  
+  // Firestore batch limit is 500
+  const BATCH_SIZE = 500;
+  
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    const batchRecords = records.slice(i, i + BATCH_SIZE);
+    
+    batchRecords.forEach(record => {
+      const docId = getAttendanceDocId(record.cadetId, record.weekStartDate);
+      const docRef = doc(db, ATTENDANCE_COLLECTION, docId);
+      
+      batch.set(docRef, {
+        cadetId: record.cadetId,
+        weekStartDate: record.weekStartDate,
+        ptMonday: record.ptMonday ?? null,
+        ptTuesday: record.ptTuesday ?? null,
+        ptWednesday: record.ptWednesday ?? null,
+        ptThursday: record.ptThursday ?? null,
+        ptFriday: record.ptFriday ?? null,
+        labThursday: record.labThursday ?? null,
+        tacticsTuesday: record.tacticsTuesday ?? null,
+      }, { merge: true });
+    });
+    
+    await batch.commit();
+  }
+  
+  // Cache will be updated by real-time listeners
 }
 
 /**
  * Get all attendance records for a company for a specific week
+ * Uses cache first, then fetches from Firestore if cache is stale
  */
 export async function getCompanyAttendance(
+  company: Company,
+  weekStartDate: string
+): Promise<Map<string, AttendanceRecord>> {
+  // Try cache first
+  const cacheKey = `attendance_${weekStartDate}`;
+  const isStale = await cacheService.isCacheStale(cacheKey, CACHE_MAX_AGE);
+  
+  if (!isStale) {
+    const cached = await cacheService.getCachedAttendance(weekStartDate);
+    if (cached) {
+      // Filter by company if needed
+      const cadets = await getCadetsByCompany(company);
+      const cadetIds = new Set(cadets.map(c => c.id));
+      const filtered = new Map<string, AttendanceRecord>();
+      
+      cached.forEach((record, cadetId) => {
+        if (cadetIds.has(cadetId)) {
+          filtered.set(cadetId, record);
+        }
+      });
+      
+      // Ensure all cadets have a record
+      ensureAllCadetsHaveRecords(filtered, cadets, weekStartDate);
+      
+      // Return cached data immediately, but still fetch in background
+      fetchAndCacheAttendance(company, weekStartDate).catch(err => 
+        console.error('Background fetch error:', err)
+      );
+      
+      return filtered;
+    }
+  }
+
+  // Fetch from Firestore
+  return fetchAndCacheAttendance(company, weekStartDate);
+}
+
+/**
+ * Fetch attendance from Firestore and update cache
+ */
+async function fetchAndCacheAttendance(
   company: Company,
   weekStartDate: string
 ): Promise<Map<string, AttendanceRecord>> {
@@ -147,6 +237,22 @@ export async function getCompanyAttendance(
   });
 
   // Ensure all cadets have a record (even if null)
+  ensureAllCadetsHaveRecords(attendanceMap, cadets, weekStartDate);
+
+  // Cache the results
+  await cacheService.cacheAttendance(attendanceMap, weekStartDate);
+
+  return attendanceMap;
+}
+
+/**
+ * Ensure all cadets have attendance records
+ */
+function ensureAllCadetsHaveRecords(
+  attendanceMap: Map<string, AttendanceRecord>,
+  cadets: any[],
+  weekStartDate: string
+): void {
   cadets.forEach(cadet => {
     if (!attendanceMap.has(cadet.id)) {
       attendanceMap.set(cadet.id, {
@@ -180,8 +286,55 @@ export async function getCompanyAttendance(
       }
     }
   });
+}
 
-  return attendanceMap;
+/**
+ * Subscribe to real-time updates for company attendance
+ * Returns an unsubscribe function that should be called when done listening
+ */
+export function subscribeToCompanyAttendance(
+  company: Company,
+  weekStartDate: string,
+  onUpdate: (attendance: Map<string, AttendanceRecord>) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, ATTENDANCE_COLLECTION),
+    where('weekStartDate', '==', weekStartDate)
+  );
+  
+  return onSnapshot(
+    q,
+    async (querySnapshot) => {
+      const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+      const attendanceMap = new Map<string, AttendanceRecord>();
+      
+      // Get cadets for filtering
+      const cadets = await getCadetsByCompany(company);
+      const cadetIds = new Set(cadets.map(c => c.id));
+      
+      // Only include records for cadets in this company
+      records.forEach(record => {
+        if (cadetIds.has(record.cadetId)) {
+          attendanceMap.set(record.cadetId, record);
+        }
+      });
+      
+      // Ensure all cadets have a record
+      ensureAllCadetsHaveRecords(attendanceMap, cadets, weekStartDate);
+      
+      // Update cache
+      await cacheService.cacheAttendance(attendanceMap, weekStartDate);
+      
+      onUpdate(attendanceMap);
+    },
+    (error) => {
+      console.error('Error in attendance subscription:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  );
 }
 
 /**
@@ -314,6 +467,8 @@ export async function getUnexcusedAbsenceDates(
  * Get total unexcused absences for multiple cadets
  * Returns a map of cadetId -> total unexcused count
  * @param attendanceType - 'PT' for Physical Training, 'Lab' for Lab, or undefined for both combined
+ * 
+ * Optimized: Uses client-side processing to reduce server load
  */
 export async function getTotalUnexcusedAbsencesForCadets(
   cadetIds: string[],
@@ -324,17 +479,27 @@ export async function getTotalUnexcusedAbsencesForCadets(
   // Initialize all cadets with 0
   cadetIds.forEach(id => result.set(id, 0));
   
+  if (cadetIds.length === 0) return result;
+  
   // Query all attendance records for these cadets
   // Note: Firestore 'in' queries are limited to 10 items, so we'll need to batch
   const batchSize = 10;
+  const queries: Promise<any>[] = [];
+  
   for (let i = 0; i < cadetIds.length; i += batchSize) {
     const batch = cadetIds.slice(i, i + batchSize);
     const q = query(
       collection(db, ATTENDANCE_COLLECTION),
       where('cadetId', 'in', batch)
     );
-    const querySnapshot = await getDocs(q);
-    
+    queries.push(getDocs(q));
+  }
+  
+  // Execute all queries in parallel for better performance
+  const querySnapshots = await Promise.all(queries);
+  
+  // Process all results client-side (reduces server load)
+  querySnapshots.forEach(querySnapshot => {
     querySnapshot.docs.forEach(doc => {
       const record = doc.data() as any;
       const currentCount = result.get(record.cadetId) || 0;
@@ -360,7 +525,7 @@ export async function getTotalUnexcusedAbsencesForCadets(
       
       result.set(record.cadetId, currentCount + unexcusedCount);
     });
-  }
+  });
   
   return result;
 }

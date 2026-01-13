@@ -9,22 +9,52 @@ import {
   updateDoc,
   setDoc,
   deleteDoc,
-  Timestamp 
+  Timestamp,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Cadet, Company } from '../types';
+import { cacheService } from './cacheService';
 
 const CADETS_COLLECTION = 'cadets';
+const CACHE_MAX_AGE = 2 * 60 * 1000; // 2 minutes
 
 /**
  * Get all cadets for a specific company
+ * Uses cache first, then fetches from Firestore if cache is stale
  */
 export async function getCadetsByCompany(company: Company): Promise<Cadet[]> {
+  // Try cache first
+  const cacheKey = company === 'Master' ? 'cadets_all' : `cadets_${company}`;
+  const isStale = await cacheService.isCacheStale(cacheKey, CACHE_MAX_AGE);
+  
+  if (!isStale) {
+    const cached = await cacheService.getCachedCadets(company);
+    if (cached) {
+      // Return cached data immediately, but still fetch in background
+      fetchAndCacheCadets(company).catch(err => 
+        console.error('Background fetch error:', err)
+      );
+      return cached as Cadet[];
+    }
+  }
+
+  // Fetch from Firestore
+  return fetchAndCacheCadets(company);
+}
+
+/**
+ * Fetch cadets from Firestore and update cache
+ */
+async function fetchAndCacheCadets(company: Company): Promise<Cadet[]> {
+  let cadets: Cadet[];
+  
   if (company === 'Master') {
     // Get all cadets
     const q = query(collection(db, CADETS_COLLECTION));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+    cadets = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as Cadet));
@@ -35,7 +65,7 @@ export async function getCadetsByCompany(company: Company): Promise<Cadet[]> {
       where('company', '==', company)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+    cadets = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as Cadet)).sort((a, b) => {
@@ -45,6 +75,62 @@ export async function getCadetsByCompany(company: Company): Promise<Cadet[]> {
       return a.firstName.localeCompare(b.firstName);
     });
   }
+
+  // Cache the results
+  await cacheService.cacheCadets(cadets);
+  
+  return cadets;
+}
+
+/**
+ * Subscribe to real-time updates for cadets
+ * Returns an unsubscribe function that should be called when done listening
+ */
+export function subscribeToCadets(
+  company: Company,
+  onUpdate: (cadets: Cadet[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  let q;
+  
+  if (company === 'Master') {
+    q = query(collection(db, CADETS_COLLECTION));
+  } else {
+    q = query(
+      collection(db, CADETS_COLLECTION),
+      where('company', '==', company)
+    );
+  }
+  
+  return onSnapshot(
+    q,
+    async (querySnapshot) => {
+      const cadets = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Cadet));
+      
+      // Sort if not Master
+      if (company !== 'Master') {
+        cadets.sort((a, b) => {
+          const lastNameCompare = a.lastName.localeCompare(b.lastName);
+          if (lastNameCompare !== 0) return lastNameCompare;
+          return a.firstName.localeCompare(b.firstName);
+        });
+      }
+      
+      // Update cache
+      await cacheService.cacheCadets(cadets);
+      
+      onUpdate(cadets);
+    },
+    (error) => {
+      console.error('Error in cadets subscription:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  );
 }
 
 /**

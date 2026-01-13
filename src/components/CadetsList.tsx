@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCadetsByCompany } from '../services/cadetService';
+import { getCadetsByCompany, subscribeToCadets } from '../services/cadetService';
 import { Cadet, Company } from '../types';
 
 interface CadetsListProps {
@@ -20,21 +20,36 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet }: Cadets
   const [showUncontracted, setShowUncontracted] = useState(true);
 
   useEffect(() => {
-    loadCadets();
-  }, []);
-
-  async function loadCadets() {
     setLoading(true);
-    try {
-      const allCadets = await getCadetsByCompany('Master');
-      setCadets(allCadets);
-    } catch (error) {
+    
+    // Set up real-time listener for better performance
+    const unsubscribe = subscribeToCadets(
+      'Master',
+      (updatedCadets) => {
+        setCadets(updatedCadets);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error in cadets subscription:', error);
+        // Fallback to one-time fetch
+        getCadetsByCompany('Master').then(setCadets).catch(err => {
+          console.error('Error loading cadets:', err);
+          alert(`Error loading cadets: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }).finally(() => setLoading(false));
+      }
+    );
+
+    // Initial load (will be fast due to cache)
+    getCadetsByCompany('Master').then(setCadets).catch(error => {
       console.error('Error loading cadets:', error);
       alert(`Error loading cadets: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
-  }
+    }).finally(() => setLoading(false));
+
+    // Cleanup subscription
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Toggle company filter
   const toggleCompany = (company: Company) => {
