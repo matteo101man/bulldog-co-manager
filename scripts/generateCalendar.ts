@@ -29,10 +29,20 @@ function formatICalDate(dateStr: string): string {
 function formatICalDateTime(dateStr: string, timeStr: string = '0800'): string {
   const date = formatICalDate(dateStr);
   // Convert time from HHMM to HH:MM format
-  const time = timeStr.length === 4 
-    ? `${timeStr.substring(0, 2)}:${timeStr.substring(2, 4)}:00`
-    : timeStr;
-  const [hours, minutes] = time.split(':').map(Number);
+  let hours = 8;
+  let minutes = 0;
+  
+  if (timeStr && timeStr !== 'TBD') {
+    if (timeStr.length === 4) {
+      hours = parseInt(timeStr.substring(0, 2), 10);
+      minutes = parseInt(timeStr.substring(2, 4), 10);
+    } else if (timeStr.includes(':')) {
+      const parts = timeStr.split(':');
+      hours = parseInt(parts[0], 10);
+      minutes = parseInt(parts[1] || '0', 10);
+    }
+  }
+  
   return `${date}T${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}00Z`;
 }
 
@@ -98,9 +108,13 @@ X-WR-TIMEZONE:America/Chicago
         ? formatICalDateTime(endDate, '2000') // End of last day
         : formatICalDateTime(startDate, '1700'); // End of same day
 
+      const now = new Date();
+      const nowDate = now.toISOString().split('T')[0];
+      const dtStamp = formatICalDateTime(nowDate, '1200');
+      
       icsContent += `BEGIN:VEVENT
 UID:rotc-event-${event.id}@bulldog-co-manager
-DTSTAMP:${formatICalDateTime(new Date().toISOString().split('T')[0], '120000')}
+DTSTAMP:${dtStamp}
 DTSTART:${dtStart}
 DTEND:${dtEnd}
 SUMMARY:${eventName}
