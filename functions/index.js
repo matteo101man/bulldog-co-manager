@@ -273,9 +273,27 @@ END:VTIMEZONE
         // For multi-day events, set end date to next day at 20:00 (8 PM)
         const isMultiDay = endDate !== startDate;
         const dtStart = formatICalDateTime(startDate, hitTime);
-        const dtEnd = isMultiDay 
-          ? formatICalDateTime(endDate, '2000') // End of last day at 8 PM
-          : formatICalDateTime(startDate, hitTime === '0800' ? '1700' : hitTime); // End of same day, use hitTime + 9 hours or default to 5 PM
+        
+        // Calculate end time: for single-day events, add 9 hours to start time (or default to 5 PM)
+        // For multi-day events, end at 8 PM on the last day
+        let endTime = '1700'; // Default end time (5 PM)
+        if (!isMultiDay) {
+          // Parse hitTime to calculate end time (start + 9 hours)
+          let startHours = 8;
+          if (hitTime && hitTime !== 'TBD' && hitTime.trim() !== '') {
+            if (hitTime.includes(':')) {
+              startHours = parseInt(hitTime.split(':')[0], 10) || 8;
+            } else if (hitTime.length === 4) {
+              startHours = parseInt(hitTime.substring(0, 2), 10) || 8;
+            }
+          }
+          const endHours = Math.min(23, startHours + 9); // Add 9 hours, cap at 11 PM
+          endTime = String(endHours).padStart(2, '0') + '00';
+        } else {
+          endTime = '2000'; // 8 PM for multi-day events
+        }
+        
+        const dtEnd = formatICalDateTime(isMultiDay ? endDate : startDate, endTime);
 
         const now = new Date();
         const nowDate = now.toISOString().split('T')[0];
