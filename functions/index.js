@@ -164,24 +164,38 @@ exports.getCalendar = onRequest(
         return dateStr.replace(/-/g, '');
       }
 
-      // Helper function to format date-time for iCalendar (YYYYMMDDTHHMMSSZ)
+      // Helper function to format date-time for iCalendar (YYYYMMDDTHHMMSS)
+      // Note: Using local time (no Z) since we're in America/Chicago timezone
       function formatICalDateTime(dateStr, timeStr = '0800') {
         const date = formatICalDate(dateStr);
         let hours = 8;
         let minutes = 0;
         
-        if (timeStr && timeStr !== 'TBD') {
-          if (timeStr.length === 4) {
-            hours = parseInt(timeStr.substring(0, 2), 10);
-            minutes = parseInt(timeStr.substring(2, 4), 10);
-          } else if (timeStr.includes(':')) {
+        if (timeStr && timeStr !== 'TBD' && timeStr.trim() !== '') {
+          // Handle HH:mm format (e.g., "08:00")
+          if (timeStr.includes(':')) {
             const parts = timeStr.split(':');
-            hours = parseInt(parts[0], 10);
-            minutes = parseInt(parts[1] || '0', 10);
+            hours = parseInt(parts[0], 10) || 8;
+            minutes = parseInt(parts[1] || '0', 10) || 0;
+          } 
+          // Handle HHMM format (e.g., "0800")
+          else if (timeStr.length === 4 && /^\d{4}$/.test(timeStr)) {
+            hours = parseInt(timeStr.substring(0, 2), 10) || 8;
+            minutes = parseInt(timeStr.substring(2, 4), 10) || 0;
+          }
+          // Handle HH format (e.g., "8" -> 08:00)
+          else if (timeStr.length <= 2 && /^\d+$/.test(timeStr)) {
+            hours = parseInt(timeStr, 10) || 8;
+            minutes = 0;
           }
         }
         
-        return `${date}T${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}00Z`;
+        // Ensure valid range
+        hours = Math.max(0, Math.min(23, hours));
+        minutes = Math.max(0, Math.min(59, minutes));
+        
+        // Return in local time format (no Z suffix) - calendar apps will use TZID
+        return `${date}T${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}00`;
       }
 
       // Escape text for iCalendar format
@@ -203,6 +217,26 @@ METHOD:PUBLISH
 X-WR-CALNAME:ROTC Training Schedule
 X-WR-CALDESC:Spring 2026 ROTC Training Events
 X-WR-TIMEZONE:America/Chicago
+`;
+        
+        // Add timezone definition for America/Chicago
+        icsContent += `BEGIN:VTIMEZONE
+TZID:America/Chicago
+BEGIN:STANDARD
+DTSTART:20071104T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0600
+TZNAME:CST
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:20070311T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+TZOFFSETFROM:-0600
+TZOFFSETTO:-0500
+TZNAME:CDT
+END:DAYLIGHT
+END:VTIMEZONE
 `;
 
       events.forEach((event) => {
@@ -228,27 +262,31 @@ X-WR-TIMEZONE:America/Chicago
           : '';
 
         // Get hit time, default to 0800 if TBD or not present
-        const hitTime = (event.hitTime && event.hitTime !== 'TBD') 
-          ? event.hitTime 
-          : '0800';
+        let hitTime = '0800';
+        if (event.hitTime && event.hitTime !== 'TBD' && event.hitTime.trim() !== '') {
+          hitTime = event.hitTime;
+        }
+        
+        // Log for debugging
+        console.log(`Event: ${event.name}, hitTime from DB: ${event.hitTime}, using: ${hitTime}`);
 
-        // For multi-day events, set end date to next day at 00:00
+        // For multi-day events, set end date to next day at 20:00 (8 PM)
         const isMultiDay = endDate !== startDate;
         const dtStart = formatICalDateTime(startDate, hitTime);
         const dtEnd = isMultiDay 
-          ? formatICalDateTime(endDate, '2000') // End of last day
-          : formatICalDateTime(startDate, '1700'); // End of same day
+          ? formatICalDateTime(endDate, '2000') // End of last day at 8 PM
+          : formatICalDateTime(startDate, hitTime === '0800' ? '1700' : hitTime); // End of same day, use hitTime + 9 hours or default to 5 PM
 
         const now = new Date();
         const nowDate = now.toISOString().split('T')[0];
-        const dtStamp = formatICalDateTime(nowDate, '1200');
+        const dtStamp = formatICalDateTime(nowDate, '1200') + 'Z'; // DTSTAMP should be UTC
         
-        // Build VEVENT with location field
+        // Build VEVENT with location field and timezone
         let vevent = `BEGIN:VEVENT
 UID:rotc-event-${event.id}@bulldog-co-manager
 DTSTAMP:${dtStamp}
-DTSTART:${dtStart}
-DTEND:${dtEnd}
+DTSTART;TZID=America/Chicago:${dtStart}
+DTEND;TZID=America/Chicago:${dtEnd}
 SUMMARY:${eventName}
 DESCRIPTION:${fullDescription}
 STATUS:CONFIRMED
