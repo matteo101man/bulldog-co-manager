@@ -716,15 +716,15 @@ const NEW_EVENTS: TrainingEventData[] = [
     conop: createConop('CAIT School Tryouts', 'Fagan, Evans, Guerra, Jackson', '', formatDate('17-20 FEB'), formatEndDate('17-20 FEB'))
   },
   {
-    name: '5K',
+    name: 'Memorial 5K',
     date: formatDate('21 MAR'),
     hitTime: 'TBD',
     planningStatus: 'in-progress',
     oicId: 'McFadden',
     ncoicId: 'Donahoe',
     ao: 'TBD',
-    mission: 'Conduct 5K run event to promote physical fitness and unit cohesion.',
-    conop: createConop('5K', 'McFadden', 'Donahoe', formatDate('21 MAR'))
+    mission: 'Conduct Memorial 5K run event to promote physical fitness and unit cohesion.',
+    conop: createConop('Memorial 5K', 'McFadden', 'Donahoe', formatDate('21 MAR'))
   },
   {
     name: 'Commissioning',

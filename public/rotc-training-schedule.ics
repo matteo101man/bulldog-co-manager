@@ -1,0 +1,159 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//ROTC Training Schedule//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:ROTC Training Schedule
+X-WR-CALDESC:Spring 2026 ROTC Training Events
+X-WR-TIMEZONE:America/Chicago
+BEGIN:VEVENT
+UID:rotc-event-5dj7adkunaMhMg2m5pxG@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20251213T080000Z
+DTEND:20251213T170000Z
+SUMMARY:leadership lab - mentor night (test)
+DESCRIPTION:Mission: Facilitate mentorship connections between MSIV cadets and underclassmen through structured activities and informal networking.\nLocation: ROTC Building
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-hlExQGySJfTaMuScuQ4v@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260115T080000Z
+DTEND:20260115T170000Z
+SUMMARY:Welcome Back Lab
+DESCRIPTION:Mission: Welcome cadets back for the spring semester with orientation and training updates.\nOIC: Tactics OICs
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-7WFRZuGSov3FKrrgbWsn@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260122T080000Z
+DTEND:20260125T200000Z
+SUMMARY:Ranger Challenge Competition
+DESCRIPTION:Mission: Conduct Ranger Challenge Competition to evaluate cadet tactical skills\, physical fitness\, and leadership capabilities in a competitive environment.\nOIC: Tactics OICs
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-WDJw4A9t4JURwNHSSizV@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260203T080000Z
+DTEND:20260204T200000Z
+SUMMARY:Army Fitness Test 1
+DESCRIPTION:Mission: Conduct Army Fitness Test (AFT) 1 to assess cadet physical fitness levels and readiness.\nOIC: Fagan/Maddux + protégé
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-N9xBpkWO1ExJgbP0glZ2@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260211T080000Z
+DTEND:20260211T170000Z
+SUMMARY:Height/Weight & CST Layout
+DESCRIPTION:Mission: Conduct Height/Weight assessment and CST (Cadet Summer Training) Layout to assess cadet physical standards and layout equipment for MS3s preparing for Cadet Summer Training.\nOIC: Tactics OICs
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-sClor4vKqfOHI3EVTe7Y@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260217T080000Z
+DTEND:20260220T200000Z
+SUMMARY:CAIT School Tryouts
+DESCRIPTION:Mission: Conduct CAIT School tryouts to select cadets competing for slots at Army schools such as Airborne\, Air Assault\, and other advanced training opportunities.\nOIC: Fagan, Evans, Guerra, Jackson
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-hnfKFLwajsmz5U2kavT4@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260218T080000Z
+DTEND:20260218T170000Z
+SUMMARY:8 Mile Ruck
+DESCRIPTION:Mission: Conduct 8-mile ruck march to build cadet endurance\, mental toughness\, and tactical movement capabilities.\nOIC: Tactics OICs
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-TVWzQOmaN8aInW1GGij7@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260321T080000Z
+DTEND:20260321T170000Z
+SUMMARY:Memorial 5K
+DESCRIPTION:Mission: Conduct Memorial 5K run event to promote physical fitness and unit cohesion.\nOIC: McFadden\nNCOIC: Donahoe
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-tY4sWtQsHmb6nrySSWXC@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260324T080000Z
+DTEND:20260324T170000Z
+SUMMARY:Basic Rifle Marksmanship
+DESCRIPTION:Mission: Conduct Basic Rifle Marksmanship (BRM) training to develop cadet marksmanship skills and weapons handling proficiency.\nOIC: Fagan
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-TWNJnGwhAQGh7vH0pAPj@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260402T080000Z
+DTEND:20260402T170000Z
+SUMMARY:Day/Night Lab
+DESCRIPTION:Mission: Conduct Day/Night Lab training for MS3 cadets focusing on tactical operations in varying light conditions.\nOIC: Tactics OICs
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-9ItnaYLPQoxzemRzeI2y@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260409T080000Z
+DTEND:20260409T170000Z
+SUMMARY:Mill Ball / Awards
+DESCRIPTION:Mission: Conduct Military Ball and Awards ceremony to recognize cadet achievements and celebrate unit accomplishments.\nOIC: Navarro\nNCOIC: Adkinson
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-1gt5h2Frvk1FfLbLAeZA@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260414T080000Z
+DTEND:20260415T200000Z
+SUMMARY:Army Fitness Test 2
+DESCRIPTION:Mission: Conduct Army Fitness Test (AFT) 2 to reassess cadet physical fitness levels and track progress.\nOIC: Fagan/Maddux + protégé
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-VXEW1J8hM2OS0uJN8v6X@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260416T080000Z
+DTEND:20260419T200000Z
+SUMMARY:Spring Field Training Exercise
+DESCRIPTION:Mission: Conduct Spring Field Training Exercise (FTX) to provide comprehensive field training experience and evaluate cadet performance in tactical scenarios.\nOIC: Cadre w/ Tactics OIC coord
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-pmKNhps2Fqtk0ki1YX3h@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260423T080000Z
+DTEND:20260423T170000Z
+SUMMARY:End of Semester 12 Mile Ruck
+DESCRIPTION:Mission: Conduct End of Semester Lab 12-mile ruck march as a culminating physical training event.\nOIC: Tactics OICs
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+BEGIN:VEVENT
+UID:rotc-event-2IY5WzztOmHYaBxwsaUD@bulldog-co-manager
+DTSTAMP:20260114T120000undefined00Z
+DTSTART:20260509T080000Z
+DTEND:20260509T170000Z
+SUMMARY:Commissioning
+DESCRIPTION:Mission: Conduct commissioning ceremony to recognize and celebrate cadets transitioning to commissioned officers.\nOIC: Bubak\nNCOIC: Phillips
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+END:VCALENDAR
