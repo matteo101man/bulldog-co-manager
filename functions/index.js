@@ -164,35 +164,50 @@ exports.getCalendar = onRequest(
         return dateStr.replace(/-/g, '');
       }
 
-      // Helper function to format date-time for iCalendar (YYYYMMDDTHHMMSS)
-      // Note: Using local time (no Z) since we're in America/Chicago timezone
-      function formatICalDateTime(dateStr, timeStr = '0800') {
-        const date = formatICalDate(dateStr);
+      // Helper function to parse time string to hours and minutes
+      function parseTime(timeStr) {
         let hours = 8;
         let minutes = 0;
         
-        if (timeStr && timeStr !== 'TBD' && timeStr.trim() !== '') {
-          // Handle HH:mm format (e.g., "08:00")
-          if (timeStr.includes(':')) {
-            const parts = timeStr.split(':');
-            hours = parseInt(parts[0], 10) || 8;
-            minutes = parseInt(parts[1] || '0', 10) || 0;
-          } 
-          // Handle HHMM format (e.g., "0800")
-          else if (timeStr.length === 4 && /^\d{4}$/.test(timeStr)) {
-            hours = parseInt(timeStr.substring(0, 2), 10) || 8;
-            minutes = parseInt(timeStr.substring(2, 4), 10) || 0;
-          }
-          // Handle HH format (e.g., "8" -> 08:00)
-          else if (timeStr.length <= 2 && /^\d+$/.test(timeStr)) {
-            hours = parseInt(timeStr, 10) || 8;
-            minutes = 0;
-          }
+        if (!timeStr || timeStr === 'TBD' || timeStr.trim() === '') {
+          return { hours: 8, minutes: 0 };
         }
         
-        // Ensure valid range
-        hours = Math.max(0, Math.min(23, hours));
-        minutes = Math.max(0, Math.min(59, minutes));
+        const trimmed = timeStr.trim();
+        
+        // Handle HH:mm format (e.g., "08:00" or "8:00")
+        if (trimmed.includes(':')) {
+          const parts = trimmed.split(':');
+          hours = parseInt(parts[0], 10);
+          minutes = parseInt(parts[1] || '0', 10);
+        } 
+        // Handle HHMM format (e.g., "0800")
+        else if (trimmed.length === 4 && /^\d{4}$/.test(trimmed)) {
+          hours = parseInt(trimmed.substring(0, 2), 10);
+          minutes = parseInt(trimmed.substring(2, 4), 10);
+        }
+        // Handle HH format (e.g., "8" -> 08:00)
+        else if (trimmed.length <= 2 && /^\d+$/.test(trimmed)) {
+          hours = parseInt(trimmed, 10);
+          minutes = 0;
+        }
+        
+        // Ensure valid range and return defaults if invalid
+        if (isNaN(hours) || hours < 0 || hours > 23) {
+          hours = 8;
+        }
+        if (isNaN(minutes) || minutes < 0 || minutes > 59) {
+          minutes = 0;
+        }
+        
+        return { hours, minutes };
+      }
+
+      // Helper function to format date-time for iCalendar (YYYYMMDDTHHMMSS)
+      // Note: Using local time with TZID since we're in America/Chicago timezone
+      function formatICalDateTime(dateStr, timeStr = '0800') {
+        const date = formatICalDate(dateStr);
+        const { hours, minutes } = parseTime(timeStr);
         
         // Return in local time format (no Z suffix) - calendar apps will use TZID
         return `${date}T${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}00`;
@@ -263,37 +278,35 @@ END:VTIMEZONE
 
         // Get hit time, default to 0800 if TBD or not present
         let hitTime = '0800';
-        if (event.hitTime && event.hitTime !== 'TBD' && event.hitTime.trim() !== '') {
-          hitTime = event.hitTime;
+        if (event.hitTime && event.hitTime !== 'TBD' && String(event.hitTime).trim() !== '') {
+          hitTime = String(event.hitTime).trim();
         }
         
         // Log for debugging
-        console.log(`Event: ${event.name}, hitTime from DB: ${event.hitTime}, using: ${hitTime}`);
+        console.log(`Event: ${event.name}, hitTime from DB: "${event.hitTime}", using: "${hitTime}"`);
 
+        // Parse hitTime to get hours for end time calculation
+        const { hours: startHours } = parseTime(hitTime);
+        
         // For multi-day events, set end date to next day at 20:00 (8 PM)
         const isMultiDay = endDate !== startDate;
         const dtStart = formatICalDateTime(startDate, hitTime);
         
         // Calculate end time: for single-day events, add 9 hours to start time (or default to 5 PM)
         // For multi-day events, end at 8 PM on the last day
-        let endTime = '1700'; // Default end time (5 PM)
-        if (!isMultiDay) {
-          // Parse hitTime to calculate end time (start + 9 hours)
-          let startHours = 8;
-          if (hitTime && hitTime !== 'TBD' && hitTime.trim() !== '') {
-            if (hitTime.includes(':')) {
-              startHours = parseInt(hitTime.split(':')[0], 10) || 8;
-            } else if (hitTime.length === 4) {
-              startHours = parseInt(hitTime.substring(0, 2), 10) || 8;
-            }
-          }
-          const endHours = Math.min(23, startHours + 9); // Add 9 hours, cap at 11 PM
-          endTime = String(endHours).padStart(2, '0') + '00';
-        } else {
+        let endTime;
+        if (isMultiDay) {
           endTime = '2000'; // 8 PM for multi-day events
+        } else {
+          // Single-day: start time + 9 hours, default to 5 PM if start is 8 AM
+          const endHours = Math.min(23, startHours + 9);
+          endTime = String(endHours).padStart(2, '0') + '00';
         }
         
         const dtEnd = formatICalDateTime(isMultiDay ? endDate : startDate, endTime);
+        
+        // Additional debug logging
+        console.log(`  Start: ${dtStart}, End: ${dtEnd}, StartHours: ${startHours}, EndTime: ${endTime}`);
 
         const now = new Date();
         const nowDate = now.toISOString().split('T')[0];
