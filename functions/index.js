@@ -209,30 +209,42 @@ X-WR-TIMEZONE:America/Chicago
         const startDate = event.date;
         const endDate = event.endDate || event.date;
         const eventName = escapeICalText(event.name);
-        const description = event.mission 
-          ? escapeICalText(`Mission: ${event.mission}`)
+        
+        // Build description with only mission and uniform
+        const descriptionParts = [];
+        if (event.mission) {
+          descriptionParts.push(`Mission: ${event.mission}`);
+        }
+        if (event.uniform && event.uniform !== 'TBD') {
+          descriptionParts.push(`Uniform: ${event.uniform}`);
+        }
+        const fullDescription = descriptionParts.length > 0 
+          ? escapeICalText(descriptionParts.join('\\n'))
           : escapeICalText('ROTC Training Event');
         
-        const oic = event.oicId ? `OIC: ${event.oicId}` : '';
-        const ncoic = event.ncoicId ? `NCOIC: ${event.ncoicId}` : '';
-        const ao = event.ao && event.ao !== 'TBD' ? `Location: ${event.ao}` : '';
-        
-        const fullDescription = [description, oic, ncoic, ao]
-          .filter(Boolean)
-          .join('\\n');
+        // Get location from AO
+        const location = event.ao && event.ao !== 'TBD' 
+          ? escapeICalText(event.ao)
+          : '';
+
+        // Get hit time, default to 0800 if TBD or not present
+        const hitTime = (event.hitTime && event.hitTime !== 'TBD') 
+          ? event.hitTime 
+          : '0800';
 
         // For multi-day events, set end date to next day at 00:00
         const isMultiDay = endDate !== startDate;
-        const dtStart = formatICalDateTime(startDate, event.hitTime || '0800');
+        const dtStart = formatICalDateTime(startDate, hitTime);
         const dtEnd = isMultiDay 
           ? formatICalDateTime(endDate, '2000') // End of last day
-          : formatICalDateTime(startDate, event.hitTime ? '1700' : '1700'); // End of same day
+          : formatICalDateTime(startDate, '1700'); // End of same day
 
         const now = new Date();
         const nowDate = now.toISOString().split('T')[0];
         const dtStamp = formatICalDateTime(nowDate, '1200');
         
-        icsContent += `BEGIN:VEVENT
+        // Build VEVENT with location field
+        let vevent = `BEGIN:VEVENT
 UID:rotc-event-${event.id}@bulldog-co-manager
 DTSTAMP:${dtStamp}
 DTSTART:${dtStart}
@@ -241,8 +253,18 @@ SUMMARY:${eventName}
 DESCRIPTION:${fullDescription}
 STATUS:CONFIRMED
 SEQUENCE:0
-END:VEVENT
 `;
+        
+        // Add location if available
+        if (location) {
+          vevent += `LOCATION:${location}
+`;
+        }
+        
+        vevent += `END:VEVENT
+`;
+        
+        icsContent += vevent;
       });
 
       icsContent += `END:VCALENDAR`;
