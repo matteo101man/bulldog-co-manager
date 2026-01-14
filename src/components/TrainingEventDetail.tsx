@@ -507,6 +507,33 @@ export default function TrainingEventDetail({
               )}
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Time (Optional)</label>
+              {isEditing ? (
+                <input
+                  type="time"
+                  value={editedEvent.endTime || ''}
+                  onChange={(e) => setEditedEvent({ ...editedEvent, endTime: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Leave empty for start-time only events"
+                />
+              ) : (
+                <div className="text-gray-900">
+                  {event.endTime ? (() => {
+                    // Format time display - handle both HH:mm and HHmm formats
+                    const time = event.endTime;
+                    if (time.includes(':')) {
+                      return time;
+                    } else if (time.length === 4) {
+                      // Format as HH:mm
+                      return `${time.substring(0, 2)}:${time.substring(2)}`;
+                    }
+                    return time;
+                  })() : 'Not set (event will show start time only)'}
+                </div>
+              )}
+            </div>
+
             {isEditing ? (
               <>
                 <SearchableSelect

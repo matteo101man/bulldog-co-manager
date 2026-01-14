@@ -231,25 +231,25 @@ CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:ROTC Training Schedule
 X-WR-CALDESC:Spring 2026 ROTC Training Events
-X-WR-TIMEZONE:America/Chicago
+X-WR-TIMEZONE:America/New_York
 `;
         
-        // Add timezone definition for America/Chicago
+        // Add timezone definition for America/New_York (Eastern Time - Georgia uses this)
         icsContent += `BEGIN:VTIMEZONE
-TZID:America/Chicago
+TZID:America/New_York
 BEGIN:STANDARD
 DTSTART:20071104T020000
 RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
-TZOFFSETFROM:-0500
-TZOFFSETTO:-0600
-TZNAME:CST
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
 END:STANDARD
 BEGIN:DAYLIGHT
 DTSTART:20070311T020000
 RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
-TZOFFSETFROM:-0600
-TZOFFSETTO:-0500
-TZNAME:CDT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
 END:DAYLIGHT
 END:VTIMEZONE
 `;
@@ -282,31 +282,34 @@ END:VTIMEZONE
           hitTime = String(event.hitTime).trim();
         }
         
+        // Get end time if provided
+        let endTime = null;
+        if (event.endTime && event.endTime !== 'TBD' && String(event.endTime).trim() !== '') {
+          endTime = String(event.endTime).trim();
+        }
+        
         // Log for debugging
-        console.log(`Event: ${event.name}, hitTime from DB: "${event.hitTime}", using: "${hitTime}"`);
+        console.log(`Event: ${event.name}, hitTime: "${event.hitTime}", endTime: "${event.endTime}"`);
 
-        // Parse hitTime to get hours for end time calculation
+        // Parse hitTime to get hours
         const { hours: startHours } = parseTime(hitTime);
         
-        // For multi-day events, set end date to next day at 20:00 (8 PM)
+        // For multi-day events, set end date to next day
         const isMultiDay = endDate !== startDate;
         const dtStart = formatICalDateTime(startDate, hitTime);
         
-        // Calculate end time: for single-day events, add 9 hours to start time (or default to 5 PM)
-        // For multi-day events, end at 8 PM on the last day
-        let endTime;
-        if (isMultiDay) {
-          endTime = '2000'; // 8 PM for multi-day events
-        } else {
-          // Single-day: start time + 9 hours, default to 5 PM if start is 8 AM
-          const endHours = Math.min(23, startHours + 9);
-          endTime = String(endHours).padStart(2, '0') + '00';
+        // Calculate end time: use endTime if provided, otherwise calculate or omit
+        let dtEnd = null;
+        if (endTime) {
+          // Use provided endTime
+          dtEnd = formatICalDateTime(isMultiDay ? endDate : startDate, endTime);
+        } else if (isMultiDay) {
+          // Multi-day event without endTime: end at 8 PM on last day
+          dtEnd = formatICalDateTime(endDate, '2000');
         }
+        // If single-day and no endTime, don't set DTEND (event will show as start-time only)
         
-        const dtEnd = formatICalDateTime(isMultiDay ? endDate : startDate, endTime);
-        
-        // Additional debug logging
-        console.log(`  Start: ${dtStart}, End: ${dtEnd}, StartHours: ${startHours}, EndTime: ${endTime}`);
+        console.log(`  Start: ${dtStart}, End: ${dtEnd || 'not set'}, hitTime: ${hitTime}, endTime: ${endTime || 'not set'}`);
 
         const now = new Date();
         const nowDate = now.toISOString().split('T')[0];
@@ -316,9 +319,16 @@ END:VTIMEZONE
         let vevent = `BEGIN:VEVENT
 UID:rotc-event-${event.id}@bulldog-co-manager
 DTSTAMP:${dtStamp}
-DTSTART;TZID=America/Chicago:${dtStart}
-DTEND;TZID=America/Chicago:${dtEnd}
-SUMMARY:${eventName}
+DTSTART;TZID=America/New_York:${dtStart}
+`;
+        
+        // Only add DTEND if endTime is provided or it's a multi-day event
+        if (dtEnd) {
+          vevent += `DTEND;TZID=America/New_York:${dtEnd}
+`;
+        }
+        
+        vevent += `SUMMARY:${eventName}
 DESCRIPTION:${fullDescription}
 STATUS:CONFIRMED
 SEQUENCE:0

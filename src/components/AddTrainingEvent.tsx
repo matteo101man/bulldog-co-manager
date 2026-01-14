@@ -170,6 +170,7 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
   const [date, setDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [hitTime, setHitTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [oicId, setOicId] = useState('');
   const [ncoicId, setNcoicId] = useState('');
   const [ao, setAo] = useState('');
@@ -218,6 +219,7 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
         planningStatus,
         ...(endDate && { endDate }),
         ...(hitTime && { hitTime }),
+        ...(endTime && { endTime }),
         ...(oicId && { oicId }),
         ...(ncoicId && { ncoicId }),
         ...(ao.trim() && { ao: ao.trim() }),
@@ -313,6 +315,18 @@ export default function AddTrainingEvent({ eventId, onBack, onSuccess }: AddTrai
               type="time"
               value={hitTime}
               onChange={(e) => setHitTime(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              End Time (Optional - if not set, event will only show start time)
+            </label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
