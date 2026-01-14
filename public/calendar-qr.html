@@ -76,6 +76,7 @@
         .mb-6 { margin-bottom: 1.5rem; }
         .mb-3 { margin-bottom: 0.75rem; }
         .my-6 { margin-top: 1.5rem; margin-bottom: 1.5rem; }
+        .mt-3 { margin-top: 0.75rem; }
         .w-full { width: 100%; }
         .block { display: block; }
         .list-decimal { list-style-type: decimal; }
@@ -121,21 +122,25 @@
                     </ol>
                 </div>
                 
-                <!-- Download Button -->
+                <!-- Download/Subscribe Button -->
                 <a 
-                    href="rotc-training-schedule.ics" 
+                    href="https://us-central1-bulldog-co-manager.cloudfunctions.net/getCalendar" 
                     class="w-full py-3 px-4 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 touch-manipulation min-h-[44px] block text-center"
-                    download
                 >
-                    📥 Download Calendar File
+                    📅 Subscribe to Calendar (Auto-Updates)
                 </a>
+                
+                <p class="text-sm text-gray-500 text-center mt-3">
+                    Subscribe for automatic updates when events change
+                </p>
             </div>
         </main>
     </div>
 
     <script>
-        // Generate QR code pointing to the calendar file
-        const calendarUrl = window.location.origin + '/rotc-training-schedule.ics';
+        // Generate QR code pointing to the Cloud Function (for subscription/sync)
+        // This URL generates the calendar dynamically from Firestore, allowing automatic updates
+        const calendarUrl = 'https://us-central1-bulldog-co-manager.cloudfunctions.net/getCalendar';
         
         new QRCode(document.getElementById("qrcode"), {
             text: calendarUrl,
@@ -146,7 +151,13 @@
             correctLevel: QRCode.CorrectLevel.H
         });
         
-        console.log('Calendar URL:', calendarUrl);
+        console.log('Calendar Subscription URL:', calendarUrl);
+        
+        // Also provide a direct download link as fallback
+        const downloadLink = document.querySelector('a[download]');
+        if (downloadLink) {
+            downloadLink.href = calendarUrl;
+        }
     </script>
 </body>
 </html>

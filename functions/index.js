@@ -1,4 +1,5 @@
 const {onDocumentCreated} = require('firebase-functions/v2/firestore');
+const {onRequest} = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
@@ -125,6 +126,137 @@ exports.sendNotificationToAll = onDocumentCreated(
         failedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       return null;
+    }
+  }
+);
+
+/**
+ * Cloud Function to generate and serve ROTC training schedule calendar (.ics file)
+ * This endpoint generates the calendar dynamically from Firestore data
+ * Users can subscribe to this URL in their calendar apps for automatic updates
+ */
+exports.getCalendar = onRequest(
+  {
+    region: 'us-central1',
+    cors: true,
+    memory: '256MiB',
+    timeoutSeconds: 30,
+  },
+  async (req, res) => {
+    try {
+      console.log('Generating calendar from Firestore...');
+      
+      // Fetch all training events from Firestore, ordered by date
+      const eventsSnapshot = await admin.firestore()
+        .collection('trainingEvents')
+        .orderBy('date', 'asc')
+        .get();
+
+      const events = [];
+      eventsSnapshot.forEach((doc) => {
+        events.push({ id: doc.id, ...doc.data() });
+      });
+
+      console.log(`Found ${events.length} events`);
+
+      // Helper function to format date for iCalendar (YYYYMMDD)
+      function formatICalDate(dateStr) {
+        return dateStr.replace(/-/g, '');
+      }
+
+      // Helper function to format date-time for iCalendar (YYYYMMDDTHHMMSSZ)
+      function formatICalDateTime(dateStr, timeStr = '0800') {
+        const date = formatICalDate(dateStr);
+        let hours = 8;
+        let minutes = 0;
+        
+        if (timeStr && timeStr !== 'TBD') {
+          if (timeStr.length === 4) {
+            hours = parseInt(timeStr.substring(0, 2), 10);
+            minutes = parseInt(timeStr.substring(2, 4), 10);
+          } else if (timeStr.includes(':')) {
+            const parts = timeStr.split(':');
+            hours = parseInt(parts[0], 10);
+            minutes = parseInt(parts[1] || '0', 10);
+          }
+        }
+        
+        return `${date}T${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}00Z`;
+      }
+
+      // Escape text for iCalendar format
+      function escapeICalText(text) {
+        if (!text) return '';
+        return String(text)
+          .replace(/\\/g, '\\\\')
+          .replace(/;/g, '\\;')
+          .replace(/,/g, '\\,')
+          .replace(/\n/g, '\\n');
+      }
+
+      // Generate iCalendar content
+      let icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//ROTC Training Schedule//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:ROTC Training Schedule
+X-WR-CALDESC:Spring 2026 ROTC Training Events
+X-WR-TIMEZONE:America/Chicago
+`;
+
+      events.forEach((event) => {
+        const startDate = event.date;
+        const endDate = event.endDate || event.date;
+        const eventName = escapeICalText(event.name);
+        const description = event.mission 
+          ? escapeICalText(`Mission: ${event.mission}`)
+          : escapeICalText('ROTC Training Event');
+        
+        const oic = event.oicId ? `OIC: ${event.oicId}` : '';
+        const ncoic = event.ncoicId ? `NCOIC: ${event.ncoicId}` : '';
+        const ao = event.ao && event.ao !== 'TBD' ? `Location: ${event.ao}` : '';
+        
+        const fullDescription = [description, oic, ncoic, ao]
+          .filter(Boolean)
+          .join('\\n');
+
+        // For multi-day events, set end date to next day at 00:00
+        const isMultiDay = endDate !== startDate;
+        const dtStart = formatICalDateTime(startDate, event.hitTime || '0800');
+        const dtEnd = isMultiDay 
+          ? formatICalDateTime(endDate, '2000') // End of last day
+          : formatICalDateTime(startDate, event.hitTime ? '1700' : '1700'); // End of same day
+
+        const now = new Date();
+        const nowDate = now.toISOString().split('T')[0];
+        const dtStamp = formatICalDateTime(nowDate, '1200');
+        
+        icsContent += `BEGIN:VEVENT
+UID:rotc-event-${event.id}@bulldog-co-manager
+DTSTAMP:${dtStamp}
+DTSTART:${dtStart}
+DTEND:${dtEnd}
+SUMMARY:${eventName}
+DESCRIPTION:${fullDescription}
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+`;
+      });
+
+      icsContent += `END:VCALENDAR`;
+
+      // Set proper headers for calendar file
+      res.set('Content-Type', 'text/calendar; charset=utf-8');
+      res.set('Content-Disposition', 'inline; filename=rotc-training-schedule.ics');
+      res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      res.status(200).send(icsContent);
+      
+      console.log(`Calendar generated successfully with ${events.length} events`);
+    } catch (error) {
+      console.error('Error generating calendar:', error);
+      res.status(500).send('Error generating calendar: ' + error.message);
     }
   }
 );
