@@ -127,24 +127,25 @@ END:VEVENT
 
     icsContent += `END:VCALENDAR`;
 
-    // Write to file
-    const outputPath = path.join(process.cwd(), 'public', 'rotc-training-schedule.ics');
-    const outputDir = path.dirname(outputPath);
+    // Write to both public and dist directories
+    const publicPath = path.join(process.cwd(), 'public', 'rotc-training-schedule.ics');
+    const distPath = path.join(process.cwd(), 'dist', 'rotc-training-schedule.ics');
     
-    // Ensure directory exists
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    fs.writeFileSync(outputPath, icsContent, 'utf8');
+    // Ensure directories exist
+    [publicPath, distPath].forEach(filePath => {
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(filePath, icsContent, 'utf8');
+    });
     
-    console.log(`✓ Calendar file generated: ${outputPath}`);
-    console.log(`\nTo create a QR code:`);
-    console.log(`1. Host the file at: https://bulldog-co-manager.web.app/rotc-training-schedule.ics`);
-    console.log(`2. Use a QR code generator (like https://www.qr-code-generator.com/)`);
-    console.log(`3. Encode the URL: https://bulldog-co-manager.web.app/rotc-training-schedule.ics`);
-    console.log(`\nOr use this direct link after deploying:`);
-    console.log(`https://bulldog-co-manager.web.app/rotc-training-schedule.ics`);
+    console.log(`✓ Calendar file generated:`);
+    console.log(`  - ${publicPath}`);
+    console.log(`  - ${distPath}`);
+    console.log(`\nAccess your calendar:`);
+    console.log(`  - QR Code Page: https://bulldog-co-manager.web.app/calendar-qr.html`);
+    console.log(`  - Direct Calendar File: https://bulldog-co-manager.web.app/rotc-training-schedule.ics`);
     
   } catch (error) {
     console.error('Error generating calendar:', error);
