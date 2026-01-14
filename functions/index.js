@@ -268,7 +268,7 @@ END:VTIMEZONE
           descriptionParts.push(`Uniform: ${event.uniform}`);
         }
         const fullDescription = descriptionParts.length > 0 
-          ? escapeICalText(descriptionParts.join('\\n'))
+          ? escapeICalText(descriptionParts.join('\n'))
           : escapeICalText('ROTC Training Event');
         
         // Get location from AO
