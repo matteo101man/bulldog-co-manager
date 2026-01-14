@@ -86,6 +86,8 @@
         .hover\:bg-blue-700:hover { background-color: #1d4ed8; }
         .active\:bg-blue-800:active { background-color: #1e40af; }
         .justify-center { justify-content: center; }
+        .bg-yellow-50 { background-color: #fffbeb; }
+        .border-yellow-200 { border-color: #fde68a; }
     </style>
 </head>
 <body>
@@ -104,7 +106,7 @@
         <main class="px-4 py-4">
             <div class="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                 <p class="text-center text-gray-600 mb-6">
-                    Scan QR Code to Add to Calendar
+                    Scan QR Code to Subscribe to Calendar
                 </p>
                 
                 <!-- QR Code Container -->
@@ -112,14 +114,20 @@
                 
                 <!-- Instructions -->
                 <div class="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-3">How to Use:</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-3">How to Subscribe (Auto-Updates):</h3>
                     <ol class="list-decimal list-inside space-y-2 text-gray-700">
                         <li>Open your phone's camera app</li>
                         <li>Point it at the QR code above</li>
                         <li>Tap the notification that appears</li>
-                        <li>Select "Add to Calendar" or "Subscribe to Calendar"</li>
-                        <li>All events will be added automatically!</li>
+                        <li><strong>Important:</strong> Select <strong>"Subscribe to Calendar"</strong> (NOT "Add to Calendar")</li>
+                        <li>Events will appear and <strong>automatically update</strong> when you edit them on the website!</li>
                     </ol>
+                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-sm text-gray-700">
+                            <strong>Note:</strong> "Add to Calendar" imports events once and won't update. 
+                            "Subscribe to Calendar" keeps events synced automatically (updates every 4-24 hours).
+                        </p>
+                    </div>
                 </div>
                 
                 <!-- Download/Subscribe Button -->
