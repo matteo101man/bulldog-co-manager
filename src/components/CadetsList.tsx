@@ -34,32 +34,16 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
       clearTimeout(loadingTimeoutRef.current);
     }
 
-    // Preserve existing cadets data - don't clear it unless forcing refresh
     const hadCadets = cadetsRef.current.length > 0;
     
-    // If forcing refresh (e.g., after returning from background), show loading
+    // Show loading if forcing refresh or if we don't have data
     if (forceRefresh || !hadCadets) {
       setLoading(true);
     }
     
-    // Safety timeout: ensure loading never gets stuck for more than 10 seconds
-    loadingTimeoutRef.current = window.setTimeout(async () => {
-      console.warn('Loading timeout reached, forcing loading to false');
-      
-      // Try to load from cache as last resort if we don't have data
-      if (!hadCadets || cadetsRef.current.length === 0) {
-        try {
-          const { cacheService } = await import('../services/cacheService');
-          const cached = await cacheService.getCachedCadets('Master');
-          if (cached && cached.length > 0) {
-            console.log('Loaded cadets from cache after timeout');
-            setCadets(cached as Cadet[]);
-          }
-        } catch (error) {
-          console.error('Error loading from cache after timeout:', error);
-        }
-      }
-      
+    // Safety timeout: ensure loading never gets stuck
+    loadingTimeoutRef.current = window.setTimeout(() => {
+      console.warn('Loading timeout reached');
       setLoading(false);
       if (loadingTimeoutRef.current) {
         loadingTimeoutRef.current = null;
@@ -72,13 +56,12 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
       unsubscribeRef.current = null;
     }
     
-    // Try to load from cache first for immediate display (only if we don't have data or forcing refresh)
-    if (!hadCadets || forceRefresh) {
+    // Load from cache first for immediate display (if we don't have data)
+    if (!hadCadets) {
       try {
         const { cacheService } = await import('../services/cacheService');
         const cached = await cacheService.getCachedCadets('Master');
         if (cached && cached.length > 0) {
-          console.log('Loaded cadets from cache for immediate display');
           setCadets(cached as Cadet[]);
         }
       } catch (error) {
@@ -86,15 +69,11 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
       }
     }
     
-    let subscriptionSucceeded = false;
-    let initialLoadSucceeded = false;
-    
-    // Set up real-time listener for better performance
+    // Set up real-time listener
     const unsubscribe = subscribeToCadets(
       'Master',
       (updatedCadets) => {
         if (updatedCadets && updatedCadets.length > 0) {
-          subscriptionSucceeded = true;
           setCadets(updatedCadets);
         }
         setLoading(false);
@@ -105,46 +84,14 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
       },
       async (error) => {
         console.error('Error in cadets subscription:', error);
-        // Fallback to one-time fetch - use forceRefresh to bypass cache if needed
+        // Fallback to one-time fetch
         try {
           const fetchedCadets = await getCadetsByCompany('Master', forceRefresh);
           if (fetchedCadets && fetchedCadets.length > 0) {
-            initialLoadSucceeded = true;
             setCadets(fetchedCadets);
-          } else {
-            // If fetch returns empty, try cache (only if not forcing refresh)
-            if (!hadCadets && !subscriptionSucceeded && !forceRefresh) {
-              try {
-                const { cacheService } = await import('../services/cacheService');
-                const cached = await cacheService.getCachedCadets('Master');
-                if (cached && cached.length > 0) {
-                  console.log('Loaded cadets from cache after subscription error and empty fetch');
-                  setCadets(cached as Cadet[]);
-                }
-              } catch (cacheError) {
-                console.error('Error loading from cache:', cacheError);
-              }
-            }
           }
         } catch (err) {
           console.error('Error loading cadets:', err);
-          // Try cache as last resort (only if not forcing refresh)
-          if (!hadCadets && !subscriptionSucceeded && !initialLoadSucceeded && !forceRefresh) {
-            try {
-              const { cacheService } = await import('../services/cacheService');
-              const cached = await cacheService.getCachedCadets('Master');
-              if (cached && cached.length > 0) {
-                console.log('Loaded cadets from cache after all errors');
-                setCadets(cached as Cadet[]);
-              }
-            } catch (cacheError) {
-              console.error('Error loading from cache:', cacheError);
-            }
-          }
-          // Don't show alert on background errors, just log
-          if (document.visibilityState === 'visible') {
-            console.warn('Failed to load cadets. Check your connection.');
-          }
         } finally {
           setLoading(false);
           if (loadingTimeoutRef.current) {
@@ -157,46 +104,14 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
 
     unsubscribeRef.current = unsubscribe;
 
-    // Initial load - if forceRefresh, bypass cache to get fresh data from Firebase
+    // Initial load - bypass cache if forcing refresh
     try {
       const fetchedCadets = await getCadetsByCompany('Master', forceRefresh);
       if (fetchedCadets && fetchedCadets.length > 0) {
-        initialLoadSucceeded = true;
         setCadets(fetchedCadets);
-      } else {
-        // If fetch returns empty, try cache (only if we don't already have data and not forcing refresh)
-        if (!hadCadets && !subscriptionSucceeded && !forceRefresh) {
-          try {
-            const { cacheService } = await import('../services/cacheService');
-            const cached = await cacheService.getCachedCadets('Master');
-            if (cached && cached.length > 0) {
-              console.log('Loaded cadets from cache after initial fetch returned empty');
-              setCadets(cached as Cadet[]);
-            }
-          } catch (cacheError) {
-            console.error('Error loading from cache:', cacheError);
-          }
-        }
       }
     } catch (error) {
       console.error('Error loading cadets:', error);
-      // Try cache as last resort (only if we don't already have data and not forcing refresh)
-      if (!hadCadets && !subscriptionSucceeded && !initialLoadSucceeded && !forceRefresh) {
-        try {
-          const { cacheService } = await import('../services/cacheService');
-          const cached = await cacheService.getCachedCadets('Master');
-          if (cached && cached.length > 0) {
-            console.log('Loaded cadets from cache after initial error');
-            setCadets(cached as Cadet[]);
-          }
-        } catch (cacheError) {
-          console.error('Error loading from cache:', cacheError);
-        }
-      }
-      // Don't show alert on background errors, just log
-      if (document.visibilityState === 'visible') {
-        console.warn('Failed to load cadets. Check your connection.');
-      }
     } finally {
       setLoading(false);
       if (loadingTimeoutRef.current) {
@@ -210,48 +125,30 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
     loadCadets();
 
     let reloadTimeout: number | null = null;
-    let lastVisibilityChange = Date.now();
+    let lastReload = 0;
 
-    // Handle visibility change - reload when app comes back to foreground
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const now = Date.now();
-        // Debounce: only reload if it's been at least 500ms since last visibility change
-        // This prevents multiple rapid reloads
-        if (now - lastVisibilityChange > 500) {
-          lastVisibilityChange = now;
-          // Small delay to ensure app is fully back in focus and Firebase connection is ready
-          console.log('App became visible, scheduling cadets reload (force refresh)');
-          if (reloadTimeout) {
-            clearTimeout(reloadTimeout);
-          }
-          reloadTimeout = window.setTimeout(() => {
-            console.log('Reloading cadets after visibility change (force refresh)');
-            loadCadets(true); // Force refresh to ensure fresh data from Firebase
-          }, 300);
-        }
-      }
-    };
-
-    // Handle window focus - also reload when window regains focus
-    const handleFocus = () => {
+    // Handle visibility change and focus - reload when app comes back to foreground
+    const handleReturn = () => {
       const now = Date.now();
-      // Debounce: only reload if it's been at least 500ms since last visibility change
-      if (now - lastVisibilityChange > 500) {
-        lastVisibilityChange = now;
-        console.log('Window focused, scheduling cadets reload (force refresh)');
+      // Debounce: prevent multiple rapid reloads
+      if (now - lastReload > 500) {
+        lastReload = now;
         if (reloadTimeout) {
           clearTimeout(reloadTimeout);
         }
+        // Small delay to ensure app is ready
         reloadTimeout = window.setTimeout(() => {
-          console.log('Reloading cadets after focus (force refresh)');
-          loadCadets(true); // Force refresh to ensure fresh data from Firebase
+          loadCadets(true); // Force refresh from Firebase
         }, 300);
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        handleReturn();
+      }
+    });
+    window.addEventListener('focus', handleReturn);
 
     // Cleanup
     return () => {
@@ -264,8 +161,8 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
       if (reloadTimeout) {
         clearTimeout(reloadTimeout);
       }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleReturn);
+      window.removeEventListener('focus', handleReturn);
     };
   }, [loadCadets]);
 
