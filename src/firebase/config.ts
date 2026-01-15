@@ -1,6 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getMessaging, Messaging } from 'firebase/messaging';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCK5hwv80v9xQcO7raHcrj4eibS3HGq45c",
@@ -43,4 +44,13 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export { db, app, messaging };
+// Initialize Storage
+let storage: FirebaseStorage;
+try {
+  storage = getStorage(app);
+} catch (error) {
+  console.error('Error initializing Storage:', error);
+  throw error;
+}
+
+export { db, app, messaging, storage };

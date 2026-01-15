@@ -3,6 +3,8 @@ import { getCadetById, updateCadet, deleteCadet } from '../services/cadetService
 import { getTotalUnexcusedAbsences, getUnexcusedAbsenceDates } from '../services/attendanceService';
 import { formatDateWithDay } from '../utils/dates';
 import { Cadet, Company } from '../types';
+import { uploadCadetProfilePicture } from '../services/imageUploadService';
+import ImageCropper from './ImageCropper';
 
 interface CadetProfileProps {
   cadetId: string;
@@ -26,6 +28,8 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
   const [formData, setFormData] = useState<Partial<Cadet>>({});
   const [tooltipType, setTooltipType] = useState<'PT' | 'Lab' | 'Tactics' | null>(null);
   const [tooltipDates, setTooltipDates] = useState<string[]>([]);
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const ptRef = useRef<HTMLDivElement>(null);
   const labRef = useRef<HTMLDivElement>(null);
   const tacticsRef = useRef<HTMLDivElement>(null);
@@ -120,6 +124,34 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
     }
   }
 
+  async function handleImageSave(croppedImageBlob: Blob) {
+    if (!cadet) return;
+    
+    setUploadingImage(true);
+    try {
+      // Upload the image and get the download URL
+      const downloadURL = await uploadCadetProfilePicture(
+        cadetId,
+        croppedImageBlob,
+        cadet.profilePicture
+      );
+
+      // Update the cadet's profile picture URL
+      await updateCadet(cadetId, { profilePicture: downloadURL });
+      
+      // Reload cadet data to show the new image
+      await loadCadet();
+      
+      setShowImageCropper(false);
+      alert('Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert(`Error uploading profile picture: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   async function handleDelete() {
     if (!cadet) return;
     
@@ -208,17 +240,41 @@ export default function CadetProfile({ cadetId, onBack, onDelete, onCompanyChang
                     }}
                   />
                 </div>
+                <button
+                  onClick={() => setShowImageCropper(true)}
+                  className="w-full py-2 px-4 rounded-lg font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 touch-manipulation min-h-[44px] text-sm"
+                >
+                  Upload New Image
+                </button>
               </div>
             ) : (
-              <div className="flex justify-center">
-                <img 
-                  src={cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
-                  alt={`${cadet.firstName} ${cadet.lastName}`} 
-                  className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
-                  }}
-                />
+              <div className="flex flex-col items-center space-y-2">
+                <button
+                  onClick={() => setShowImageCropper(true)}
+                  className="relative group cursor-pointer touch-manipulation"
+                  disabled={uploadingImage}
+                >
+                  <img 
+                    src={cadet.profilePicture || DEFAULT_PROFILE_PICTURE} 
+                    alt={`${cadet.firstName} ${cadet.lastName}`} 
+                    className={`w-32 h-32 rounded-full object-cover border-2 border-gray-200 transition-opacity ${
+                      uploadingImage ? 'opacity-50' : 'group-hover:opacity-75'
+                    }`}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = DEFAULT_PROFILE_PICTURE;
+                    }}
+                  />
+                  {!uploadingImage && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-40 rounded-full transition-all">
+                      <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100">
+                        Tap to Upload
+                      </span>
+                    </div>
+                  )}
+                </button>
+                {uploadingImage && (
+                  <div className="text-sm text-gray-500">Uploading...</div>
+                )}
               </div>
             )}
           </div>
@@ -600,6 +656,15 @@ END:VCARD`;
           )}
         </div>
       </main>
+
+      {/* Image Cropper Modal */}
+      {showImageCropper && (
+        <ImageCropper
+          onSave={handleImageSave}
+          onCancel={() => setShowImageCropper(false)}
+          initialImageUrl={cadet.profilePicture || undefined}
+        />
+      )}
     </div>
   );
 }
