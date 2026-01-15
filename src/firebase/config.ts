@@ -48,9 +48,13 @@ if (typeof window !== 'undefined') {
 let storage: FirebaseStorage;
 try {
   storage = getStorage(app);
+  if (!storage) {
+    throw new Error('Storage initialization returned undefined. Please ensure Firebase Storage is enabled in Firebase Console.');
+  }
 } catch (error) {
   console.error('Error initializing Storage:', error);
-  throw error;
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  throw new Error(`Firebase Storage initialization failed: ${errorMessage}\n\nPlease ensure:\n1. Firebase Storage is enabled in Firebase Console: https://console.firebase.google.com/project/bulldog-co-manager/storage\n2. Click 'Get Started' to set up Firebase Storage\n3. You're using the correct Firebase project\n4. Your internet connection is working`);
 }
 
 export { db, app, messaging, storage };

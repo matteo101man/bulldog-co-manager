@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public read and write access to profile pictures
+    // This allows anyone to upload/read cadet profile pictures
+    match /profile-pictures/{fileName} {
+      allow read, write: if true;
+    }
+    
+    // Deny all other access by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -48,7 +48,18 @@ export async function uploadCadetProfilePicture(
     return downloadURL;
   } catch (error) {
     console.error('Error uploading profile picture:', error);
-    throw new Error(`Failed to upload profile picture: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Provide more helpful error messages
+    if (errorMessage.includes('storage/unknown') || errorMessage.includes('storage unknown')) {
+      throw new Error('Firebase Storage is not enabled. Please enable Firebase Storage in the Firebase Console: https://console.firebase.google.com/project/bulldog-co-manager/storage');
+    }
+    
+    if (errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
+      throw new Error('Permission denied. Please check Firebase Storage security rules.');
+    }
+    
+    throw new Error(`Failed to upload profile picture: ${errorMessage}`);
   }
 }
 
