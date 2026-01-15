@@ -26,6 +26,7 @@ interface TrainingEventData {
   date: string; // ISO date string (YYYY-MM-DD)
   endDate?: string; // ISO date string for multi-day events
   hitTime?: string;
+  endTime?: string;
   planningStatus: 'complete' | 'in-progress' | 'issues' | 'not-started';
   oicId?: string; // Can be cadet ID or text
   ncoicId?: string; // Can be cadet ID or text
@@ -226,149 +227,330 @@ function createConop(eventName: string, oic: string, ncoic: string, date: string
   }
   else if (type.includes('army fitness test') || type.includes('aft')) {
     const testNumber = type.includes('1') ? '1' : '2';
-    conop.purpose = `To assess cadet physical fitness levels and readiness through standardized Army Fitness Test (AFT) ${testNumber} evaluation.`;
-    conop.mission = `Conduct Army Fitness Test ${testNumber} on ${dateStr}. All cadets will complete the AFT consisting of deadlift, standing power throw, hand-release push-ups, sprint-drag-carry, leg tuck, and 2-mile run.`;
-    conop.situation.ao = 'PT Field / Track';
-    conop.situation.uniform = 'PT Uniform';
-    conop.endState = `All cadets complete AFT ${testNumber} with scores recorded. Physical fitness baseline established for spring semester.`;
+    // Extract OIC and NCOIC - handle "Fagan/Maddux + protégé" format
+    let oicName = oic || 'TBD';
+    let ncoicName = ncoic || 'TBD';
+    
+    // If OIC contains "/" and NCOIC is not provided, split it (e.g., "Fagan/Maddux + protégé" -> OIC: "Fagan", NCOIC: "Maddux")
+    if (oicName.includes('/') && (!ncoicName || ncoicName === 'TBD')) {
+      const parts = oicName.split('/');
+      if (parts.length >= 2) {
+        oicName = parts[0].trim();
+        // Extract name before "+" if present
+        ncoicName = parts[1].split('+')[0].trim();
+      }
+    }
+    
+    conop.purpose = 'Conduct an ACFT in order to record vital physical fitness data from our program\'s cadets.';
+    conop.mission = `UGA Bulldog BN conducts an ACFT on ${dateStr} at 0445 in order to allow the entire BN to conduct all 6 ACFT events within 120 minutes.`;
+    conop.situation.oic = oicName;
+    conop.situation.ncoic = ncoicName;
+    conop.situation.ao = 'IM Fields';
+    conop.situation.uniform = 'Summer APFUs';
+    conop.endState = 'All cadets in BN will have their most up to date ACFT score for Cadre, Mentors, and Ranger Challenge.';
     conop.conceptOfOperation = {
-      phase1: 'Setup testing stations, equipment inspection, and cadet arrival/warm-up period.',
-      phase1Label: 'Setup & Warm-up',
-      phase2: 'AFT event execution: deadlift, standing power throw, hand-release push-ups, sprint-drag-carry, leg tuck, and 2-mile run.',
-      phase2Label: 'Test Execution',
-      phase3: 'Score recording, equipment recovery, and cool-down period.',
-      phase3Label: 'Scoring & Recovery',
-      phase4: 'Results brief, dismissal, and equipment turn-in.',
-      phase4Label: 'Results & Dismissal'
+      phase1: '3s/4s arrive early for setup',
+      phase1Label: 'Location Prep',
+      phase2: 'Cadets arrive and complete prep drills',
+      phase2Label: 'Arrival',
+      phase3: 'ACFT',
+      phase3Label: 'Execution',
+      phase4: 'Cadets turn in grading sheets and are dismissed upon completion of the ACFT.',
+      phase4Label: 'Dismissal'
     };
     conop.resources = {
-      class1: 'Water, Gatorade, recovery snacks',
-      class2: 'PT uniforms, testing equipment (deadlift bar, kettlebells, sled, etc.)',
-      class5: 'N/A',
-      class6: 'Personal hygiene items, towels',
-      class8: 'First aid kit, ice packs, medical support'
+      class1: '–',
+      class2: 'ACFT Supply request',
+      class5: '– Does not apply',
+      class6: '–',
+      class8: '– CLS Bag, Litter'
+    };
+    conop.commsPace = {
+      primary: 'Email',
+      alternate: 'Cell',
+      contingency: 'Word of mouth',
+      emergency: 'Letter'
     };
     conop.keyDates = [
-      '0530: Equipment setup and station preparation',
-      '0600: Cadet arrival and warm-up',
-      '0630: Safety brief and test instructions',
-      '0645: AFT events begin',
-      '0830: Test completion',
-      '0845: Score recording and cool-down',
-      '0900: Results brief and dismissal'
+      '0430: OIC and 4s arrive to set-up',
+      '0445: Cadets arrive',
+      '0450: Prep drills conducted',
+      '0500: Conduct ACFT',
+      '0700: ACFT concludes',
+      '0715: All gear loaded back into truck'
     ];
-    conop.tasksToSubs = 'MSIVs serve as test administrators and score recorders. MSIII cadets assist with equipment setup and recovery.';
+    conop.tasksToSubs = `Graders for MS 2, 4, 5
+
+Deadlift: Brezeale, Choo, Dantoulis, Latorre-Murrin, Lipsey, Liscano
+HRPs: Magiligan, Shield
+SDC: Martin, McFadden, Navarro
+Plank: Brewer
+Run – Turnaround Point: Reece
+Floater: Kronmiller
+
+Graders for MS 1 & 3
+
+Deadlift: Garza, Kirkland, Lupczynski, Merriam, Kang, Evans
+HRPs – Le, Dacus
+SDC: Biegalski, Jackson, Moebes
+Plank: Guerra
+Run: Turnaround point: Robinson
+Floater: Rabindran`;
+    conop.attachedAppendices = {
+      appendix1: 'Medivac Plan',
+      appendix3: 'Task Org'
+    };
+    conop.staffDuties = {
+      s2: 'e.g., Weather/crime rep. specific to event',
+      s4: 'e.g., Supply fulfillment time, etc.'
+    };
+    conop.weeklyTasks = {
+      t6: { status: 'complete', description: 'Review and update previous CONOP' },
+      t5: { status: 'complete', description: '' },
+      t4: { status: 'complete', description: '' },
+      t3: { status: 'complete', description: '' },
+      t2: { status: 'complete', description: 'Early lights requested' },
+      t1: { status: 'complete', description: 'Email sent to all Cadets with ACFT information\nSupply Request turned in\nTask org sent out for both days of ACFT\nTask org created\nPrint score sheets' },
+      tWeek: { status: 'in-progress', description: 'Truck loaded with ACFT Supplies\nUpdate Spreadsheet' }
+    };
   }
   else if (type.includes('basic rifle marksmanship') || type.includes('brm')) {
-    conop.purpose = 'To develop cadet marksmanship skills and weapons handling proficiency through Basic Rifle Marksmanship training.';
-    conop.mission = `Conduct Basic Rifle Marksmanship (BRM) training on ${dateStr} at designated range. Cadets will receive instruction on weapons safety, fundamentals of marksmanship, and live-fire qualification.`;
-    conop.situation.ao = 'Rifle Range';
+    // Extract OIC and NCOIC - handle multiple OICs format
+    let oicName = oic || 'TBD';
+    let ncoicName = ncoic || 'TBD';
+    
+    conop.purpose = 'Provide the MSIIIs with appropriate training on Tables IV and VI and increase familiarization with the M4 and prepare for qualification at CST.';
+    conop.mission = `UGA Bulldog BN conducts Basic Rifle Marksmanship on ${dateStr} at Fort Gordon IOT prepare MSIII cadets for CST`;
+    conop.situation.oic = oicName;
+    conop.situation.ncoic = ncoicName;
+    conop.situation.ao = 'Fort Gordon';
     conop.situation.uniform = 'ACU';
-    conop.endState = 'All cadets complete BRM training with demonstrated proficiency in weapons safety and marksmanship fundamentals. Qualification scores recorded.';
+    conop.endState = 'Bulldog BN MSIII cadets will be familiarized with the M4 and qualification tables IV and VI.';
     conop.conceptOfOperation = {
-      phase1: 'Range setup, safety brief, weapons issue, and zero procedures.',
-      phase1Label: 'Range Setup & Zero',
-      phase2: 'Marksmanship instruction, dry-fire practice, and live-fire qualification.',
-      phase2Label: 'Training & Qualification',
-      phase3: 'Weapons cleaning, score recording, and equipment recovery.',
-      phase3Label: 'Recovery',
-      phase4: 'After-action review, weapons turn-in, and dismissal.',
-      phase4Label: 'AAR & Dismissal'
+      phase1: 'Prepare equipment and make plan for BRM',
+      phase1Label: 'PREP',
+      phase2: 'Perform BRM',
+      phase2Label: 'EXECUTION',
+      phase3: 'Clean up firing range and gather equipment and rifles for return',
+      phase3Label: 'CLEAN UP',
+      phase4: 'Conduct AAR',
+      phase4Label: 'AAR'
     };
     conop.resources = {
-      class1: 'MREs, water, snacks',
-      class2: 'ACU uniforms, eye and ear protection, cleaning supplies',
-      class5: 'Training ammunition (.22LR or 5.56mm)',
+      class1: 'MREs (43), Water Jugs (10)',
+      class2: 'Magazines (100), EarPro (200), EyePro, Zero Sheets (70), Weapons Cleaning Kits, ACU uniforms',
+      class5: 'Training ammunition (Ammo draw - MSG Shields)',
       class6: 'N/A',
       class8: 'First aid kit, medical support'
     };
     conop.keyDates = [
-      '0700: Range setup and safety inspection',
-      '0800: Cadet arrival and safety brief',
-      '0830: Weapons issue and zero procedures',
-      '1000: Marksmanship instruction',
-      '1100: Live-fire qualification',
-      '1300: Lunch break',
-      '1400: Weapons cleaning',
-      '1500: Score recording and AAR',
-      '1600: Weapons turn-in and dismissal'
+      '0600: SP',
+      '0800: Ammo draw (MSG Shields)',
+      '0800 - 0900: Weapons distribution',
+      '0900 - 1000: PMI',
+      '1000 - 1300: Weapons Zero',
+      '1300 - 1600: Qualification',
+      '1600 - 1700: Clean Weapons',
+      '1700: AAR and Exfil'
     ];
-    conop.tasksToSubs = 'Range Safety Officers (RSOs) from cadre. MSIVs assist with instruction and score recording.';
+    conop.tasksToSubs = `Davis - Execution OIC
+Stacy, Thompson - ammo detail
+Rankin, Denhardt - Lane support`;
+    conop.attachedAppendices = {
+      appendix1: 'MSIII Tracker (19)',
+      appendix2: 'MS3 packing list',
+      appendix3: 'Ammo Distribution COA, Vans, Excusal Forms'
+    };
+    conop.staffDuties = {
+      s3: 'Key Tasks: Distribute packing list, Conduct classroom PMI, Supply request, Ammo draw',
+      s4: 'Equipment/Logistical needs: Magazines (100), EarPro (200), EyePro, Zero Sheets (70), Water Jugs (10), MREs (43), Weapons Cleaning Kits'
+    };
   }
   else if (type.includes('field training exercise') || type.includes('ftx') || type.includes('spring ftx')) {
-    conop.purpose = 'To provide comprehensive field training experience and evaluate cadet performance in tactical scenarios through a multi-day field training exercise.';
-    conop.mission = `Conduct Spring Field Training Exercise (FTX) from ${dateStr}. Cadets will execute tactical operations including land navigation, patrolling, defensive positions, and leadership evaluation in a field environment.`;
-    conop.situation.ao = 'Training Area / Field Site';
-    conop.situation.uniform = 'ACU';
-    conop.endState = 'All cadets complete FTX with demonstrated competency in tactical operations and leadership. Training objectives met and after-action review conducted.';
+    // Extract OIC and NCOIC
+    let oicName = oic || 'TBD';
+    let ncoicName = ncoic || 'TBD';
+    
+    conop.purpose = 'To prepare our MS3 cadets for success at CST25.';
+    conop.mission = `Conduct field training exercise for MS3 cadets focusing on PLT STX training at Fort Benning ${dateStr} IOT prepare cadets for CST25.`;
+    conop.situation.oic = oicName;
+    conop.situation.ncoic = ncoicName;
+    conop.situation.ao = 'Ft. Benning';
+    conop.situation.uniform = 'OCPs';
+    conop.endState = 'Cadets operate within the platoon and demonstrate tactical proficiency during the duration of the FTX.';
     conop.conceptOfOperation = {
-      phase1: 'Movement to training area, site occupation, and initial tactical setup.',
-      phase1Label: 'Movement & Occupation',
-      phase2: 'Tactical training execution: land navigation, patrolling, defensive operations, and leadership rotations.',
-      phase2Label: 'Tactical Training',
-      phase3: 'Final exercise, equipment recovery, and site cleanup.',
-      phase3Label: 'Final Exercise & Recovery',
-      phase4: 'After-action review, equipment turn-in, and departure.',
-      phase4Label: 'AAR & Departure'
+      phase1: 'This phase will be conducted through a series of team meetings.',
+      phase1Label: 'Planning',
+      phase2: 'Cadets will arrive to a designated pickup location NLT 0430 on 03APR25 for bus movement to FTX AO.',
+      phase2Label: 'Arrival',
+      phase3: 'This phase will begin with the handover of cadets to TM Tactics on 03APR25 and ends on 06APR25.',
+      phase3Label: 'PLT STX',
+      phase4: 'Cadets leave on 06APR25 and return to UGA to be dismissed. Key task includes accountability for all MWE (Mission-Essential Weaponry/Equipment).',
+      phase4Label: 'RTB - Return to Base'
     };
     conop.resources = {
-      class1: 'MREs, water, hot meals (if available), snacks',
-      class2: 'ACU uniforms, ruck sacks, sleeping systems, individual equipment, maps, compasses',
-      class5: 'Training ammunition, blank rounds, pyrotechnics',
-      class6: 'Personal hygiene items, field sanitation supplies',
-      class8: 'CLS bags, medical supplies, litter, medical evacuation plan'
+      class1: 'MREs, Water, etc.',
+      class2: 'Packing List - APPENDIX 2 for additional information',
+      class5: 'N/A',
+      class6: 'Hygiene & Recreational Items',
+      class8: 'CLS Bag, Litter'
     };
     conop.keyDates = [
-      '0600: Departure from ROTC Building',
-      '0800: Arrival at training area',
-      '0830: Site occupation and initial brief',
-      '0900: Tactical training begins',
-      '1200: Lunch break',
-      '1300: Training continues',
-      '1800: Evening meal and leadership rotation',
-      '2000: Night operations',
-      '2200: Security and rest',
-      '0600: Final exercise',
-      '1200: Equipment recovery',
-      '1400: AAR and departure'
+      '0430 03APR25: Meet at designated pickup location for movement'
     ];
-    conop.tasksToSubs = 'Cadre provide OPFOR and evaluation. MSIVs serve as team leaders. MSIII cadets execute tactical tasks.';
+    conop.tasksToSubs = 'Truck Loading date TBD.';
+    conop.attachedAppendices = {
+      appendix1: 'Task Org',
+      appendix2: 'Packing List & Add. Items'
+    };
+    conop.staffDuties = {
+      s1: 'Under Task Org',
+      s2: 'Under Task Org',
+      s3: 'Under Task Org',
+      s4: 'Under Task Org',
+      s5: 'Under Task Org',
+      s6: 'Under Task Org'
+    };
+    conop.weeklyTasks = {
+      t6: { status: 'complete', description: '' },
+      t5: { status: 'complete', description: '' },
+      t4: { status: 'complete', description: '' },
+      t3: { status: 'complete', description: '' },
+      t2: { status: 'complete', description: '' },
+      t1: { status: 'in-progress', description: 'GEAR LAYOUT' },
+      tWeek: { status: 'not-started', description: 'LOAD THE TRUCK' }
+    };
   }
   else if (type.includes('ruck') || type.includes('mile')) {
     const distance = type.includes('8') ? '8-mile' : type.includes('12') ? '12-mile' : '';
-    conop.purpose = `To build cadet endurance, mental toughness, and tactical movement capabilities through a ${distance} ruck march under load.`;
-    conop.mission = `Conduct ${distance} ruck march on ${dateStr}. Cadets will complete the ruck march with 35-45 lb ruck sacks following designated route within time standard.`;
-    conop.situation.ao = 'Designated Ruck Route';
-    conop.situation.uniform = 'ACU with Ruck Sack';
-    conop.endState = `All cadets complete ${distance} ruck march within time standard. Physical endurance and mental resilience demonstrated.`;
+    const is8Mile = type.includes('8');
+    const is12Mile = type.includes('12');
+    
+    // Extract OIC and NCOIC
+    let oicName = oic || 'TBD';
+    let ncoicName = ncoic || 'TBD';
+    
+    conop.purpose = 'To maintain physical readiness for road marches and prepare cadets for CST.';
+    
+    if (is8Mile) {
+      conop.mission = `Bulldog BN conducts an eight-mile road march on ${dateStr} at LOT E-23.`;
+      conop.situation.ao = 'Lot E23 at 113-125 N Oconee Access Rd, Athens, Georgia 30605';
+      conop.situation.uniform = 'Sterilized OCPs & Boots, Ruck, Water Source';
+      conop.keyDates = [
+        '0415: First Formation, PCC/PCI',
+        '0430: Step Off',
+        '0700: End State Formation'
+      ];
+      conop.tasksToSubs = `15 Min Pace: Downes + Kang
+Water Point: Ledvina + Drake
+Start Point: Wallace
+17 Min Pace: Hare + Cook
+Fall Out: Whitley + Bartsch`;
+      conop.attachedAppendices = {
+        appendix1: 'Medical Plan',
+        appendix2: 'Task Org',
+        appendix3: 'Route Plan'
+      };
+    } else if (is12Mile) {
+      conop.mission = `Bulldog BN conducts a twelve-mile road march on ${dateStr} at White Hall Forest.`;
+      conop.situation.ao = 'White Hall Forest';
+      conop.situation.uniform = 'OCPs & Boots, Ruck, Water Source';
+      conop.keyDates = [
+        '1545: First Formation, PCC/PCI',
+        '1600: Step Off',
+        '1930: End State Formation'
+      ];
+      conop.tasksToSubs = `15 Min Pace: Downes + Kang
+Water Point: CAIT Tryees
+Start Point: CAIT Tryees
+17 Min Pace: Hare + Cook
+Fall Out: Whitley + Bartsch
+Arm Immersions: CAIT Tryees`;
+      conop.attachedAppendices = {
+        appendix1: 'Medical Plan',
+        appendix2: 'Packing List & Add. Items',
+        appendix3: 'Route Plan'
+      };
+    } else {
+      conop.mission = `Conduct ${distance} ruck march on ${dateStr}. Cadets will complete the ruck march with 35-45 lb ruck sacks following designated route within time standard.`;
+      conop.situation.ao = 'Designated Ruck Route';
+      conop.situation.uniform = 'ACU with Ruck Sack';
+      conop.keyDates = [
+        '0530: Equipment setup and ruck inspection',
+        '0600: Cadet arrival and weight verification',
+        '0630: Safety brief and route overview',
+        '0700: Ruck march begins',
+        '1200: Finish line operations begin',
+        '1400: AAR and dismissal'
+      ];
+      conop.tasksToSubs = 'Safety vehicles follow route. MSIVs serve as pace setters and safety monitors.';
+    }
+    
+    conop.situation.oic = oicName;
+    conop.situation.ncoic = ncoicName;
+    conop.endState = 'Bulldog BN cadets will maintain and/or improve their muscular endurance and have their general ruck proficiency assessed.';
     conop.conceptOfOperation = {
-      phase1: 'Ruck inspection, weight verification, safety brief, and route overview.',
-      phase1Label: 'Preparation & Brief',
-      phase2: 'Ruck march execution with water points and safety monitoring.',
-      phase2Label: 'Ruck March',
-      phase3: 'Finish line operations, recovery, and equipment accountability.',
-      phase3Label: 'Recovery',
-      phase4: 'After-action review, equipment turn-in, and dismissal.',
-      phase4Label: 'AAR & Dismissal'
+      phase1: 'Prepare hydration points and markers on ruck course.',
+      phase1Label: 'Prep',
+      phase2: 'Conduct Ruck March.',
+      phase2Label: 'Execution',
+      phase3: 'Pack and prepare equipment for return.',
+      phase3Label: 'Clean-Up',
+      phase4: 'Conduct general AAR and assess cadets\' ability to ruck.',
+      phase4Label: 'AAR'
     };
-    conop.resources = {
-      class1: 'Water, Gatorade, recovery snacks at water points and finish',
-      class2: 'ACU uniforms, ruck sacks (35-45 lbs), boots, individual equipment',
-      class5: 'N/A',
-      class6: 'Personal hygiene items, blister prevention supplies',
-      class8: 'Medical support vehicle, first aid supplies, hydration monitoring'
+    
+    if (is12Mile) {
+      conop.resources = {
+        class1: 'Water',
+        class2: 'Chem Lights, Water Jugs, Ruck Scale',
+        class5: 'N/A',
+        class6: 'N/A',
+        class8: 'CLS Bag, litter, Arm immersion coolers'
+      };
+    } else {
+      conop.resources = {
+        class1: 'Water',
+        class2: 'Chem Lights, Water Jugs, Ruck Scale',
+        class5: 'N/A',
+        class6: 'N/A',
+        class8: 'CLS Bag, litter'
+      };
+    }
+    
+    conop.commsPace = {
+      primary: 'Email',
+      alternate: 'Cell',
+      contingency: 'Word of Mouth',
+      emergency: 'Letter'
     };
-    conop.keyDates = [
-      '0530: Equipment setup and ruck inspection',
-      '0600: Cadet arrival and weight verification',
-      '0630: Safety brief and route overview',
-      '0700: Ruck march begins',
-      '1000: Mid-point water point (for 12-mile)',
-      '1200: Finish line operations begin',
-      '1300: Recovery and equipment accountability',
-      '1400: AAR and dismissal'
-    ];
-    conop.tasksToSubs = 'Safety vehicles follow route. MSIVs serve as pace setters and safety monitors. Water point support from MSIII cadets.';
+    
+    conop.staffDuties = {
+      s2: 'Weather/crime rep. specific to event',
+      s4: 'Supply fulfillment'
+    };
+    
+    if (is8Mile) {
+      conop.weeklyTasks = {
+        t6: { status: 'complete', description: '' },
+        t5: { status: 'complete', description: '' },
+        t4: { status: 'complete', description: '' },
+        t3: { status: 'complete', description: 'Task Org, Reserve lot' },
+        t2: { status: 'complete', description: 'Packing list, Route Plan' },
+        t1: { status: 'complete', description: 'Equipment Check/Request' },
+        tWeek: { status: 'not-started', description: 'Equipment loaded\nEmail sent to all cadets with ruck information' }
+      };
+    } else if (is12Mile) {
+      conop.weeklyTasks = {
+        t6: { status: 'complete', description: '' },
+        t5: { status: 'complete', description: '' },
+        t4: { status: 'complete', description: '' },
+        t3: { status: 'complete', description: '' },
+        t2: { status: 'complete', description: '' },
+        t1: { status: 'complete', description: 'Equipment Check/Request\nRoute plan' },
+        tWeek: { status: 'not-started', description: 'Equipment loaded\nEmail sent to all cadets with ruck information' }
+      };
+    }
   }
   else if (type.includes('day/night lab')) {
     conop.purpose = 'To train MS3 cadets in tactical operations during varying light conditions, emphasizing day and night operations differences.';
@@ -441,106 +623,168 @@ function createConop(eventName: string, oic: string, ncoic: string, date: string
     ];
     conop.tasksToSubs = 'Evaluation board consists of OIC, NCOIC, and cadre. MSIVs assist with event administration.';
   }
-  else if (type.includes('5k')) {
-    conop.purpose = 'To promote physical fitness and unit cohesion through a 5K run event open to all cadets and unit members.';
-    conop.mission = `Conduct 5K run event on ${dateStr}. Participants will complete a 5-kilometer run following designated route with timing and recognition for top finishers.`;
-    conop.situation.ao = 'Designated 5K Route';
+  else if (type.includes('5k') || type.includes('memorial')) {
+    // Extract OIC and NCOIC
+    let oicName = oic || 'TBD';
+    let ncoicName = ncoic || 'TBD';
+    
+    conop.purpose = 'To honor alumni and all who have made the ultimate sacrifice and recruit sponsors that will aid in funding the race and Bulldog Battalion.';
+    conop.mission = `UGA Bulldog BN conducts an annual spring Memorial 5k Run at Oconee River Greenway, beginning and ending at Park and Ride lot E23, on ${dateStr} at 0900 to promote physical fitness and honor our fallen alumni.`;
+    conop.situation.oic = oicName;
+    conop.situation.ncoic = ncoicName;
+    conop.situation.ao = 'Oconee River Greenway, beginning and ending at Park and Ride lot E23';
     conop.situation.uniform = 'PT Uniform';
-    conop.endState = 'All participants complete 5K run. Top finishers recognized. Unit cohesion and physical fitness promoted.';
+    conop.endState = 'All participants complete Memorial 5K run. Fallen alumni honored. Physical fitness and unit cohesion promoted.';
     conop.conceptOfOperation = {
-      phase1: 'Route setup, registration, and participant warm-up.',
-      phase1Label: 'Setup & Registration',
-      phase2: '5K run execution with water stations and timing.',
-      phase2Label: 'Run Execution',
-      phase3: 'Finish line operations, timing, and recovery.',
-      phase3Label: 'Finish & Recovery',
-      phase4: 'Awards ceremony and dismissal.',
-      phase4Label: 'Awards & Dismissal'
+      phase1: 'Conducted through a series of team meetings.',
+      phase1Label: 'Planning',
+      phase2: 'Set up begins at 0530, check-in begins at 0800, opening ceremony at 0830, race starts at 0900.',
+      phase2Label: 'Arrival',
+      phase3: 'Cadets and civilians move on the Oconee River Greenway. Race day crew will posture along the route as water checkpoints.',
+      phase3Label: 'Movement',
+      phase4: 'All participants cross the finish line. Drinks and snacks are passed out. Equipment breakdown occurs. Race crew, NCOIC, and OIC are the last to leave.',
+      phase4Label: 'Dismissal'
     };
     conop.resources = {
-      class1: 'Water, Gatorade, recovery snacks',
-      class2: 'PT uniforms, timing equipment, route markers',
-      class5: 'N/A',
-      class6: 'N/A',
-      class8: 'First aid kit, medical support'
+      class1: 'Water',
+      class2: 'Tables, chairs, speakers, banners, event posters',
+      class5: 'Does not apply',
+      class6: 'Does not apply',
+      class8: 'CLS Bag, Litter'
+    };
+    conop.commsPace = {
+      primary: 'Cell phone',
+      alternate: 'Radio',
+      contingency: 'Runner',
+      emergency: 'Word of Mouth'
     };
     conop.keyDates = [
-      '0700: Route setup and registration',
-      '0730: Participant arrival and warm-up',
-      '0800: Safety brief and start',
-      '0805: 5K run begins',
-      '0900: Finish line operations',
-      '0930: Awards ceremony',
-      '1000: Dismissal'
+      '0530: OIC, NCOIC, Cadre, and Race crew arrive for setup',
+      '0800: Cadets, cadre, and guests begin arrival for check-in',
+      '0830: Opening ceremony, speeches, and race announcements',
+      '0900: Race begins',
+      '1100: All race participants complete the race route',
+      '1110: Closing ceremony/final statements',
+      '1130: Equipment breakdown'
     ];
-    conop.tasksToSubs = 'Volunteers man water stations and finish line. MSIVs assist with timing and registration.';
+    conop.tasksToSubs = 'E.g. - Pre-/post-lab, ruck WP/SP/Pacers, MSIV instructors for lab, etc.';
+    conop.attachedAppendices = {
+      appendix1: 'Sponsor Task Org'
+    };
+    conop.staffDuties = {
+      s2: 'e.g. Weather/crime rep. specific to event',
+      s4: 'e.g. Supply fulfillment time, etc.',
+      s5: 'e.g. Funds request for medals, porta potty, etc.'
+    };
+    conop.weeklyTasks = {
+      t6: { status: 'complete', description: 'Purchase medals for winners\nConfirm Porta Potty setup\nRecruit race sponsors' },
+      t5: { status: 'complete', description: 'Recruit race sponsors' },
+      t4: { status: 'complete', description: 'Final call for sponsors\nTabling at Tate for participants' },
+      t3: { status: 'complete', description: 'Sponsorship submissions close' },
+      t2: { status: 'complete', description: 'Organize t-shirts' },
+      t1: { status: 'complete', description: 'Insurance purchased' },
+      tWeek: { status: 'not-started', description: 'Equipment staged\nRegistration closes' }
+    };
   }
   else if (type.includes('commissioning')) {
-    conop.purpose = 'To recognize and celebrate cadets transitioning to commissioned officers through formal commissioning ceremony.';
-    conop.mission = `Conduct commissioning ceremony on ${dateStr}. MSIV cadets will be commissioned as Second Lieutenants in the United States Army with family, friends, and distinguished guests in attendance.`;
-    conop.situation.ao = 'Ceremony Location (Auditorium/ROTC Building)';
-    conop.situation.uniform = 'Dress Uniform (AGSU/ASU)';
-    conop.endState = 'All MSIV cadets successfully commissioned as Second Lieutenants. Ceremony completed with proper military tradition and recognition.';
+    // Extract OIC and NCOIC
+    let oicName = oic || 'TBD';
+    let ncoicName = ncoic || 'TBD';
+    
+    conop.purpose = 'Highlight and provide updates and completion of key tasks relating to the 2025 commissioning ceremony.';
+    conop.mission = `UGA Bulldog Battalion conducts commissioning ceremony on ${dateStr} IOT commission the MSIVs to 2nd Lieutenants.`;
+    conop.situation.oic = oicName;
+    conop.situation.ncoic = ncoicName;
+    conop.situation.ao = 'University Chapel';
+    conop.situation.uniform = 'MSIV\'s: AGSUs';
+    conop.endState = 'UGA Army ROTC MSIV\'s will be commissioned into the Army as 2nd Lieutenants.';
     conop.conceptOfOperation = {
-      phase1: 'Setup ceremony location, rehearsal, and final preparations.',
-      phase1Label: 'Setup & Rehearsal',
-      phase2: 'Guest arrival, seating, and pre-ceremony activities.',
-      phase2Label: 'Pre-Ceremony',
-      phase3: 'Commissioning ceremony execution with oath of office and pinning.',
-      phase3Label: 'Ceremony',
-      phase4: 'Reception, photos, and dismissal.',
-      phase4Label: 'Reception & Dismissal'
+      phase1: 'Secure venue, food, speaker, color guard cadets, solidify timeline.',
+      phase1Label: 'Prep',
+      phase2: 'Script and color guard practiced and ensure venue equipment works.',
+      phase2Label: 'Rehearsal',
+      phase3: 'Pick up food at Military Building, detail set up auditorium at 0800. 0900-1130 Execute Commissioning Ceremony.',
+      phase3Label: 'Set Up & Execute',
+      phase4: 'Consolidate and perform AAR (After Action Review).',
+      phase4Label: 'Clean up'
     };
     conop.resources = {
-      class1: 'Reception refreshments, water, light snacks',
-      class2: 'Dress uniforms, ceremony programs, decorations',
-      class5: 'N/A',
-      class6: 'N/A',
-      class8: 'First aid kit'
+      class1: 'Cake and drinks',
+      class2: 'AGSUs',
+      class5: 'Does not apply',
+      class6: 'Does not apply',
+      class8: 'Does not apply'
+    };
+    conop.commsPace = {
+      primary: 'email',
+      alternate: 'text',
+      contingency: 'word of mouth',
+      emergency: 'letter'
     };
     conop.keyDates = [
-      '1000: Setup and rehearsal',
-      '1300: Guest arrival',
-      '1400: Ceremony begins',
-      '1500: Oath of office and pinning',
-      '1530: Ceremony concludes',
-      '1545: Reception begins',
-      '1700: Dismissal'
+      '0800: Set up detail arrives',
+      '0800-0830: Set up',
+      '0830-0855: Cadet fellowship',
+      '0900: Ceremony begins - Official party entrance, National Anthem, Invocation, Welcoming remarks',
+      '0910: Guest Speaker Remarks',
+      '0930: Commissioning Begins',
+      '1100: Official Party Closing Remarks',
+      '1130: Food/drink and fellowship on Special Collections lawn',
+      '1300: Close Out'
     ];
-    conop.tasksToSubs = 'MSIII cadets assist with setup and ushering. Cadre provide commissioning officers.';
+    conop.tasksToSubs = 'Key Tasks: Obtain guest speaker and guest speaker accommodations/gifts. Secure food/drinks/decor. Secure venue and color guard cadets. Conduct Commissioning Ceremony.';
+    conop.staffDuties = {
+      s5: 'Request $140 for cake/drinks'
+    };
+    conop.weeklyTasks = {
+      t6: { status: 'complete', description: 'Reserve chapel\nFind speaker' },
+      t5: { status: 'in-progress', description: 'Collect commissioning cadets info' },
+      t4: { status: 'in-progress', description: 'Create a plan for rehearsals' },
+      t3: { status: 'in-progress', description: 'Complete script\nSecure Color guard detail' },
+      t2: { status: 'in-progress', description: 'Complete program\nFind photographer\nSubmit funds request' },
+      t1: { status: 'not-started', description: 'Order cake\nRehearsal' },
+      tWeek: { status: 'not-started', description: 'Pick up cake\nBuy drinks' }
+    };
   }
   else if (type.includes('mill ball') || type.includes('awards')) {
-    conop.purpose = 'To recognize cadet achievements and celebrate unit accomplishments through Military Ball and Awards ceremony.';
-    conop.mission = `Conduct Military Ball and Awards ceremony on ${dateStr}. Recognize outstanding cadets with awards, celebrate unit accomplishments, and promote unit cohesion through formal military tradition.`;
-    conop.situation.ao = 'Ball Venue';
+    // Extract OIC and NCOIC
+    let oicName = oic || 'TBD';
+    let ncoicName = ncoic || 'TBD';
+    
+    conop.purpose = 'Culminating social event that allows UGA cadets, cadre, and guests to enjoy a formal evening together based upon Military Tradition.';
+    conop.mission = `UGA Bulldog BN conducts Military Ball on ${dateStr} at Tate Grand Hall NLT 1800, IOT provide a memorable formal evening to recognize the hard work of UGA cadets and cadre during the 2022-2023 year.`;
+    conop.situation.oic = oicName;
+    conop.situation.ncoic = ncoicName;
+    conop.situation.ao = 'Tate Grand Hall';
     conop.situation.uniform = 'Dress Uniform (AGSU/ASU) or Formal Attire';
-    conop.endState = 'All awards presented. Unit accomplishments recognized. Military Ball completed with proper tradition and celebration.';
+    conop.endState = 'All UGA cadets, cadre, and guests will have experienced a traditional military ball that is a positive and memorable culminating event of their long ROTC year.';
     conop.conceptOfOperation = {
-      phase1: 'Venue setup, decorations, and final preparations.',
-      phase1Label: 'Setup',
-      phase2: 'Guest arrival, reception, and seating.',
-      phase2Label: 'Reception',
-      phase3: 'Awards ceremony and dinner service.',
-      phase3Label: 'Awards & Dinner',
-      phase4: 'Dancing, celebration, and dismissal.',
-      phase4Label: 'Celebration & Dismissal'
+      phase1: 'Brief Cadre on date and time of military ball. Finalize and coordinate event space with Tate event coordinator.',
+      phase1Label: 'PREP',
+      phase2: 'OICs will gather at 1600 with MS4 detail to set-up tables with name placements, decorations, and picture station. Cadets, cadre, and guests will be seated at their assigned table.',
+      phase2Label: 'SET-UP & Arrival',
+      phase3: 'Initial speech by MC followed by grog being made by designated cadets. Cadets, cadre, and guests will retrieve food from buffet stations. Guest Speaker will give speech. Music will be played for the rest of the evening and patrons will be able to utilize dance floor until 2200.',
+      phase3Label: 'Execution',
+      phase4: 'OIC and NCOIC will clean up decorations and wrap up ball.',
+      phase4Label: 'Clean-Up'
     };
     conop.resources = {
-      class1: 'Dinner service, refreshments, water',
-      class2: 'Dress uniforms, awards, decorations, programs',
+      class1: 'Catering, refreshments, water',
+      class2: 'Dress uniforms, decorations, programs, name placements',
       class5: 'N/A',
       class6: 'N/A',
       class8: 'First aid kit'
     };
     conop.keyDates = [
-      '1500: Venue setup',
-      '1700: Guest arrival and reception',
-      '1800: Awards ceremony begins',
-      '1900: Dinner service',
-      '2000: Dancing and celebration',
-      '2300: Dismissal'
+      '1600: OIC and detail arrive to set-up',
+      '1800: Cadets, cadre, and guests begin arrival',
+      '1830: Military Ball starts',
+      '1900: Guest Speaker',
+      '1930-2030: Dinner',
+      '2030-2200: Ball festivities',
+      '2200-UTC: OIC and detail breakdown'
     ];
-    conop.tasksToSubs = 'MSIII cadets assist with setup and ushering. MSIVs coordinate awards presentation.';
+    conop.tasksToSubs = 'Key Tasks: Finalize key dates and timeline with Cadre POC: MSG Lawrence. Secure Tate Grand Hall for 23 MAR. Secure catering for 23 MAR. Meet with event coordinator at Tate to finalize event space. Decorate Tate Grand Hall NLT 180023MAR. Begin Military ball NLT 183023MAR2023. End Military ball NLT 220023MAR2023.';
   }
   else if (type.includes('height/weight') || type.includes('cst layout') || type.includes('h/w')) {
     conop.purpose = 'To assess cadet physical standards and layout equipment for MS3s preparing for Cadet Summer Training (CST).';
@@ -635,64 +879,81 @@ const NEW_EVENTS: TrainingEventData[] = [
     name: 'Army Fitness Test 1',
     date: formatDate('03-04 FEB'),
     endDate: formatEndDate('03-04 FEB'),
-    hitTime: 'TBD',
+    hitTime: '0445',
+    endTime: '0700',
     planningStatus: 'in-progress',
     oicId: 'Fagan/Maddux + protégé',
-    ao: 'TBD',
-    mission: 'Conduct Army Fitness Test (AFT) 1 to assess cadet physical fitness levels and readiness.',
-    conop: createConop('Army Fitness Test 1', 'Fagan/Maddux + protégé', '', formatDate('03-04 FEB'), formatEndDate('03-04 FEB'))
+    ncoicId: 'Maddux',
+    ao: 'IM Fields',
+    uniform: 'Summer PTs',
+    mission: `UGA Bulldog BN conducts an ACFT on ${formatDateWithAbbrMonth(formatDate('03-04 FEB'), formatEndDate('03-04 FEB'))} at 0445 in order to allow the entire BN to conduct all 6 ACFT events within 120 minutes.`,
+    conop: createConop('Army Fitness Test 1', 'Fagan', 'Maddux', formatDate('03-04 FEB'), formatEndDate('03-04 FEB'))
   },
   {
     name: 'Basic Rifle Marksmanship',
-    date: formatDate('24 MAR'),
-    hitTime: 'TBD',
+    date: formatDate('14 APR'),
+    hitTime: '0600',
+    endTime: '1700',
     planningStatus: 'in-progress',
-    oicId: 'Fagan',
-    ao: 'TBD',
-    mission: 'Conduct Basic Rifle Marksmanship (BRM) training to develop cadet marksmanship skills and weapons handling proficiency.',
-    conop: createConop('Basic Rifle Marksmanship', 'Fagan', '', formatDate('24 MAR'))
+    oicId: 'Nelson, Davis',
+    ncoicId: 'Muth',
+    ao: 'Fort Gordon',
+    uniform: 'ACU',
+    mission: `UGA Bulldog BN conducts Basic Rifle Marksmanship on ${formatDateWithAbbrMonth(formatDate('14 APR'))} at Fort Gordon IOT prepare MSIII cadets for CST`,
+    conop: createConop('Basic Rifle Marksmanship', 'Nelson, Davis', 'Muth', formatDate('14 APR'))
   },
   {
     name: 'Army Fitness Test 2',
     date: formatDate('14-15 APR'),
     endDate: formatEndDate('14-15 APR'),
-    hitTime: 'TBD',
+    hitTime: '0445',
+    endTime: '0700',
     planningStatus: 'in-progress',
     oicId: 'Fagan/Maddux + protégé',
-    ao: 'TBD',
-    mission: 'Conduct Army Fitness Test (AFT) 2 to reassess cadet physical fitness levels and track progress.',
-    conop: createConop('Army Fitness Test 2', 'Fagan/Maddux + protégé', '', formatDate('14-15 APR'), formatEndDate('14-15 APR'))
+    ncoicId: 'Maddux',
+    ao: 'IM Fields',
+    uniform: 'Summer PTs',
+    mission: `UGA Bulldog BN conducts an ACFT on ${formatDateWithAbbrMonth(formatDate('14-15 APR'), formatEndDate('14-15 APR'))} at 0445 in order to allow the entire BN to conduct all 6 ACFT events within 120 minutes.`,
+    conop: createConop('Army Fitness Test 2', 'Fagan', 'Maddux', formatDate('14-15 APR'), formatEndDate('14-15 APR'))
   },
   {
     name: 'Spring Field Training Exercise',
     date: formatDate('16-19 APR'),
     endDate: formatEndDate('16-19 APR'),
-    hitTime: 'TBD',
+    hitTime: '0430',
     planningStatus: 'in-progress',
-    oicId: 'Cadre w/ Tactics OIC coord',
-    ao: 'TBD',
-    mission: 'Conduct Spring Field Training Exercise (FTX) to provide comprehensive field training experience and evaluate cadet performance in tactical scenarios.',
-    conop: createConop('Spring Field Training Exercise', 'Cadre w/ Tactics OIC coord', '', formatDate('16-19 APR'), formatEndDate('16-19 APR'))
+    oicId: 'Sanford',
+    ncoicId: 'Evans',
+    ao: 'Ft. Benning',
+    uniform: 'OCPs',
+    mission: `Conduct field training exercise for MS3 cadets focusing on PLT STX training at Fort Benning ${formatDateWithAbbrMonth(formatDate('16-19 APR'), formatEndDate('16-19 APR'))} IOT prepare cadets for CST25.`,
+    conop: createConop('Spring Field Training Exercise', 'Sanford', 'Evans', formatDate('16-19 APR'), formatEndDate('16-19 APR'))
   },
   {
     name: '8 Mile Ruck',
     date: formatDate('18 FEB'),
-    hitTime: 'TBD',
+    hitTime: '0415',
+    endTime: '0700',
     planningStatus: 'in-progress',
-    oicId: 'Tactics OICs',
-    ao: 'TBD',
-    mission: 'Conduct 8-mile ruck march to build cadet endurance, mental toughness, and tactical movement capabilities.',
-    conop: createConop('8 Mile Ruck', 'Tactics OICs', '', formatDate('18 FEB'))
+    oicId: 'Downes',
+    ncoicId: 'Kang',
+    ao: 'Lot E23 at 113-125 N Oconee Access Rd, Athens, Georgia 30605',
+    uniform: 'Sterilized OCPs & Boots, Ruck, Water Source',
+    mission: `Bulldog BN conducts an eight-mile road march on ${formatDateWithAbbrMonth(formatDate('18 FEB'))} at LOT E-23.`,
+    conop: createConop('8 Mile Ruck', 'Downes', 'Kang', formatDate('18 FEB'))
   },
   {
     name: 'End of Semester 12 Mile Ruck',
     date: formatDate('23 APR'),
-    hitTime: 'TBD',
+    hitTime: '1545',
+    endTime: '1930',
     planningStatus: 'in-progress',
-    oicId: 'Tactics OICs',
-    ao: 'TBD',
-    mission: 'Conduct End of Semester Lab 12-mile ruck march as a culminating physical training event.',
-    conop: createConop('End of Semester 12 Mile Ruck', 'Tactics OICs', '', formatDate('23 APR'))
+    oicId: 'Downes',
+    ncoicId: 'Kang',
+    ao: 'White Hall Forest',
+    uniform: 'OCPs & Boots, Ruck, Water Source',
+    mission: `Bulldog BN conducts a twelve-mile road march on ${formatDateWithAbbrMonth(formatDate('23 APR'))} at White Hall Forest.`,
+    conop: createConop('End of Semester 12 Mile Ruck', 'Downes', 'Kang', formatDate('23 APR'))
   },
   {
     name: 'Day/Night Lab',
@@ -718,35 +979,41 @@ const NEW_EVENTS: TrainingEventData[] = [
   {
     name: 'Memorial 5K',
     date: formatDate('21 MAR'),
-    hitTime: 'TBD',
+    hitTime: '0530',
+    endTime: '1200',
     planningStatus: 'in-progress',
     oicId: 'McFadden',
     ncoicId: 'Donahoe',
-    ao: 'TBD',
-    mission: 'Conduct Memorial 5K run event to promote physical fitness and unit cohesion.',
+    ao: 'Oconee River Greenway, beginning and ending at Park and Ride lot E23',
+    uniform: 'PT Uniform',
+    mission: `UGA Bulldog BN conducts an annual spring Memorial 5k Run at Oconee River Greenway, beginning and ending at Park and Ride lot E23, on ${formatDateWithAbbrMonth(formatDate('21 MAR'))} at 0900 to promote physical fitness and honor our fallen alumni.`,
     conop: createConop('Memorial 5K', 'McFadden', 'Donahoe', formatDate('21 MAR'))
   },
   {
     name: 'Commissioning',
     date: formatDate('09 MAY'),
-    hitTime: 'TBD',
+    hitTime: '0900',
+    endTime: '1300',
     planningStatus: 'in-progress',
-    oicId: 'Bubak',
-    ncoicId: 'Phillips',
-    ao: 'TBD',
-    mission: 'Conduct commissioning ceremony to recognize and celebrate cadets transitioning to commissioned officers.',
-    conop: createConop('Commissioning', 'Bubak', 'Phillips', formatDate('09 MAY'))
+    oicId: 'Merriam',
+    ncoicId: 'McFadden',
+    ao: 'University Chapel',
+    uniform: 'MSIV\'s: AGSUs',
+    mission: `UGA Bulldog Battalion conducts commissioning ceremony on ${formatDateWithAbbrMonth(formatDate('09 MAY'))} IOT commission the MSIVs to 2nd Lieutenants.`,
+    conop: createConop('Commissioning', 'Merriam', 'McFadden', formatDate('09 MAY'))
   },
   {
     name: 'Mill Ball / Awards',
     date: formatDate('09 APR'),
-    hitTime: 'TBD',
+    hitTime: '1800',
+    endTime: '2200',
     planningStatus: 'in-progress',
-    oicId: 'Navarro',
-    ncoicId: 'Adkinson',
-    ao: 'TBD',
-    mission: 'Conduct Military Ball and Awards ceremony to recognize cadet achievements and celebrate unit accomplishments.',
-    conop: createConop('Mill Ball / Awards', 'Navarro', 'Adkinson', formatDate('09 APR'))
+    oicId: 'Davis',
+    ncoicId: 'Rankin',
+    ao: 'Tate Grand Hall',
+    uniform: 'Dress Uniform (AGSU/ASU) or Formal Attire',
+    mission: `UGA Bulldog BN conducts Military Ball on ${formatDateWithAbbrMonth(formatDate('09 APR'))} at Tate Grand Hall NLT 1800, IOT provide a memorable formal evening to recognize the hard work of UGA cadets and cadre during the 2022-2023 year.`,
+    conop: createConop('Mill Ball / Awards', 'Davis', 'Rankin', formatDate('09 APR'))
   },
   {
     name: 'Height/Weight & CST Layout',

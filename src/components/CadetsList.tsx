@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getCadetsByCompany, subscribeToCadets } from '../services/cadetService';
 import { Cadet, Company } from '../types';
 
@@ -19,9 +19,28 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
   const [selectedCompanies, setSelectedCompanies] = useState<Set<Company>>(new Set(COMPANIES.filter(c => c !== 'Grizzly Company')));
   const [showContracted, setShowContracted] = useState(true);
   const [showUncontracted, setShowUncontracted] = useState(true);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const loadingTimeoutRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  const loadCadets = useCallback(() => {
+    // Clear any existing timeout
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+
     setLoading(true);
+    
+    // Safety timeout: ensure loading never gets stuck for more than 10 seconds
+    loadingTimeoutRef.current = window.setTimeout(() => {
+      console.warn('Loading timeout reached, forcing loading to false');
+      setLoading(false);
+    }, 10000);
+
+    // Unsubscribe from previous subscription if it exists
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
     
     // Set up real-time listener for better performance
     const unsubscribe = subscribeToCadets(
@@ -29,26 +48,71 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
       (updatedCadets) => {
         setCadets(updatedCadets);
         setLoading(false);
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
       },
       (error) => {
         console.error('Error in cadets subscription:', error);
         // Fallback to one-time fetch
         getCadetsByCompany('Master').then(setCadets).catch(err => {
           console.error('Error loading cadets:', err);
-          alert(`Error loading cadets: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        }).finally(() => setLoading(false));
+          // Don't show alert on background errors, just log
+          if (document.visibilityState === 'visible') {
+            alert(`Error loading cadets: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          }
+        }).finally(() => {
+          setLoading(false);
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+          }
+        });
       }
     );
+
+    unsubscribeRef.current = unsubscribe;
 
     // Initial load (will be fast due to cache)
     getCadetsByCompany('Master').then(setCadets).catch(error => {
       console.error('Error loading cadets:', error);
-      alert(`Error loading cadets: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }).finally(() => setLoading(false));
+      // Don't show alert on background errors, just log
+      if (document.visibilityState === 'visible') {
+        alert(`Error loading cadets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }).finally(() => {
+      setLoading(false);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    });
+  }, []);
 
-    // Cleanup subscription
+  useEffect(() => {
+    loadCadets();
+
+    // Handle visibility change - reload when app comes back to foreground
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // App came back to foreground, reload data to ensure subscription is active
+        console.log('App became visible, reloading cadets');
+        loadCadets();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup
     return () => {
-      unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
