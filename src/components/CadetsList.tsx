@@ -21,19 +21,46 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
   const [showUncontracted, setShowUncontracted] = useState(true);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const loadingTimeoutRef = useRef<number | null>(null);
+  const cadetsRef = useRef<Cadet[]>([]);
 
-  const loadCadets = useCallback(() => {
+  // Keep ref in sync with state
+  useEffect(() => {
+    cadetsRef.current = cadets;
+  }, [cadets]);
+
+  const loadCadets = useCallback(async () => {
     // Clear any existing timeout
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current);
     }
 
+    // Preserve existing cadets data - don't clear it
+    const hadCadets = cadetsRef.current.length > 0;
+    
     setLoading(true);
     
     // Safety timeout: ensure loading never gets stuck for more than 10 seconds
-    loadingTimeoutRef.current = window.setTimeout(() => {
+    loadingTimeoutRef.current = window.setTimeout(async () => {
       console.warn('Loading timeout reached, forcing loading to false');
+      
+      // Try to load from cache as last resort if we don't have data
+      if (!hadCadets) {
+        try {
+          const { cacheService } = await import('../services/cacheService');
+          const cached = await cacheService.getCachedCadets('Master');
+          if (cached && cached.length > 0) {
+            console.log('Loaded cadets from cache after timeout');
+            setCadets(cached as Cadet[]);
+          }
+        } catch (error) {
+          console.error('Error loading from cache after timeout:', error);
+        }
+      }
+      
       setLoading(false);
+      if (loadingTimeoutRef.current) {
+        loadingTimeoutRef.current = null;
+      }
     }, 10000);
 
     // Unsubscribe from previous subscription if it exists
@@ -42,52 +69,138 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
       unsubscribeRef.current = null;
     }
     
+    // Try to load from cache first for immediate display (only if we don't have data)
+    if (!hadCadets) {
+      try {
+        const { cacheService } = await import('../services/cacheService');
+        const cached = await cacheService.getCachedCadets('Master');
+        if (cached && cached.length > 0) {
+          console.log('Loaded cadets from cache for immediate display');
+          setCadets(cached as Cadet[]);
+        }
+      } catch (error) {
+        console.error('Error loading from cache:', error);
+      }
+    }
+    
+    let subscriptionSucceeded = false;
+    let initialLoadSucceeded = false;
+    
     // Set up real-time listener for better performance
     const unsubscribe = subscribeToCadets(
       'Master',
       (updatedCadets) => {
-        setCadets(updatedCadets);
+        if (updatedCadets && updatedCadets.length > 0) {
+          subscriptionSucceeded = true;
+          setCadets(updatedCadets);
+        }
         setLoading(false);
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
           loadingTimeoutRef.current = null;
         }
       },
-      (error) => {
+      async (error) => {
         console.error('Error in cadets subscription:', error);
         // Fallback to one-time fetch
-        getCadetsByCompany('Master').then(setCadets).catch(err => {
+        try {
+          const fetchedCadets = await getCadetsByCompany('Master');
+          if (fetchedCadets && fetchedCadets.length > 0) {
+            initialLoadSucceeded = true;
+            setCadets(fetchedCadets);
+          } else {
+            // If fetch returns empty, try cache
+            if (!hadCadets && !subscriptionSucceeded) {
+              try {
+                const { cacheService } = await import('../services/cacheService');
+                const cached = await cacheService.getCachedCadets('Master');
+                if (cached && cached.length > 0) {
+                  console.log('Loaded cadets from cache after subscription error and empty fetch');
+                  setCadets(cached as Cadet[]);
+                }
+              } catch (cacheError) {
+                console.error('Error loading from cache:', cacheError);
+              }
+            }
+          }
+        } catch (err) {
           console.error('Error loading cadets:', err);
+          // Try cache as last resort
+          if (!hadCadets && !subscriptionSucceeded && !initialLoadSucceeded) {
+            try {
+              const { cacheService } = await import('../services/cacheService');
+              const cached = await cacheService.getCachedCadets('Master');
+              if (cached && cached.length > 0) {
+                console.log('Loaded cadets from cache after all errors');
+                setCadets(cached as Cadet[]);
+              }
+            } catch (cacheError) {
+              console.error('Error loading from cache:', cacheError);
+            }
+          }
           // Don't show alert on background errors, just log
           if (document.visibilityState === 'visible') {
-            alert(`Error loading cadets: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            console.warn('Failed to load cadets. Check your connection.');
           }
-        }).finally(() => {
+        } finally {
           setLoading(false);
           if (loadingTimeoutRef.current) {
             clearTimeout(loadingTimeoutRef.current);
             loadingTimeoutRef.current = null;
           }
-        });
+        }
       }
     );
 
     unsubscribeRef.current = unsubscribe;
 
     // Initial load (will be fast due to cache)
-    getCadetsByCompany('Master').then(setCadets).catch(error => {
+    try {
+      const fetchedCadets = await getCadetsByCompany('Master');
+      if (fetchedCadets && fetchedCadets.length > 0) {
+        initialLoadSucceeded = true;
+        setCadets(fetchedCadets);
+      } else {
+        // If fetch returns empty, try cache (only if we don't already have data)
+        if (!hadCadets && !subscriptionSucceeded) {
+          try {
+            const { cacheService } = await import('../services/cacheService');
+            const cached = await cacheService.getCachedCadets('Master');
+            if (cached && cached.length > 0) {
+              console.log('Loaded cadets from cache after initial fetch returned empty');
+              setCadets(cached as Cadet[]);
+            }
+          } catch (cacheError) {
+            console.error('Error loading from cache:', cacheError);
+          }
+        }
+      }
+    } catch (error) {
       console.error('Error loading cadets:', error);
+      // Try cache as last resort (only if we don't already have data)
+      if (!hadCadets && !subscriptionSucceeded && !initialLoadSucceeded) {
+        try {
+          const { cacheService } = await import('../services/cacheService');
+          const cached = await cacheService.getCachedCadets('Master');
+          if (cached && cached.length > 0) {
+            console.log('Loaded cadets from cache after initial error');
+            setCadets(cached as Cadet[]);
+          }
+        } catch (cacheError) {
+          console.error('Error loading from cache:', cacheError);
+        }
+      }
       // Don't show alert on background errors, just log
       if (document.visibilityState === 'visible') {
-        alert(`Error loading cadets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.warn('Failed to load cadets. Check your connection.');
       }
-    }).finally(() => {
+    } finally {
       setLoading(false);
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
         loadingTimeoutRef.current = null;
       }
-    });
+    }
   }, []);
 
   useEffect(() => {
