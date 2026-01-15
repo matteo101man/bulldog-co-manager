@@ -8,11 +8,12 @@ interface ImageCropperProps {
 
 export default function ImageCropper({ onSave, onCancel, initialImageUrl }: ImageCropperProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(initialImageUrl || null);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(1.0); // Start at base scale
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(false);
+  const [imageDisplaySize, setImageDisplaySize] = useState<{ width: number; height: number } | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -21,6 +22,37 @@ export default function ImageCropper({ onSave, onCancel, initialImageUrl }: Imag
 
   const CROP_SIZE = 256; // Size of the circular crop area
 
+  // Calculate initial display size to fit image nicely in container
+  const calculateImageDisplay = useCallback((imgWidth: number, imgHeight: number, containerSize: number) => {
+    // We want the image to initially display at about 1.5x the container size
+    // This gives room to pan while not being too zoomed in
+    const targetDisplaySize = containerSize * 1.5;
+    
+    // Calculate the aspect ratio
+    const aspectRatio = imgWidth / imgHeight;
+    
+    // Determine base display dimensions maintaining aspect ratio
+    let baseWidth: number;
+    let baseHeight: number;
+    
+    if (imgWidth > imgHeight) {
+      // Landscape or square
+      baseWidth = targetDisplaySize;
+      baseHeight = targetDisplaySize / aspectRatio;
+    } else {
+      // Portrait
+      baseHeight = targetDisplaySize;
+      baseWidth = targetDisplaySize * aspectRatio;
+    }
+    
+    // Start at scale 1.0 (no additional scaling beyond the CSS size)
+    return {
+      baseWidth,
+      baseHeight,
+      initialScale: 1.0
+    };
+  }, []);
+
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -28,8 +60,10 @@ export default function ImageCropper({ onSave, onCancel, initialImageUrl }: Imag
       const reader = new FileReader();
       reader.onload = (event) => {
         setImageSrc(event.target?.result as string);
-        setScale(1);
+        // Reset scale, position, and display size - will be calculated when image loads
+        setScale(1.0);
         setPosition({ x: 0, y: 0 });
+        setImageDisplaySize(null);
       };
       reader.readAsDataURL(file);
     }
@@ -206,25 +240,25 @@ export default function ImageCropper({ onSave, onCancel, initialImageUrl }: Imag
                   transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${scale})`,
                   cursor: isDragging ? 'grabbing' : 'grab',
                   userSelect: 'none',
+                  width: imageDisplaySize ? `${imageDisplaySize.width}px` : 'auto',
+                  height: imageDisplaySize ? `${imageDisplaySize.height}px` : 'auto',
                   maxWidth: 'none',
-                  height: 'auto',
-                  width: 'auto',
                 }}
                 draggable={false}
                 onLoad={() => {
-                  // Center the image when it loads
+                  // Calculate initial scale and display size when image loads
                   if (imageRef.current && containerRef.current) {
                     const img = imageRef.current;
                     const container = containerRef.current;
                     const containerSize = container.offsetWidth;
-                    const imgDisplayWidth = img.offsetWidth;
-                    const imgDisplayHeight = img.offsetHeight;
+                    const imgNaturalWidth = img.naturalWidth;
+                    const imgNaturalHeight = img.naturalHeight;
                     
-                    // If image is smaller than container, scale it up to fit
-                    if (imgDisplayWidth < containerSize || imgDisplayHeight < containerSize) {
-                      const scaleToFit = containerSize / Math.min(imgDisplayWidth, imgDisplayHeight);
-                      setScale(scaleToFit);
-                    }
+                    // Calculate display size and initial scale
+                    const display = calculateImageDisplay(imgNaturalWidth, imgNaturalHeight, containerSize);
+                    setImageDisplaySize({ width: display.baseWidth, height: display.baseHeight });
+                    setScale(display.initialScale);
+                    setPosition({ x: 0, y: 0 });
                   }
                 }}
               />
