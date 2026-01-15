@@ -124,7 +124,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                 style={{ minHeight: '44px' }}
               >
                 <span className="text-lg font-semibold text-gray-900">
-                  {company.endsWith('Company') ? company : `${company} Company`}
+                  {company === 'Battalion' ? 'Battalion' : company.endsWith('Company') ? company : `${company} Company`}
                 </span>
               </button>
             ))}
