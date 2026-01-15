@@ -118,7 +118,7 @@ export default function ImageCropper({ onSave, onCancel, initialImageUrl }: Imag
 
   // Crop and save the image
   const handleSave = async () => {
-    if (!imageSrc || !imageRef.current || !canvasRef.current || !containerRef.current) return;
+    if (!imageSrc || !imageRef.current || !canvasRef.current || !containerRef.current || !imageDisplaySize) return;
 
     setIsLoading(true);
     try {
@@ -130,26 +130,31 @@ export default function ImageCropper({ onSave, onCancel, initialImageUrl }: Imag
       canvas.height = CROP_SIZE;
 
       const img = imageRef.current;
-      const imgWidth = img.naturalWidth;
-      const imgHeight = img.naturalHeight;
+      const imgNaturalWidth = img.naturalWidth;
+      const imgNaturalHeight = img.naturalHeight;
       
-      // Get container dimensions
-      const containerSize = containerRef.current.offsetWidth;
+      // Get container and image bounding boxes
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const imageRect = img.getBoundingClientRect();
       
-      // Calculate displayed image dimensions
-      const displayedWidth = imgWidth * scale;
-      const displayedHeight = imgHeight * scale;
+      const containerSize = containerRect.width;
+      const containerCenterX = containerRect.left + containerSize / 2;
+      const containerCenterY = containerRect.top + containerSize / 2;
       
-      // The crop center is at the center of the container (which is also the center of the image's transform origin)
-      // Position represents the offset from center
-      // To find what part of the image is at the crop center:
-      // - The image is centered, then offset by position
-      // - So the crop center in image coordinates is:
-      const cropCenterXInImage = (imgWidth / 2) - (position.x / scale);
-      const cropCenterYInImage = (imgHeight / 2) - (position.y / scale);
+      // Calculate what part of the natural image is at the crop center
+      // The crop center in image display coordinates (relative to imageRect)
+      const cropCenterXInDisplay = containerCenterX - imageRect.left;
+      const cropCenterYInDisplay = containerCenterY - imageRect.top;
       
-      // Calculate the crop radius in image coordinates
-      const cropRadiusInImage = (containerSize / 2) / scale;
+      // Convert from displayed coordinates to natural image coordinates
+      const scaleX = imgNaturalWidth / imageRect.width;
+      const scaleY = imgNaturalHeight / imageRect.height;
+      
+      const cropCenterXInImage = cropCenterXInDisplay * scaleX;
+      const cropCenterYInImage = cropCenterYInDisplay * scaleY;
+      
+      // Calculate the crop radius in natural image coordinates
+      const cropRadiusInImage = (containerSize / 2) * scaleX;
       
       // Calculate source rectangle (square centered on crop center)
       const sourceSize = cropRadiusInImage * 2;
@@ -157,11 +162,11 @@ export default function ImageCropper({ onSave, onCancel, initialImageUrl }: Imag
       let sourceY = cropCenterYInImage - cropRadiusInImage;
       
       // Clamp to image bounds
-      sourceX = Math.max(0, Math.min(imgWidth - sourceSize, sourceX));
-      sourceY = Math.max(0, Math.min(imgHeight - sourceSize, sourceY));
+      sourceX = Math.max(0, Math.min(imgNaturalWidth - sourceSize, sourceX));
+      sourceY = Math.max(0, Math.min(imgNaturalHeight - sourceSize, sourceY));
       
       // Ensure we don't exceed image bounds
-      const actualSourceSize = Math.min(sourceSize, imgWidth - sourceX, imgHeight - sourceY);
+      const actualSourceSize = Math.min(sourceSize, imgNaturalWidth - sourceX, imgNaturalHeight - sourceY);
 
       // Create circular clipping path
       ctx.save();
