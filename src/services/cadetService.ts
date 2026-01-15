@@ -24,7 +24,12 @@ const CACHE_MAX_AGE = 2 * 60 * 1000; // 2 minutes
  * Get all cadets for a specific company
  * Uses cache first, then fetches from Firestore if cache is stale
  */
-export async function getCadetsByCompany(company: Company): Promise<Cadet[]> {
+export async function getCadetsByCompany(company: Company, bypassCache: boolean = false): Promise<Cadet[]> {
+  // If bypassing cache, fetch directly from Firestore
+  if (bypassCache) {
+    return fetchAndCacheCadets(company);
+  }
+  
   // Try cache first
   const cacheKey = company === 'Master' ? 'cadets_all' : `cadets_${company}`;
   const isStale = await cacheService.isCacheStale(cacheKey, CACHE_MAX_AGE);
