@@ -9,9 +9,12 @@ interface PTPlansProps {
   selectedCompany?: Company | null;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Battalion'];
 
 function getDaysForCompany(company: Company): DayOfWeek[] {
+  if (company === 'Battalion') {
+    return ['wednesday'];
+  }
   if (company === 'Ranger') {
     return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
   }
@@ -44,6 +47,16 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
     setLoading(true);
     try {
       const plansMap = await getPTPlansForWeek(currentCompany, currentWeekStart);
+      
+      // For non-Battalion companies, load Battalion Wednesday plan for Wednesday
+      if (currentCompany !== 'Battalion' && getDaysForCompany(currentCompany).includes('wednesday')) {
+        const battalionPlans = await getPTPlansForWeek('Battalion', currentWeekStart);
+        const battalionWednesdayPlan = battalionPlans.get('wednesday');
+        if (battalionWednesdayPlan) {
+          plansMap.set('wednesday', battalionWednesdayPlan);
+        }
+      }
+      
       setPlans(plansMap);
     } catch (error) {
       console.error('Error loading PT plans:', error);
@@ -198,6 +211,10 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
             {getDaysForCompany(currentCompany).map((day) => {
               const plan = plans.get(day);
               const date = weekDates[day];
+              // Check if this is Wednesday for a non-Battalion company (read-only)
+              const isReadOnly = day === 'wednesday' && currentCompany !== 'Battalion';
+              const isBattalionPlan = isReadOnly && plan?.company === 'Battalion';
+              
               return (
                 <PTPlanCard
                   key={day}
@@ -206,8 +223,15 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                   day={day}
                   date={date}
                   plan={plan}
-                  onEdit={() => setEditingPlan({ company: currentCompany, weekStartDate: currentWeekStart, day })}
+                  isReadOnly={isReadOnly}
+                  isBattalionPlan={isBattalionPlan}
+                  onEdit={() => {
+                    if (!isReadOnly) {
+                      setEditingPlan({ company: currentCompany, weekStartDate: currentWeekStart, day });
+                    }
+                  }}
                   onSave={async (planData) => {
+                    if (isReadOnly) return; // Should not be called, but safety check
                     // Save the plan to the company/week/day (so it shows in company view)
                     await savePTPlan({
                       company: currentCompany,
@@ -221,6 +245,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                   }}
                   onCancel={() => setEditingPlan(null)}
                   onNoPT={async () => {
+                    if (isReadOnly) return; // Should not be called, but safety check
                     await savePTPlan({
                       company: currentCompany,
                       weekStartDate: currentWeekStart,
@@ -233,7 +258,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                     await loadPlans();
                   }}
                   onDelete={async () => {
-                    if (!plan) return;
+                    if (isReadOnly || !plan) return; // Should not be called, but safety check
                     if (!confirm('Are you sure you want to delete this plan?')) return;
                     
                     // Delete from current company/week/day
@@ -266,7 +291,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                     
                     await loadPlans();
                   }}
-                  isEditing={editingPlan?.company === currentCompany && editingPlan?.weekStartDate === currentWeekStart && editingPlan?.day === day}
+                  isEditing={!isReadOnly && editingPlan?.company === currentCompany && editingPlan?.weekStartDate === currentWeekStart && editingPlan?.day === day}
                   isExpanded={expandedDays.has(day)}
                   onToggleExpand={() => {
                     const newExpanded = new Set(expandedDays);
@@ -293,6 +318,8 @@ interface PTPlanCardProps {
   day: DayOfWeek;
   date: string;
   plan: PTPlan | undefined;
+  isReadOnly?: boolean;
+  isBattalionPlan?: boolean;
   onEdit: () => void;
   onSave: (planData: { title: string; firstFormation: string; workouts: string; location: string }) => Promise<void>;
   onCancel: () => void;
@@ -302,7 +329,7 @@ interface PTPlanCardProps {
   onToggleExpand?: () => void;
 }
 
-function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, onNoPT, isEditing, isExpanded = false, onToggleExpand }: PTPlanCardProps) {
+function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = false, onEdit, onSave, onCancel, onDelete, onNoPT, isEditing, isExpanded = false, onToggleExpand }: PTPlanCardProps) {
   const [title, setTitle] = useState(plan?.title || '');
   const [firstFormation, setFirstFormation] = useState(plan?.firstFormation || '0600');
   const [workouts, setWorkouts] = useState(plan?.workouts || '');
@@ -449,6 +476,9 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, onNoP
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900">{dayName}</h3>
           <p className="text-sm text-gray-600">{formatDateWithDay(date)}</p>
+          {isReadOnly && isBattalionPlan && (
+            <p className="text-xs text-blue-600 mt-1 font-medium">Battalion Plan (Read-Only)</p>
+          )}
         </div>
         {!isEditing && onToggleExpand && (
           <button
@@ -617,28 +647,37 @@ function PTPlanCard({ day, date, plan, onEdit, onSave, onCancel, onDelete, onNoP
           ) : (
             <div className="text-sm text-gray-500 italic pt-3 border-t border-gray-200">No plan created yet</div>
           )}
-          <div className="mt-3 space-y-2">
-            <button
-              onClick={onEdit}
-              className="w-full py-2 px-4 rounded-md text-sm font-medium text-blue-600 border border-blue-600 hover:bg-blue-50 active:bg-blue-100 touch-manipulation"
-            >
-              {plan ? 'Edit Plan' : 'Create Plan'}
-            </button>
-            <button
-              onClick={onNoPT}
-              className="w-full py-2 px-4 rounded-md text-sm font-medium text-red-600 border border-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation"
-            >
-              No PT
-            </button>
-            {plan && (
+          {!isReadOnly && (
+            <div className="mt-3 space-y-2">
               <button
-                onClick={onDelete}
+                onClick={onEdit}
+                className="w-full py-2 px-4 rounded-md text-sm font-medium text-blue-600 border border-blue-600 hover:bg-blue-50 active:bg-blue-100 touch-manipulation"
+              >
+                {plan ? 'Edit Plan' : 'Create Plan'}
+              </button>
+              <button
+                onClick={onNoPT}
                 className="w-full py-2 px-4 rounded-md text-sm font-medium text-red-600 border border-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation"
               >
-                Delete Plan
+                No PT
               </button>
-            )}
-          </div>
+              {plan && (
+                <button
+                  onClick={onDelete}
+                  className="w-full py-2 px-4 rounded-md text-sm font-medium text-red-600 border border-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation"
+                >
+                  Delete Plan
+                </button>
+              )}
+            </div>
+          )}
+          {isReadOnly && (
+            <div className="mt-3">
+              <div className="text-sm text-gray-500 italic text-center py-2">
+                This plan is managed by Battalion and cannot be edited here.
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
