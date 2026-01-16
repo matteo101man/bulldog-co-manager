@@ -14,8 +14,9 @@ export default defineConfig({
       },
       // Better update strategy for production
       workbox: {
-        // Skip waiting and claim clients immediately on update
-        skipWaiting: true,
+        // Don't skip waiting - let updates apply on next page load to prevent forced refreshes
+        // This prevents the page from refreshing when someone else logs in or when updates are available
+        skipWaiting: false,
         clientsClaim: true,
         // Clean up old caches on update
         cleanupOutdatedCaches: true,

@@ -73,7 +73,7 @@ function App() {
     initializeNotifications();
   };
 
-  // Check for service worker updates periodically
+  // Handle service worker updates gracefully without forcing refreshes
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
@@ -81,21 +81,35 @@ function App() {
       try {
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (const registration of registrations) {
-          // Force update check
-          await registration.update();
+          // Check for updates but don't force activation
+          // Only check, don't call update() which can trigger immediate activation
+          if (registration.installing || registration.waiting) {
+            // There's an update available, but we won't force it
+            // The service worker will update on next page load naturally
+            console.log('Service worker update available (will apply on next page load)');
+          }
         }
       } catch (error) {
         console.error('Error checking for service worker updates:', error);
       }
     }
 
-    // Check immediately on load
+    // Only check when page becomes visible (user returns to tab)
+    // This prevents aggressive checking that could cause refreshes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Check once on initial load
     checkForUpdates();
 
-    // Check every 2 minutes for updates
-    const updateInterval = setInterval(checkForUpdates, 2 * 60 * 1000);
-
-    return () => clearInterval(updateInterval);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   async function initializeNotifications() {
