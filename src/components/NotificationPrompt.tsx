@@ -49,7 +49,15 @@ export default function NotificationPrompt() {
       alert('Notifications enabled! You will now receive push notifications.');
     } catch (error) {
       console.error('Error enabling notifications:', error);
-      alert(`Could not enable notifications: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      // Provide more helpful error messages
+      let userMessage = `Could not enable notifications: ${errorMessage}`;
+      if (errorMessage.includes('service worker') || errorMessage.includes('messaging')) {
+        userMessage = `Could not enable notifications. Please ensure service workers are enabled in your browser settings and try refreshing the page. Error: ${errorMessage}`;
+      } else if (errorMessage.includes('VAPID')) {
+        userMessage = `Could not enable notifications. Configuration error. Please contact support.`;
+      }
+      alert(userMessage);
     } finally {
       setIsRequesting(false);
     }

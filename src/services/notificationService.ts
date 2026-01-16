@@ -53,39 +53,74 @@ async function getFCMToken(): Promise<string | null> {
     throw new Error('Firebase Messaging is not available');
   }
 
-    try {
-      // Get the service worker registration for Firebase Messaging
-      // We need to register the firebase-messaging-sw.js service worker
-      // Use Vite's BASE_URL which will be '/' for Firebase Hosting or '/bulldog-co-manager/' for GitHub Pages
-      const basePath = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
-      let registration;
-      
-      // Check if there's already a service worker registered
-      const existingRegistrations = await navigator.serviceWorker.getRegistrations();
-      const firebaseSW = existingRegistrations.find(reg => 
-        reg.active?.scriptURL?.includes('firebase-messaging-sw')
-      );
-      
-      if (firebaseSW) {
-        // Use existing Firebase messaging service worker
-        registration = firebaseSW;
-        await registration.update(); // Update if needed
+  try {
+    // Use Vite's BASE_URL which will be '/' for Firebase Hosting or '/bulldog-co-manager/' for GitHub Pages
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+    let registration;
+    
+    // Check if there's already a service worker registered
+    const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+    
+    // First, try to find the Firebase messaging service worker
+    let firebaseSW = existingRegistrations.find(reg => 
+      reg.active?.scriptURL?.includes('firebase-messaging-sw') || 
+      reg.installing?.scriptURL?.includes('firebase-messaging-sw') ||
+      reg.waiting?.scriptURL?.includes('firebase-messaging-sw')
+    );
+    
+    if (firebaseSW) {
+      // Use existing Firebase messaging service worker
+      registration = firebaseSW;
+      // Wait for it to be ready if it's installing
+      if (registration.installing) {
+        await new Promise<void>((resolve) => {
+          const stateChangeHandler = () => {
+            if (registration.installing?.state === 'activated' || registration.active) {
+              registration.installing?.removeEventListener('statechange', stateChangeHandler);
+              resolve();
+            }
+          };
+          registration.installing.addEventListener('statechange', stateChangeHandler);
+        });
       } else {
-        // Register the Firebase messaging service worker
+        await registration.ready;
+      }
+    } else {
+      // Try to use the ready service worker (could be the main sw.js)
+      // Firebase Messaging can work with any service worker for token generation
+      try {
+        registration = await navigator.serviceWorker.ready;
+        // If the ready SW is not firebase-messaging-sw, we still need to register it
+        // But we can use the ready SW for token generation
+        if (!registration.active?.scriptURL?.includes('firebase-messaging-sw')) {
+          // Register firebase-messaging-sw.js in the background for background message handling
+          // But use the ready SW for token generation
+          try {
+            await navigator.serviceWorker.register(`${basePath}/firebase-messaging-sw.js`, {
+              scope: `${basePath}/`
+            });
+          } catch (swError) {
+            // If registration fails (e.g., scope conflict), that's okay
+            // We'll use the existing SW for token generation
+            console.warn('Could not register firebase-messaging-sw.js, using existing service worker:', swError);
+          }
+        }
+      } catch (readyError) {
+        // No service worker ready, register the Firebase messaging service worker
         registration = await navigator.serviceWorker.register(`${basePath}/firebase-messaging-sw.js`, {
           scope: `${basePath}/`
         });
-        // Wait for it to be ready
-        await registration.update(); // Update if needed
+        await registration.ready;
       }
-    
-    // Get FCM token with VAPID key
-    let token: string | null = null;
+    }
     
     // Validate VAPID key is configured
     if (!VAPID_KEY || VAPID_KEY.trim().length === 0) {
       throw new Error('VAPID key not configured. Please generate a key pair in Firebase Console > Project Settings > Cloud Messaging > Web Push certificates and update VAPID_KEY in notificationService.ts');
     }
+    
+    // Get FCM token with VAPID key
+    let token: string | null = null;
     
     try {
       token = await getToken(messaging, {
@@ -94,7 +129,16 @@ async function getFCMToken(): Promise<string | null> {
       });
     } catch (error) {
       console.error('Error getting FCM token:', error);
-      throw new Error(`Failed to get FCM token: ${error instanceof Error ? error.message : 'Unknown error'}. Please ensure your VAPID key is correct.`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('messaging/') || errorMessage.includes('service-worker')) {
+        throw new Error(`Service worker error: ${errorMessage}. Please try refreshing the page and enabling notifications again.`);
+      } else if (errorMessage.includes('permission') || errorMessage.includes('denied')) {
+        throw new Error('Notification permission was denied. Please enable notifications in your browser settings.');
+      } else {
+        throw new Error(`Failed to get FCM token: ${errorMessage}. Please ensure your VAPID key is correct and service workers are enabled.`);
+      }
     }
 
     if (token) {
