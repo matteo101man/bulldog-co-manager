@@ -77,6 +77,7 @@ export async function savePTPlan(plan: Omit<PTPlan, 'id'> & { id?: string }): Pr
       firstFormation: plan.firstFormation,
       workouts: plan.workouts,
       location: plan.location,
+      uniform: plan.uniform || 'Summer PTs',
     }, { merge: true });
   } else {
     // For regular plans, require company, weekStartDate, and day
@@ -94,6 +95,7 @@ export async function savePTPlan(plan: Omit<PTPlan, 'id'> & { id?: string }): Pr
       firstFormation: plan.firstFormation,
       workouts: plan.workouts,
       location: plan.location,
+      uniform: plan.uniform || 'Summer PTs',
       isGeneric: false,
     }, { merge: true });
   }

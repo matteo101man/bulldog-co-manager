@@ -40,6 +40,7 @@ async function createBattalionPTPlan() {
       firstFormation: '0600',
       workouts: 'Ability Group Run',
       location: 'IM Fields',
+      uniform: 'Summer PTs',
       isGeneric: false,
     };
 

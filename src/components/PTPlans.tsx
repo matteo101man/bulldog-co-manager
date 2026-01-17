@@ -279,6 +279,7 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
                       firstFormation: '',
                       workouts: '',
                       location: '',
+                      uniform: 'Summer PTs',
                     });
                     await loadPlans();
                   }}
@@ -346,7 +347,7 @@ interface PTPlanCardProps {
   isReadOnly?: boolean;
   isBattalionPlan?: boolean;
   onEdit: () => void;
-  onSave: (planData: { title: string; firstFormation: string; workouts: string; location: string }) => Promise<void>;
+  onSave: (planData: { title: string; firstFormation: string; workouts: string; location: string; uniform: string }) => Promise<void>;
   onCancel: () => void;
   onNoPT: () => Promise<void>;
   onDelete: () => Promise<void>;
@@ -360,11 +361,12 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
   const [firstFormation, setFirstFormation] = useState(plan?.firstFormation || '0600');
   const [workouts, setWorkouts] = useState(plan?.workouts || '');
   const [location, setLocation] = useState(plan?.location || '');
+  const [uniform, setUniform] = useState(plan?.uniform || 'Summer PTs');
   const [saving, setSaving] = useState(false);
   const [allPlans, setAllPlans] = useState<PTPlan[]>([]);
   const [loadingAllPlans, setLoadingAllPlans] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-  const [originalValues, setOriginalValues] = useState<{ title: string; firstFormation: string; workouts: string; location: string } | null>(null);
+  const [originalValues, setOriginalValues] = useState<{ title: string; firstFormation: string; workouts: string; location: string; uniform: string } | null>(null);
 
   useEffect(() => {
     if (plan) {
@@ -372,11 +374,13 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
       setFirstFormation(plan.firstFormation);
       setWorkouts(plan.workouts);
       setLocation(plan.location);
+      setUniform(plan.uniform || 'Summer PTs');
     } else {
       setTitle('');
       setFirstFormation('0600');
       setWorkouts('');
       setLocation('');
+      setUniform('Summer PTs');
     }
     setSelectedPlanId('');
     // Store original values when editing starts
@@ -386,6 +390,7 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
         firstFormation: plan?.firstFormation || '0600',
         workouts: plan?.workouts || '',
         location: plan?.location || '',
+        uniform: plan?.uniform || 'Summer PTs',
       });
     } else {
       setOriginalValues(null);
@@ -458,6 +463,7 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
       setFirstFormation(selectedPlan.firstFormation);
       setWorkouts(selectedPlan.workouts);
       setLocation(selectedPlan.location);
+      setUniform(selectedPlan.uniform || 'Summer PTs');
       // Don't update originalValues - keep the original plan values for comparison
     }
   }
@@ -468,13 +474,19 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
       return;
     }
     
+    if (!uniform.trim()) {
+      alert('Please enter a uniform');
+      return;
+    }
+    
     // Check if values have changed from original
     if (originalValues) {
       const hasChanges = 
         title !== originalValues.title ||
         firstFormation !== originalValues.firstFormation ||
         workouts !== originalValues.workouts ||
-        location !== originalValues.location;
+        location !== originalValues.location ||
+        uniform !== originalValues.uniform;
       
       if (!hasChanges) {
         // No changes made, just close the editor without saving
@@ -485,7 +497,7 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
     
     setSaving(true);
     try {
-      await onSave({ title, firstFormation, workouts, location });
+      await onSave({ title, firstFormation, workouts, location, uniform });
     } catch (error) {
       console.error('Error saving plan:', error);
       alert(`Error saving plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -581,6 +593,20 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Uniform *
+            </label>
+            <input
+              type="text"
+              value={uniform}
+              onChange={(e) => setUniform(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Summer PTs"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Load Plan
             </label>
             {loadingAllPlans ? (
@@ -620,9 +646,9 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={saving || !title.trim()}
+              disabled={saving || !title.trim() || !uniform.trim()}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium text-white touch-manipulation ${
-                saving || !title.trim()
+                saving || !title.trim() || !uniform.trim()
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
               }`}
@@ -661,6 +687,12 @@ function PTPlanCard({ day, date, plan, isReadOnly = false, isBattalionPlan = fal
                     <div>
                       <span className="text-sm font-medium text-gray-700">Location: </span>
                       <span className="text-sm text-gray-900">{plan.location}</span>
+                    </div>
+                  )}
+                  {plan.uniform && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Uniform: </span>
+                      <span className="text-sm text-gray-900">{plan.uniform}</span>
                     </div>
                   )}
                 </div>
@@ -723,6 +755,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
   const [firstFormation, setFirstFormation] = useState('0600');
   const [workouts, setWorkouts] = useState('');
   const [location, setLocation] = useState('');
+  const [uniform, setUniform] = useState('Summer PTs');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
@@ -794,6 +827,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
     setFirstFormation(plan.firstFormation);
     setWorkouts(plan.workouts);
     setLocation(plan.location);
+    setUniform(plan.uniform || 'Summer PTs');
     setShowAddForm(true);
   }
 
@@ -804,11 +838,16 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
     setFirstFormation('0600');
     setWorkouts('');
     setLocation('');
+    setUniform('Summer PTs');
   }
 
   async function handleSave() {
     if (!title.trim()) {
       alert('Please enter a title for the workout');
+      return;
+    }
+    if (!uniform.trim()) {
+      alert('Please enter a uniform');
       return;
     }
     setSaving(true);
@@ -825,6 +864,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
           firstFormation,
           workouts,
           location,
+          uniform,
         });
       } else {
         // New plan - create as generic
@@ -834,6 +874,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
           firstFormation,
           workouts,
           location,
+          uniform,
         });
       }
       await loadPlans();
@@ -896,6 +937,7 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
                 setFirstFormation('0600');
                 setWorkouts('');
                 setLocation('');
+                setUniform('Summer PTs');
                 setShowAddForm(true);
               }}
               className="w-full mb-4 py-2 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 touch-manipulation"
@@ -994,6 +1036,12 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
                               <span className="text-sm text-gray-900">{plan.location}</span>
                             </div>
                           )}
+                          {plan.uniform && (
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">Uniform: </span>
+                              <span className="text-sm text-gray-900">{plan.uniform}</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1060,12 +1108,26 @@ function GenericPlansView({ onBack }: GenericPlansViewProps) {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Uniform *
+                </label>
+                <input
+                  type="text"
+                  value={uniform}
+                  onChange={(e) => setUniform(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Summer PTs"
+                  required
+                />
+              </div>
+
               <div className="flex gap-2">
                 <button
                   onClick={handleSave}
-                  disabled={saving || !title.trim()}
+                  disabled={saving || !title.trim() || !uniform.trim()}
                   className={`flex-1 py-2 px-4 rounded-md text-sm font-medium text-white touch-manipulation ${
-                    saving || !title.trim()
+                    saving || !title.trim() || !uniform.trim()
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
                   }`}

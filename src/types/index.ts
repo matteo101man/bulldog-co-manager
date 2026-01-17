@@ -142,6 +142,7 @@ export interface PTPlan {
   firstFormation: string; // Default "0600"
   workouts: string; // Actual workout description
   location: string;
+  uniform: string; // Required uniform (default "Summer PTs")
   isGeneric?: boolean; // Flag to indicate if this is a generic plan (not tied to specific company/date)
 }
 
