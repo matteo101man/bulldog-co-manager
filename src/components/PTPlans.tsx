@@ -25,8 +25,8 @@ function getDaysForCompany(company: Company, weekStartDate?: string): DayOfWeek[
   if (company === 'Ranger') {
     return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
   }
-  // For other companies: during special week, they get Wednesday and Thursday (not Tuesday)
-  return isSpecialWeek ? ['wednesday', 'thursday'] : ['tuesday', 'wednesday', 'thursday'];
+  // For other companies: during special week, they get Tuesday (read-only Battalion), Wednesday, and Thursday
+  return isSpecialWeek ? ['tuesday', 'wednesday', 'thursday'] : ['tuesday', 'wednesday', 'thursday'];
 }
 
 export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PTPlansProps) {
@@ -62,9 +62,9 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
         const battalionPlans = await getPTPlansForWeek('Battalion', currentWeekStart);
         
         if (isSpecialWeek) {
-          // Special week: load Battalion Tuesday plan for Tuesday
+          // Special week: load Battalion Tuesday plan for Tuesday (read-only for companies)
           const battalionTuesdayPlan = battalionPlans.get('tuesday');
-          if (battalionTuesdayPlan && getDaysForCompany(currentCompany, currentWeekStart).includes('tuesday')) {
+          if (battalionTuesdayPlan) {
             plansMap.set('tuesday', battalionTuesdayPlan);
           }
         } else {
