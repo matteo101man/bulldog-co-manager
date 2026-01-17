@@ -11,14 +11,22 @@ interface PTPlansProps {
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Battalion'];
 
-function getDaysForCompany(company: Company): DayOfWeek[] {
+// Special week: week starting January 13, 2025 (contains January 19th)
+const SPECIAL_WEEK_START = '2025-01-13';
+
+function getDaysForCompany(company: Company, weekStartDate?: string): DayOfWeek[] {
+  // Special handling for the week starting January 13, 2025
+  const isSpecialWeek = weekStartDate === SPECIAL_WEEK_START;
+  
   if (company === 'Battalion') {
-    return ['wednesday'];
+    // Battalion PT moves to Tuesday for special week
+    return isSpecialWeek ? ['tuesday'] : ['wednesday'];
   }
   if (company === 'Ranger') {
     return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
   }
-  return ['tuesday', 'wednesday', 'thursday'];
+  // For other companies: during special week, they get Wednesday and Thursday (not Tuesday)
+  return isSpecialWeek ? ['wednesday', 'thursday'] : ['tuesday', 'wednesday', 'thursday'];
 }
 
 export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PTPlansProps) {
@@ -47,13 +55,24 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
     setLoading(true);
     try {
       const plansMap = await getPTPlansForWeek(currentCompany, currentWeekStart);
+      const isSpecialWeek = currentWeekStart === SPECIAL_WEEK_START;
       
-      // For non-Battalion companies, load Battalion Wednesday plan for Wednesday
-      if (currentCompany !== 'Battalion' && getDaysForCompany(currentCompany).includes('wednesday')) {
+      // For non-Battalion companies, load Battalion plan for the appropriate day
+      if (currentCompany !== 'Battalion') {
         const battalionPlans = await getPTPlansForWeek('Battalion', currentWeekStart);
-        const battalionWednesdayPlan = battalionPlans.get('wednesday');
-        if (battalionWednesdayPlan) {
-          plansMap.set('wednesday', battalionWednesdayPlan);
+        
+        if (isSpecialWeek) {
+          // Special week: load Battalion Tuesday plan for Tuesday
+          const battalionTuesdayPlan = battalionPlans.get('tuesday');
+          if (battalionTuesdayPlan && getDaysForCompany(currentCompany, currentWeekStart).includes('tuesday')) {
+            plansMap.set('tuesday', battalionTuesdayPlan);
+          }
+        } else {
+          // Normal week: load Battalion Wednesday plan for Wednesday
+          const battalionWednesdayPlan = battalionPlans.get('wednesday');
+          if (battalionWednesdayPlan && getDaysForCompany(currentCompany, currentWeekStart).includes('wednesday')) {
+            plansMap.set('wednesday', battalionWednesdayPlan);
+          }
         }
       }
       
@@ -208,11 +227,17 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
           <div className="text-center py-8 text-gray-600">Loading...</div>
         ) : (
           <div className="flex flex-col md:flex-row gap-4">
-            {getDaysForCompany(currentCompany).map((day) => {
+            {getDaysForCompany(currentCompany, currentWeekStart).map((day) => {
               const plan = plans.get(day);
               const date = weekDates[day];
-              // Check if this is Wednesday for a non-Battalion company (read-only)
-              const isReadOnly = day === 'wednesday' && currentCompany !== 'Battalion';
+              const isSpecialWeek = currentWeekStart === SPECIAL_WEEK_START;
+              
+              // Check if this is a Battalion-managed day for a non-Battalion company (read-only)
+              // Special week: Tuesday is Battalion day; Normal week: Wednesday is Battalion day
+              const isReadOnly = currentCompany !== 'Battalion' && (
+                (isSpecialWeek && day === 'tuesday') || 
+                (!isSpecialWeek && day === 'wednesday')
+              );
               const isBattalionPlan = isReadOnly && plan?.company === 'Battalion';
               
               return (
@@ -323,6 +348,7 @@ interface PTPlanCardProps {
   onEdit: () => void;
   onSave: (planData: { title: string; firstFormation: string; workouts: string; location: string }) => Promise<void>;
   onCancel: () => void;
+  onNoPT: () => Promise<void>;
   onDelete: () => Promise<void>;
   isEditing: boolean;
   isExpanded?: boolean;
