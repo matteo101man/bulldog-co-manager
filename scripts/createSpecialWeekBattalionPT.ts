@@ -20,7 +20,7 @@ const firebaseConfig = {
   appId: "1:773110288400:web:8539a42e8031382ba5ba95"
 };
 
-const SPECIAL_WEEK_START = '2025-01-13';
+const SPECIAL_WEEK_START = '2025-01-14';
 const PT_PLANS_COLLECTION = 'ptPlans';
 
 function getPTPlanDocId(company: string, weekStartDate: string, day: string): string {

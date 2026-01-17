@@ -11,8 +11,8 @@ interface PTPlansProps {
 
 const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Battalion'];
 
-// Special week: week starting January 13, 2025 (contains January 19th)
-const SPECIAL_WEEK_START = '2025-01-13';
+// Special week: week starting January 14, 2025 (contains January 19th)
+const SPECIAL_WEEK_START = '2025-01-14';
 
 function getDaysForCompany(company: Company, weekStartDate?: string): DayOfWeek[] {
   // Special handling for the week starting January 13, 2025
