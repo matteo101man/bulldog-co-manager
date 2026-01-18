@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Company } from '../types';
-import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 interface CompanySelectorProps {
   onSelect: (company: Company) => void;
@@ -13,19 +12,9 @@ interface CompanySelectorProps {
 
 export default function CompanySelector({ onSelect, onSettings, onCadets, onTrainingSchedule, onAttendance, onPT }: CompanySelectorProps) {
   const [activeTab, setActiveTab] = useState<'companies' | 'cadets' | 'settings' | 'training-schedule'>('companies');
-  
-  // Pull-to-refresh hook for mobile - hard refreshes the page
-  const pullToRefreshRef = usePullToRefresh({
-    onRefresh: () => {
-      // Hard refresh the page to get latest updates
-      window.location.reload();
-    },
-    threshold: 80,
-    enabled: true
-  });
 
   return (
-    <div ref={pullToRefreshRef} className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 safe-area-inset">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 safe-area-inset">
       <div className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-center mb-2 text-gray-900">
           Bulldog CO Manager

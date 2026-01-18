@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import CompanySelector from './components/CompanySelector';
 import Login from './components/Login';
+import PullToRefreshWrapper from './components/PullToRefreshWrapper';
 import { Company } from './types';
 import { isAuthenticated } from './services/authService';
 import { 
@@ -170,275 +171,311 @@ function App() {
 
   if (attendanceCompany && currentView === 'attendance-company') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <CompanyRoster 
-          key={`${attendanceCompany}-${rosterRefreshKey}`}
-          company={attendanceCompany} 
-          onBack={() => {
-            setAttendanceCompany(null);
-            setCurrentView('attendance');
-          }}
-          onSelectCadet={(cadetId) => {
-            setSelectedCadetId(cadetId);
-            setCurrentView('cadet-profile');
-          }}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <CompanyRoster 
+            key={`${attendanceCompany}-${rosterRefreshKey}`}
+            company={attendanceCompany} 
+            onBack={() => {
+              setAttendanceCompany(null);
+              setCurrentView('attendance');
+            }}
+            onSelectCadet={(cadetId) => {
+              setSelectedCadetId(cadetId);
+              setCurrentView('cadet-profile');
+            }}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (selectedCompany && currentView !== 'cadet-profile' && currentView !== 'attendance' && currentView !== 'pt-plans' && currentView !== 'attendance-company') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <CompanyRoster 
-          key={`${selectedCompany}-${rosterRefreshKey}`}
-          company={selectedCompany} 
-          onBack={() => setSelectedCompany(null)}
-          onSelectCadet={(cadetId) => {
-            setSelectedCadetId(cadetId);
-            setCurrentView('cadet-profile');
-          }}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <CompanyRoster 
+            key={`${selectedCompany}-${rosterRefreshKey}`}
+            company={selectedCompany} 
+            onBack={() => setSelectedCompany(null)}
+            onSelectCadet={(cadetId) => {
+              setSelectedCadetId(cadetId);
+              setCurrentView('cadet-profile');
+            }}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'settings') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <Settings onBack={() => setCurrentView('companies')} />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <Settings onBack={() => setCurrentView('companies')} />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'issues') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <Issues onBack={() => setCurrentView('attendance')} />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <Issues onBack={() => setCurrentView('attendance')} />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'cadets') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <CadetsList
-          onSelectCadet={(cadetId) => {
-            setSelectedCadetId(cadetId);
-            setCurrentView('cadet-profile');
-          }}
-          onBack={() => setCurrentView('companies')}
-          onAddCadet={() => setCurrentView('add-cadet')}
-          onSettings={() => setCurrentView('cadet-settings')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <CadetsList
+            onSelectCadet={(cadetId) => {
+              setSelectedCadetId(cadetId);
+              setCurrentView('cadet-profile');
+            }}
+            onBack={() => setCurrentView('companies')}
+            onAddCadet={() => setCurrentView('add-cadet')}
+            onSettings={() => setCurrentView('cadet-settings')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'cadet-settings') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <CadetSettings onBack={() => setCurrentView('cadets')} />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <CadetSettings onBack={() => setCurrentView('cadets')} />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'add-cadet') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <AddCadet
-          onBack={() => setCurrentView('cadets')}
-          onSuccess={() => setCurrentView('cadets')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <AddCadet
+            onBack={() => setCurrentView('cadets')}
+            onSuccess={() => setCurrentView('cadets')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'training-landing') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <TrainingLanding
-          onTrainingSchedule={() => setCurrentView('training-schedule')}
-          onWeatherData={() => setCurrentView('weather-data')}
-          onForms={() => setCurrentView('forms')}
-          onBack={() => setCurrentView('companies')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <TrainingLanding
+            onTrainingSchedule={() => setCurrentView('training-schedule')}
+            onWeatherData={() => setCurrentView('weather-data')}
+            onForms={() => setCurrentView('forms')}
+            onBack={() => setCurrentView('companies')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'training-schedule') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <TrainingSchedule
-          key={scheduleRefreshKey}
-          onSelectEvent={(eventId) => {
-            setSelectedEventId(eventId);
-            setCurrentView('training-event-detail');
-          }}
-          onAddEvent={() => setCurrentView('add-training-event')}
-          onBack={() => setCurrentView('training-landing')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <TrainingSchedule
+            key={scheduleRefreshKey}
+            onSelectEvent={(eventId) => {
+              setSelectedEventId(eventId);
+              setCurrentView('training-event-detail');
+            }}
+            onAddEvent={() => setCurrentView('add-training-event')}
+            onBack={() => setCurrentView('training-landing')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'add-training-event') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <AddTrainingEvent
-          onBack={() => setCurrentView('training-schedule')}
-          onSuccess={() => {
-            setScheduleRefreshKey(prev => prev + 1);
-            setCurrentView('training-schedule');
-          }}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <AddTrainingEvent
+            onBack={() => setCurrentView('training-schedule')}
+            onSuccess={() => {
+              setScheduleRefreshKey(prev => prev + 1);
+              setCurrentView('training-schedule');
+            }}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'weather-data') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <WeatherData
-          onBack={() => setCurrentView('training-landing')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <WeatherData
+            onBack={() => setCurrentView('training-landing')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'training-event-detail' && selectedEventId) {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <TrainingEventDetail
-          eventId={selectedEventId}
-          onBack={() => {
-            setSelectedEventId(null);
-            setCurrentView('training-schedule');
-          }}
-          onRefresh={() => {
-            setScheduleRefreshKey(prev => prev + 1);
-          }}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <TrainingEventDetail
+            eventId={selectedEventId}
+            onBack={() => {
+              setSelectedEventId(null);
+              setCurrentView('training-schedule');
+            }}
+            onRefresh={() => {
+              setScheduleRefreshKey(prev => prev + 1);
+            }}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'attendance') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <Attendance
-          onBack={() => setCurrentView('companies')}
-          onSelectCompany={(company) => {
-            setAttendanceCompany(company);
-            setCurrentView('attendance-company');
-          }}
-          onTactics={() => setCurrentView('tactics-attendance')}
-          onIssues={() => setCurrentView('issues')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <Attendance
+            onBack={() => setCurrentView('companies')}
+            onSelectCompany={(company) => {
+              setAttendanceCompany(company);
+              setCurrentView('attendance-company');
+            }}
+            onTactics={() => setCurrentView('tactics-attendance')}
+            onIssues={() => setCurrentView('issues')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'tactics-attendance') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <TacticsAttendance
-          onBack={() => {
-            setFromTactics(false);
-            setCurrentView('attendance');
-          }}
-          onSelectCadet={(cadetId) => {
-            setSelectedCadetId(cadetId);
-            setFromTactics(true);
-            setCurrentView('cadet-profile');
-          }}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <TacticsAttendance
+            onBack={() => {
+              setFromTactics(false);
+              setCurrentView('attendance');
+            }}
+            onSelectCadet={(cadetId) => {
+              setSelectedCadetId(cadetId);
+              setFromTactics(true);
+              setCurrentView('cadet-profile');
+            }}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'pt-plans') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <PTPlans
-          onBack={() => {
-            setPTCompany(null);
-            setCurrentView('companies');
-          }}
-          onSelectCompany={(company) => setPTCompany(company)}
-          selectedCompany={ptCompany}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <PTPlans
+            onBack={() => {
+              setPTCompany(null);
+              setCurrentView('companies');
+            }}
+            onSelectCompany={(company) => setPTCompany(company)}
+            selectedCompany={ptCompany}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'forms') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <Forms
-          onExpenseRequest={() => setCurrentView('expense-request-form')}
-          onBack={() => setCurrentView('training-landing')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <Forms
+            onExpenseRequest={() => setCurrentView('expense-request-form')}
+            onBack={() => setCurrentView('training-landing')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'expense-request-form') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <ExpenseRequestForm
-          onBack={() => setCurrentView('forms')}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <ExpenseRequestForm
+            onBack={() => setCurrentView('forms')}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   if (currentView === 'cadet-profile' && selectedCadetId) {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <CadetProfile
-          cadetId={selectedCadetId}
-          onBack={() => {
-            // If we came from attendance, go back to attendance
-            if (attendanceCompany) {
-              setCurrentView('attendance-company');
-              // Don't clear attendanceCompany so we can return to it
-            } else if (fromTactics) {
-              setFromTactics(false);
-              setCurrentView('tactics-attendance');
-            } else if (selectedCompany) {
-              setCurrentView('companies');
-              // Don't clear selectedCompany so we can return to it
-            } else {
-              setCurrentView('cadets');
-            }
-          }}
-          onDelete={() => {
-            if (attendanceCompany) {
-              setAttendanceCompany(null);
-              setCurrentView('attendance');
-            } else if (selectedCompany) {
-              setSelectedCompany(null);
-              setCurrentView('companies');
-            } else {
-              setCurrentView('cadets');
-            }
-            setSelectedCadetId(null);
-          }}
-          onCompanyChange={(oldCompany, newCompany) => {
-            // Refresh the roster if we're viewing the old or new company
-            if (selectedCompany === oldCompany || selectedCompany === newCompany || attendanceCompany === oldCompany || attendanceCompany === newCompany) {
-              setRosterRefreshKey(prev => prev + 1);
-            }
-          }}
-        />
-      </Suspense>
+      <PullToRefreshWrapper>
+        <Suspense fallback={<LoadingFallback />}>
+          <CadetProfile
+            cadetId={selectedCadetId}
+            onBack={() => {
+              // If we came from attendance, go back to attendance
+              if (attendanceCompany) {
+                setCurrentView('attendance-company');
+                // Don't clear attendanceCompany so we can return to it
+              } else if (fromTactics) {
+                setFromTactics(false);
+                setCurrentView('tactics-attendance');
+              } else if (selectedCompany) {
+                setCurrentView('companies');
+                // Don't clear selectedCompany so we can return to it
+              } else {
+                setCurrentView('cadets');
+              }
+            }}
+            onDelete={() => {
+              if (attendanceCompany) {
+                setAttendanceCompany(null);
+                setCurrentView('attendance');
+              } else if (selectedCompany) {
+                setSelectedCompany(null);
+                setCurrentView('companies');
+              } else {
+                setCurrentView('cadets');
+              }
+              setSelectedCadetId(null);
+            }}
+            onCompanyChange={(oldCompany, newCompany) => {
+              // Refresh the roster if we're viewing the old or new company
+              if (selectedCompany === oldCompany || selectedCompany === newCompany || attendanceCompany === oldCompany || attendanceCompany === newCompany) {
+                setRosterRefreshKey(prev => prev + 1);
+              }
+            }}
+          />
+        </Suspense>
+      </PullToRefreshWrapper>
     );
   }
 
   return (
-    <>
+    <PullToRefreshWrapper>
       <CompanySelector 
         onSelect={(company) => {
           setSelectedCompany(company);
@@ -453,7 +490,7 @@ function App() {
       <Suspense fallback={null}>
         <NotificationPrompt />
       </Suspense>
-    </>
+    </PullToRefreshWrapper>
   );
 }
 
