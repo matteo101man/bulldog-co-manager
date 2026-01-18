@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface UsePullToRefreshOptions {
   onRefresh: () => void;
@@ -8,7 +8,7 @@ interface UsePullToRefreshOptions {
 
 /**
  * Custom hook for pull-to-refresh functionality on mobile devices
- * Only works when the page is scrolled to the top
+ * Works with both window-level and element-level scrolling
  */
 export function usePullToRefresh({ 
   onRefresh, 
@@ -19,6 +19,22 @@ export function usePullToRefresh({
   const touchCurrentY = useRef<number | null>(null);
   const isPulling = useRef(false);
   const elementRef = useRef<HTMLDivElement>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Check if element or window is at the top
+  const isAtTop = () => {
+    // Check window scroll
+    const windowAtTop = window.scrollY === 0 || window.pageYOffset === 0;
+    
+    // Check document body scroll
+    const bodyAtTop = document.documentElement.scrollTop === 0 && document.body.scrollTop === 0;
+    
+    // Check element scroll if it exists
+    const element = elementRef.current;
+    const elementAtTop = element ? element.scrollTop === 0 : true;
+    
+    return windowAtTop && bodyAtTop && elementAtTop;
+  };
 
   useEffect(() => {
     if (!enabled) return;
@@ -31,8 +47,8 @@ export function usePullToRefresh({
     if (!element) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      // Only start if we're at the top of the page
-      if (window.scrollY === 0 && !isPulling.current) {
+      // Only start if we're at the top
+      if (isAtTop() && !isPulling.current && !isRefreshing) {
         touchStartY.current = e.touches[0].clientY;
         touchCurrentY.current = e.touches[0].clientY;
         isPulling.current = true;
@@ -45,8 +61,8 @@ export function usePullToRefresh({
       touchCurrentY.current = e.touches[0].clientY;
       const pullDistance = touchCurrentY.current - touchStartY.current;
 
-      // Only allow downward pull
-      if (pullDistance > 0 && window.scrollY === 0) {
+      // Only allow downward pull when at top
+      if (pullDistance > 0 && isAtTop()) {
         // Prevent default scrolling while pulling
         if (pullDistance > 10) {
           e.preventDefault();
@@ -70,7 +86,8 @@ export function usePullToRefresh({
       const pullDistance = touchCurrentY.current - touchStartY.current;
 
       // Trigger refresh if threshold is met
-      if (pullDistance >= threshold && window.scrollY === 0) {
+      if (pullDistance >= threshold && isAtTop()) {
+        setIsRefreshing(true);
         onRefresh();
       }
 
@@ -89,7 +106,7 @@ export function usePullToRefresh({
       element.removeEventListener('touchmove', handleTouchMove);
       element.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [enabled, threshold, onRefresh]);
+  }, [enabled, threshold, onRefresh, isRefreshing]);
 
-  return elementRef;
+  return { elementRef, isRefreshing };
 }
