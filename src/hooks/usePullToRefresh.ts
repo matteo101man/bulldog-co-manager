@@ -47,10 +47,13 @@ export function usePullToRefresh({
     if (!element) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      // Only start if we're at the top
-      if (isAtTop() && !isPulling.current && !isRefreshing) {
-        touchStartY.current = e.touches[0].clientY;
-        touchCurrentY.current = e.touches[0].clientY;
+      // Only start if we're at the top and touch started near the top of the viewport
+      const touchY = e.touches[0].clientY;
+      const isNearTop = touchY < 100; // Touch started in top 100px of screen
+      
+      if (isAtTop() && isNearTop && !isPulling.current && !isRefreshing) {
+        touchStartY.current = touchY;
+        touchCurrentY.current = touchY;
         isPulling.current = true;
       }
     };
@@ -97,14 +100,38 @@ export function usePullToRefresh({
       touchCurrentY.current = null;
     };
 
-    element.addEventListener('touchstart', handleTouchStart, { passive: false });
-    element.addEventListener('touchmove', handleTouchMove, { passive: false });
-    element.addEventListener('touchend', handleTouchEnd, { passive: true });
+    // Also listen on document to catch touches that might start on child elements
+    const handleDocumentTouchStart = (e: TouchEvent) => {
+      // Only handle if touch started within our element
+      const element = elementRef.current;
+      if (element && element.contains(e.target as Node)) {
+        handleTouchStart(e);
+      }
+    };
+
+    const handleDocumentTouchMove = (e: TouchEvent) => {
+      const element = elementRef.current;
+      if (element && (element.contains(e.target as Node) || isPulling.current)) {
+        handleTouchMove(e);
+      }
+    };
+
+    const handleDocumentTouchEnd = (e: TouchEvent) => {
+      const element = elementRef.current;
+      if (element && (element.contains(e.target as Node) || isPulling.current)) {
+        handleTouchEnd();
+      }
+    };
+
+    // Use capture phase to catch events before they bubble
+    document.addEventListener('touchstart', handleDocumentTouchStart, { passive: false, capture: true });
+    document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false, capture: true });
+    document.addEventListener('touchend', handleDocumentTouchEnd, { passive: true, capture: true });
 
     return () => {
-      element.removeEventListener('touchstart', handleTouchStart);
-      element.removeEventListener('touchmove', handleTouchMove);
-      element.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchstart', handleDocumentTouchStart, { capture: true } as EventListenerOptions);
+      document.removeEventListener('touchmove', handleDocumentTouchMove, { capture: true } as EventListenerOptions);
+      document.removeEventListener('touchend', handleDocumentTouchEnd, { capture: true } as EventListenerOptions);
     };
   }, [enabled, threshold, onRefresh, isRefreshing]);
 
