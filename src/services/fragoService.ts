@@ -558,18 +558,75 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('a. Key Events', 11, true);
     addBlankLine(0.3);
     
-    // BN PT
-    addText('BN PT: IAW published schedule', 11, false, 'left', margin + 5);
+    // Prompt for weekly events
+    const hasLeadershipLab = confirm('Do we have leadership lab this week?');
+    const hasTactics = confirm('Do we have tactics this week?');
+    const hasTrainingMeeting = confirm('Do we have a training meeting this week?');
     
-    // Training events - use dates directly from training schedule
+    // Get Tuesday and Thursday dates for the week
+    const tuesdayDate = data.dates.tuesday;
+    const thursdayDate = data.dates.thursday;
+    
+    // Format date for display (e.g., "21 JAN 2026")
+    const formatDateForEvent = (dateStr: string): string => {
+      const date = new Date(dateStr);
+      const day = date.getDate();
+      const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+      const year = date.getFullYear();
+      return `${day} ${month} ${year}`;
+    };
+    
+    // Format time range in military time
+    const formatTimeRange = (startTime: string, endTime: string): string => {
+      return `${startTime}-${endTime}`;
+    };
+    
+    // Key Events list
+    addText('• BN PT: IAW published schedule', 11, false, 'left', margin + 5);
+    
+    // Leadership Lab (Thursday, 2:55-5:55PM, OCPs, Water Source)
+    if (hasLeadershipLab) {
+      const labDate = formatDateForEvent(thursdayDate);
+      const labTime = formatTimeRange('1455', '1755'); // 2:55PM-5:55PM in military time
+      addText(`• Leadership Lab: ${labDate}, ${labTime}, OCPs, Water Source`, 11, false, 'left', margin + 5);
+    }
+    
+    // Training Meeting (Tuesday, 2:00-2:30PM, OCPs, Water Source)
+    if (hasTrainingMeeting) {
+      const meetingDate = formatDateForEvent(tuesdayDate);
+      const meetingTime = formatTimeRange('1400', '1430'); // 2:00PM-2:30PM in military time
+      addText(`• Training Meeting: ${meetingDate}, ${meetingTime}, OCPs, Water Source`, 11, false, 'left', margin + 5);
+    }
+    
+    // Tactics Lab (Tuesday, 3:25-4:15PM, OCPs, Water Source)
+    if (hasTactics) {
+      const tacticsDate = formatDateForEvent(tuesdayDate);
+      const tacticsTime = formatTimeRange('1525', '1615'); // 3:25PM-4:15PM in military time
+      addText(`• Tactics Lab: ${tacticsDate}, ${tacticsTime}, OCPs, Water Source`, 11, false, 'left', margin + 5);
+    }
+    
+    // Ranger Challenge Competition - check if it exists in training events
+    const rangerChallengeEvent = data.trainingEvents.find(e => 
+      e.name.toLowerCase().includes('ranger challenge')
+    );
+    if (rangerChallengeEvent) {
+      const rcDate = formatDateForEvent(rangerChallengeEvent.date);
+      addText(`• Ranger Challenge Competition: ${rcDate}, time/location TBD`, 11, false, 'left', margin + 5);
+    }
+    
+    // Other training events (excluding Ranger Challenge)
     for (const event of data.trainingEvents) {
+      // Skip Ranger Challenge as it's handled above
+      if (event.name.toLowerCase().includes('ranger challenge')) {
+        continue;
+      }
+      
       // Always use the event's actual date from the database
-      // For multi-day events, show the start date (event.date)
       const eventDate = event.date;
       
       // Format the event - only show time if it's valid (not TBD, 0TBD, etc.)
       const formattedTime = formatTime(event.hitTime);
-      let eventText = `${event.name}: ${formatEventDateTime(eventDate, formattedTime ? event.hitTime : undefined)}`;
+      let eventText = `• ${event.name}: ${formatEventDateTime(eventDate, formattedTime ? event.hitTime : undefined)}`;
       if (event.ao) {
         eventText += `, ${event.ao}`;
       }
@@ -599,7 +656,17 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('c. Coordinating Instructions', 11, true);
     addBlankLine(0.3);
     
-    addText('Uniform: OCPs with water source for PT and Leadership Lab', 11, false, 'left', margin + 5);
+    addText('Uniform:', 11, false, 'left', margin + 5);
+    addText('• PT: IAW published schedule', 11, false, 'left', margin + 10);
+    if (hasLeadershipLab) {
+      addText('• Leadership Lab: OCPs, Water Source', 11, false, 'left', margin + 10);
+    }
+    if (hasTactics) {
+      addText('• Tactics Lab: OCPs, Water Source', 11, false, 'left', margin + 10);
+    }
+    if (hasTrainingMeeting) {
+      addText('• Training Meeting: OCPs, Water Source', 11, false, 'left', margin + 10);
+    }
     
     // Risk reduction based on weather
     const weekWeather = weekDays.map(date => data.weather.get(date)).filter(w => w !== undefined);
