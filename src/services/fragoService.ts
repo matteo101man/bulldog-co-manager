@@ -412,15 +412,15 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     pdf.setFont('helvetica', 'normal');
     for (const date of weekDays) {
       const weather = data.weather.get(date);
+      if (yPos > pageHeight - margin - lineHeight * 3) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      
+      const dayLabel = formatDateShort(date);
+      pdf.text(dayLabel, colStarts[0], yPos);
+      
       if (weather) {
-        if (yPos > pageHeight - margin - lineHeight * 3) {
-          pdf.addPage();
-          yPos = margin;
-        }
-        
-        const rowStartY = yPos;
-        const dayLabel = formatDateShort(date);
-        pdf.text(dayLabel, colStarts[0], yPos);
         pdf.text(`${weather.high}°F`, colStarts[1], yPos);
         pdf.text(`${weather.low}°F`, colStarts[2], yPos);
         pdf.text(`${weather.wind} mph`, colStarts[3], yPos);
@@ -449,9 +449,20 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         
         // Draw line below row (after text)
         yPos = currentY + lineHeight * 0.8;
-        pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
-        yPos += lineHeight * 0.5;
+      } else {
+        // No weather data - show empty cells
+        pdf.text('--', colStarts[1], yPos);
+        pdf.text('--', colStarts[2], yPos);
+        pdf.text('--', colStarts[3], yPos);
+        pdf.text('--', colStarts[4], yPos);
+        pdf.text('--', colStarts[5], yPos);
+        pdf.text('NONE', colStarts[6], yPos);
+        pdf.text('NONE', colStarts[7], yPos);
+        yPos += lineHeight * 0.8;
       }
+      
+      pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
+      yPos += lineHeight * 0.5;
     }
     
     pdf.setFontSize(11);
@@ -622,8 +633,8 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addBlankLine(1);
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    addText('ANNEX B: PT OVERVIEW', 12, true);
-    addBlankLine(0.5);
+    pdf.text('ANNEX B: PT OVERVIEW', pageWidth / 2, yPos, { align: 'center' });
+    yPos += lineHeight * 1.5;
     
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'normal');
@@ -643,12 +654,14 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       { key: 'friday', label: 'Fri' }
     ];
     
+    let hasAnyPTData = false;
     for (const company of companies) {
       const plans = data.ptPlans.get(company);
       const isRanger = company === 'Ranger';
       const daysToShow = isRanger ? rangerDays : regularDays;
       
       if (plans && plans.size > 0) {
+        hasAnyPTData = true;
         if (yPos > pageHeight - margin - lineHeight * 8) {
           pdf.addPage();
           yPos = margin;
@@ -733,6 +746,11 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         
         addBlankLine(0.5);
       }
+    }
+    
+    if (!hasAnyPTData) {
+      addText('No PT plans available for this week.', 11, false);
+      addBlankLine(0.5);
     }
     
     // Annexes
