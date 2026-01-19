@@ -110,8 +110,25 @@ async function getWeekPTPlans(weekStart: string): Promise<Map<Company, Map<strin
   const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Grizzly Company'];
   const ptPlans = new Map<Company, Map<string, PTPlan>>();
   
+  // Special week: week starting January 19, 2026 - Battalion PT on Tuesday
+  const SPECIAL_WEEK_START = '2026-01-19';
+  const isSpecialWeek = weekStart === SPECIAL_WEEK_START;
+  
+  // Get Battalion PT for Tuesday if it's the special week
+  let battalionPT: PTPlan | null = null;
+  if (isSpecialWeek) {
+    const battalionPlans = await getPTPlansForWeek('Battalion' as Company, weekStart);
+    battalionPT = battalionPlans.get('tuesday') || null;
+  }
+  
   for (const company of companies) {
     const plans = await getPTPlansForWeek(company, weekStart);
+    
+    // For special week, replace Tuesday with Battalion PT for all companies
+    if (isSpecialWeek && battalionPT && company !== 'Ranger') {
+      plans.set('tuesday', battalionPT);
+    }
+    
     ptPlans.set(company, plans);
   }
   
@@ -378,53 +395,71 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('No change to base OPORD.');
     addBlankLine(0.5);
     
-    // Weather Table with grid formatting
+    // Weather Table with grid formatting (centered)
     const weekDays = [data.dates.monday, data.dates.tuesday, data.dates.wednesday, data.dates.thursday, data.dates.friday];
     addText('Weather Table:', 11, true);
     addBlankLine(0.3);
     
-    // Table structure: Day column + 5 day columns
-    const dayColWidth = 30;
-    const dayColWidths = [35, 35, 35, 35, 35]; // Equal width for each day
-    const tableStartX = margin + 5;
+    // Table structure: Day column + 5 day columns (centered on page)
+    const dayColWidth = 25;
+    const dayColWidths = [30, 30, 30, 30, 30]; // Equal width for each day
+    const totalTableWidth = dayColWidth + dayColWidths.reduce((a, b) => a + b, 0);
+    const tableStartX = (pageWidth - totalTableWidth) / 2; // Center the table
     const dayColStarts = [tableStartX + dayColWidth];
     for (let i = 1; i < dayColWidths.length; i++) {
       dayColStarts.push(dayColStarts[i - 1] + dayColWidths[i - 1]);
     }
     const tableEndX = dayColStarts[dayColStarts.length - 1] + dayColWidths[dayColWidths.length - 1];
     
-    const rowHeight = lineHeight * 1.5;
+    // Calculate row height based on content
+    const calculateRowHeight = (category: any) => {
+      if (!category.multiline) return lineHeight * 1.2;
+      // For multiline, check max lines needed
+      let maxLines = 1;
+      weekDays.forEach((date) => {
+        const weather = data.weather.get(date);
+        const value = category.getValue(weather);
+        const cellWidth = dayColWidths[0];
+        const lines = pdf.splitTextToSize(value, cellWidth - 4);
+        maxLines = Math.max(maxLines, lines.length);
+      });
+      return Math.max(lineHeight * 1.2, lineHeight * 0.8 * maxLines + lineHeight * 0.4);
+    };
+    
     let tableStartY = yPos;
     
     // Header row
-    pdf.setFontSize(9);
+    pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Day', tableStartX + dayColWidth / 2, yPos + lineHeight * 0.5, { align: 'center' });
+    const headerRowHeight = lineHeight * 1.2;
+    pdf.text('Day', tableStartX + dayColWidth / 2, yPos + headerRowHeight / 2, { align: 'center' });
     const dayLabels = weekDays.map(date => formatDateShort(date));
     dayLabels.forEach((label, idx) => {
-      pdf.text(label, dayColStarts[idx] + dayColWidths[idx] / 2, yPos + lineHeight * 0.5, { align: 'center' });
+      pdf.text(label, dayColStarts[idx] + dayColWidths[idx] / 2, yPos + headerRowHeight / 2, { align: 'center' });
     });
     
     // Draw header row border
     pdf.setLineWidth(0.2);
-    pdf.rect(tableStartX, yPos, tableEndX - tableStartX, rowHeight);
-    yPos += rowHeight;
+    pdf.rect(tableStartX, yPos, tableEndX - tableStartX, headerRowHeight);
+    yPos += headerRowHeight;
     
     // Category rows: High, Low, Wind, Precip Day, Precip Night, Events, Impact
     const categories = [
-      { name: 'High', getValue: (w: any) => w ? `${w.high}°F` : '--' },
-      { name: 'Low', getValue: (w: any) => w ? `${w.low}°F` : '--' },
-      { name: 'Wind', getValue: (w: any) => w ? `${w.wind} mph` : '--' },
-      { name: 'Precip D', getValue: (w: any) => w ? `${w.precipDay}%` : '--' },
-      { name: 'Precip N', getValue: (w: any) => w ? `${w.precipNight}%` : '--' },
+      { name: 'High', getValue: (w: any) => w ? `${w.high}°F` : '--', multiline: false },
+      { name: 'Low', getValue: (w: any) => w ? `${w.low}°F` : '--', multiline: false },
+      { name: 'Wind', getValue: (w: any) => w ? `${w.wind} mph` : '--', multiline: false },
+      { name: 'Precip D', getValue: (w: any) => w ? `${w.precipDay}%` : '--', multiline: false },
+      { name: 'Precip N', getValue: (w: any) => w ? `${w.precipNight}%` : '--', multiline: false },
       { name: 'Events', getValue: (w: any) => w?.events || 'NONE', multiline: true },
       { name: 'Impact', getValue: (w: any) => w?.impact || 'NONE', multiline: true }
     ];
     
-    pdf.setFontSize(9);
+    pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
     
     for (const category of categories) {
+      const rowHeight = calculateRowHeight(category);
+      
       if (yPos > pageHeight - margin - rowHeight * 2) {
         pdf.addPage();
         yPos = margin;
@@ -432,11 +467,12 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       }
       
       const rowY = yPos;
-      const cellPadding = lineHeight * 0.3;
+      const cellPadding = 2;
       
       // Category name (left column)
       pdf.setFont('helvetica', 'bold');
-      pdf.text(category.name, tableStartX + cellPadding, rowY + cellPadding);
+      pdf.setFontSize(8);
+      pdf.text(category.name, tableStartX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
       
       // Values for each day
       pdf.setFont('helvetica', 'normal');
@@ -446,15 +482,15 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         const cellX = dayColStarts[idx];
         const cellWidth = dayColWidths[idx];
         
-        if (category.multiline) {
+        if (category.multiline && value !== 'NONE' && value !== '--') {
           const lines = pdf.splitTextToSize(value, cellWidth - cellPadding * 2);
           let currentY = rowY + cellPadding;
-          lines.forEach((line: string, lineIdx: number) => {
-            if (lineIdx > 0) currentY += lineHeight * 0.7;
+          lines.forEach((line: string) => {
             pdf.text(line, cellX + cellPadding, currentY);
+            currentY += lineHeight * 0.6;
           });
         } else {
-          pdf.text(value, cellX + cellPadding, rowY + cellPadding);
+          pdf.text(value, cellX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
         }
       });
       
@@ -644,11 +680,11 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     }
     addBlankLine(1);
     
-    // Annex B: PT Overview (on main page)
+    // Annex A: PT Overview (on main page)
     addBlankLine(1);
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('ANNEX B: PT OVERVIEW', pageWidth / 2, yPos, { align: 'center' });
+    pdf.text('ANNEX A: PT OVERVIEW', pageWidth / 2, yPos, { align: 'center' });
     yPos += lineHeight * 1.5;
     
     pdf.setFontSize(11);
@@ -687,39 +723,55 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         addText(`${company} Company`, 10, true);
         addBlankLine(0.3);
         
-        // PT Table with grid formatting (similar to weather table)
-        const ptTableStartX = margin + 5;
-        const ptDayColWidth = 25;
+        // PT Table with grid formatting (centered, similar to weather table)
+        const ptDayColWidth = 20;
         const numDays = daysToShow.length;
-        const ptDayColWidths = Array(numDays).fill((pageWidth - 2 * margin - ptDayColWidth - 10) / numDays);
+        const ptDayColWidths = Array(numDays).fill(45); // Fixed width for each day column
+        const totalPtTableWidth = ptDayColWidth + ptDayColWidths.reduce((a, b) => a + b, 0);
+        const ptTableStartX = (pageWidth - totalPtTableWidth) / 2; // Center the table
         const ptDayColStarts = [ptTableStartX + ptDayColWidth];
         for (let i = 1; i < ptDayColWidths.length; i++) {
           ptDayColStarts.push(ptDayColStarts[i - 1] + ptDayColWidths[i - 1]);
         }
         const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
         
-        const ptRowHeight = lineHeight * 2;
+        // Calculate row height based on content
+        const calculatePTRowHeight = (category: any) => {
+          let maxLines = 1;
+          daysToShow.forEach((day) => {
+            const plan = plans.get(day.key);
+            const value = category.getValue(plan);
+            if (value !== 'NONE' && value !== '--') {
+              const cellWidth = ptDayColWidths[0];
+              const lines = pdf.splitTextToSize(value, cellWidth - 4);
+              maxLines = Math.max(maxLines, lines.length);
+            }
+          });
+          return Math.max(lineHeight * 1.5, lineHeight * 0.7 * maxLines + lineHeight * 0.5);
+        };
+        
         let ptTableStartY = yPos;
         
         // Header row
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Day', ptTableStartX + ptDayColWidth / 2, yPos + lineHeight * 0.7, { align: 'center' });
+        const ptHeaderRowHeight = lineHeight * 1.3;
+        pdf.text('Day', ptTableStartX + ptDayColWidth / 2, yPos + ptHeaderRowHeight / 2, { align: 'center' });
         daysToShow.forEach((day, idx) => {
-          const timeStr = plans.get(day.key)?.firstFormation || '';
-          const dayText = timeStr ? `${day.label}\n${timeStr}` : day.label;
-          const lines = dayText.split('\n');
-          let currentY = yPos + lineHeight * 0.5;
-          lines.forEach((line: string) => {
-            pdf.text(line, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, currentY, { align: 'center' });
-            currentY += lineHeight * 0.6;
-          });
+          const plan = plans.get(day.key);
+          const timeStr = plan?.firstFormation || '';
+          if (timeStr) {
+            pdf.text(day.label, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + lineHeight * 0.4, { align: 'center' });
+            pdf.text(timeStr, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + lineHeight * 0.9, { align: 'center' });
+          } else {
+            pdf.text(day.label, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + ptHeaderRowHeight / 2, { align: 'center' });
+          }
         });
         
         // Draw header row border
         pdf.setLineWidth(0.2);
-        pdf.rect(ptTableStartX, yPos, ptTableEndX - ptTableStartX, ptRowHeight);
-        yPos += ptRowHeight;
+        pdf.rect(ptTableStartX, yPos, ptTableEndX - ptTableStartX, ptHeaderRowHeight);
+        yPos += ptHeaderRowHeight;
         
         // Category rows: Uniform, Location, Activity
         const ptCategories = [
@@ -732,6 +784,8 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         pdf.setFont('helvetica', 'normal');
         
         for (const category of ptCategories) {
+          const ptRowHeight = calculatePTRowHeight(category);
+          
           if (yPos > pageHeight - margin - ptRowHeight * 2) {
             pdf.addPage();
             yPos = margin;
@@ -739,11 +793,12 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           }
           
           const rowY = yPos;
-          const cellPadding = lineHeight * 0.3;
+          const cellPadding = 2;
           
           // Category name (left column)
           pdf.setFont('helvetica', 'bold');
-          pdf.text(category.name, ptTableStartX + cellPadding, rowY + cellPadding);
+          pdf.setFontSize(8);
+          pdf.text(category.name, ptTableStartX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
           
           // Values for each day
           pdf.setFont('helvetica', 'normal');
@@ -753,15 +808,15 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
             const cellX = ptDayColStarts[idx];
             const cellWidth = ptDayColWidths[idx];
             
-            if (category.multiline) {
+            if (value !== 'NONE' && value !== '--') {
               const lines = pdf.splitTextToSize(value, cellWidth - cellPadding * 2);
               let currentY = rowY + cellPadding;
               lines.forEach((line: string) => {
                 pdf.text(line, cellX + cellPadding, currentY);
-                currentY += lineHeight * 0.7;
+                currentY += lineHeight * 0.6;
               });
             } else {
-              pdf.text(value, cellX + cellPadding, rowY + cellPadding);
+              pdf.text(value, cellX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
             }
           });
           
@@ -792,9 +847,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addBlankLine(1);
     addText('ANNEXES (By Reference)', 11, true);
     addBlankLine(0.3);
-    addText('Annex B: PT Overview (UGA / GGC / Ranger Challenge)', 11, false, 'left', margin + 5);
-    addText('Annex C: Ruck Packing List (If Applicable)', 11, false, 'left', margin + 5);
-    addText('Annex D: Uniform Exceptions (If Applicable)', 11, false, 'left', margin + 5);
+    addText('Annex A: PT Overview (UGA / GGC / Ranger Challenge)', 11, false, 'left', margin + 5);
     
     // Save PDF
     const fileName = `FRAGO_${data.weekStart.replace(/-/g, '')}.pdf`;
