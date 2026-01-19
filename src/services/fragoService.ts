@@ -562,7 +562,17 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     
     // Training events
     for (const event of data.trainingEvents) {
-      let eventText = `${event.name}: ${formatEventDateTime(event.date, event.hitTime)}`;
+      // For multi-day events, use endDate if available, otherwise use date
+      // Special handling: If event name contains "Ranger Challenge" and has endDate, use endDate
+      let displayDate = event.date;
+      if (event.name.toLowerCase().includes('ranger challenge') && event.endDate) {
+        displayDate = event.endDate;
+      } else if (event.endDate) {
+        // For other multi-day events, use start date
+        displayDate = event.date;
+      }
+      
+      let eventText = `${event.name}: ${formatEventDateTime(displayDate, event.hitTime)}`;
       if (event.ao) {
         eventText += `, ${event.ao}`;
       }
@@ -681,8 +691,15 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     }
     addBlankLine(1);
     
-    // Annex A: PT Overview (on main page)
-    addBlankLine(1);
+    // Annexes (By Reference) - show before Annex A
+    addText('ANNEXES (By Reference)', 11, true);
+    addBlankLine(0.3);
+    addText('Annex A: PT Overview (UGA / GGC / Ranger Challenge)', 11, false, 'left', margin + 5);
+    addBlankLine(2);
+    
+    // Annex A: PT Overview (on new page)
+    pdf.addPage();
+    yPos = margin;
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.text('ANNEX A: PT OVERVIEW', pageWidth / 2, yPos, { align: 'center' });
@@ -852,12 +869,6 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       addText('No PT plans available for this week.', 11, false);
       addBlankLine(0.5);
     }
-    
-    // Annexes
-    addBlankLine(1);
-    addText('ANNEXES (By Reference)', 11, true);
-    addBlankLine(0.3);
-    addText('Annex A: PT Overview (UGA / GGC / Ranger Challenge)', 11, false, 'left', margin + 5);
     
     // Save PDF
     const fileName = `FRAGO_${data.weekStart.replace(/-/g, '')}.pdf`;
