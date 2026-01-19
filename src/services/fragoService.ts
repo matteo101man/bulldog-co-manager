@@ -257,8 +257,10 @@ function formatDateRange(start: string, end: string): string {
  * Format time (e.g., "0600" or "14:30" -> "0600" or "1430")
  */
 function formatTime(time?: string): string {
-  if (!time) return '';
-  return time.replace(':', '').padStart(4, '0');
+  if (!time || time.trim() === '' || time === '0' || time === '00' || time === '0000') return '';
+  const cleaned = time.replace(':', '').trim();
+  if (cleaned === '' || cleaned === '0' || cleaned === '00' || cleaned === '0000') return '';
+  return cleaned.padStart(4, '0');
 }
 
 /**
@@ -272,7 +274,9 @@ function formatEventDateTime(date: string, time?: string): string {
   
   if (time) {
     const formattedTime = formatTime(time);
-    return `${day} ${month} ${year}, ${formattedTime}`;
+    if (formattedTime) {
+      return `${day} ${month} ${year}, ${formattedTime}`;
+    }
   }
   return `${day} ${month} ${year}`;
 }
@@ -374,33 +378,8 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('No change to base OPORD.');
     addBlankLine(0.5);
     
-    // Weather summary
-    const weekDays = [data.dates.monday, data.dates.tuesday, data.dates.wednesday, data.dates.thursday, data.dates.friday];
-    const weekWeather = weekDays.map(date => data.weather.get(date)).filter(w => w !== undefined);
-    const avgHigh = weekWeather.length > 0 
-      ? weekWeather.map(w => w!.high).reduce((a, b) => a + b, 0) / weekWeather.length 
-      : 0;
-    const maxHigh = weekWeather.length > 0 
-      ? Math.max(...weekWeather.map(w => w!.high)) 
-      : 0;
-    const hasPrecip = weekWeather.some(w => w!.precipDay > 30);
-    
-    let weatherText = `Weather: `;
-    if (maxHigh >= 90) {
-      weatherText += `Hot (${Math.round(maxHigh)}℉+). Heat mitigation measures in effect.`;
-    } else if (avgHigh >= 70) {
-      weatherText += `Warm (${Math.round(avgHigh)}℉ average).`;
-    } else {
-      weatherText += `Moderate (${Math.round(avgHigh)}℉ average).`;
-    }
-    if (hasPrecip) {
-      weatherText += ' Precipitation possible.';
-    }
-    
-    addText(weatherText);
-    addBlankLine(0.5);
-    
     // Weather Table
+    const weekDays = [data.dates.monday, data.dates.tuesday, data.dates.wednesday, data.dates.thursday, data.dates.friday];
     addText('Weather Table:', 11, true);
     addBlankLine(0.3);
     
@@ -413,6 +392,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
+    const headerY = yPos;
     pdf.text('Day', colStarts[0], yPos);
     pdf.text('High', colStarts[1], yPos);
     pdf.text('Low', colStarts[2], yPos);
@@ -421,12 +401,11 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     pdf.text('Precip N', colStarts[5], yPos);
     pdf.text('Events', colStarts[6], yPos);
     pdf.text('Impact', colStarts[7], yPos);
-    yPos += lineHeight * 0.8;
+    yPos += lineHeight * 1.2;
     
-    // Draw header line
+    // Draw header line below text
     pdf.setLineWidth(0.1);
-    pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
-    yPos += lineHeight * 0.5;
+    pdf.line(margin + 5, yPos - lineHeight * 0.3, pageWidth - margin, yPos - lineHeight * 0.3);
     
     // Table rows for Monday-Friday
     pdf.setFontSize(9);
@@ -434,11 +413,12 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     for (const date of weekDays) {
       const weather = data.weather.get(date);
       if (weather) {
-        if (yPos > pageHeight - margin - lineHeight * 2) {
+        if (yPos > pageHeight - margin - lineHeight * 3) {
           pdf.addPage();
           yPos = margin;
         }
         
+        const rowStartY = yPos;
         const dayLabel = formatDateShort(date);
         pdf.text(dayLabel, colStarts[0], yPos);
         pdf.text(`${weather.high}°F`, colStarts[1], yPos);
@@ -454,21 +434,23 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         const impactLines = pdf.splitTextToSize(impactText, colWidths[7] - 2);
         const maxLines = Math.max(eventsLines.length, impactLines.length, 1);
         
+        let currentY = yPos;
         for (let i = 0; i < maxLines; i++) {
           if (i > 0) {
-            yPos += lineHeight * 0.7;
-            if (yPos > pageHeight - margin - lineHeight) {
+            currentY += lineHeight * 0.8;
+            if (currentY > pageHeight - margin - lineHeight) {
               pdf.addPage();
-              yPos = margin;
+              currentY = margin;
             }
           }
-          pdf.text(eventsLines[i] || '', colStarts[6], yPos);
-          pdf.text(impactLines[i] || '', colStarts[7], yPos);
+          pdf.text(eventsLines[i] || '', colStarts[6], currentY);
+          pdf.text(impactLines[i] || '', colStarts[7], currentY);
         }
         
-        yPos += lineHeight * 0.8;
+        // Draw line below row (after text)
+        yPos = currentY + lineHeight * 0.8;
         pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
-        yPos += lineHeight * 0.3;
+        yPos += lineHeight * 0.5;
       }
     }
     
@@ -558,6 +540,12 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('Uniform: OCPs with water source for PT and Leadership Lab', 11, false, 'left', margin + 5);
     
     // Risk reduction based on weather
+    const weekWeather = weekDays.map(date => data.weather.get(date)).filter(w => w !== undefined);
+    const maxHigh = weekWeather.length > 0 
+      ? Math.max(...weekWeather.map(w => w!.high)) 
+      : 0;
+    const hasPrecip = weekWeather.some(w => w!.precipDay > 30);
+    
     if (maxHigh >= 90) {
       addText('Risk Reduction: Enforce hydration and heat mitigation', 11, false, 'left', margin + 5);
     } else if (hasPrecip) {
@@ -630,149 +618,128 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     }
     addBlankLine(1);
     
-    // Annexes
-    addText('ANNEXES (By Reference)', 11, true);
-    addBlankLine(0.3);
-    addText('Annex A: Weekly Training Schedule', 11, false, 'left', margin + 5);
-    addText('Annex B: PT Overview (UGA / GGC / Ranger Challenge)', 11, false, 'left', margin + 5);
-    addText('Annex C: Ruck Packing List (If Applicable)', 11, false, 'left', margin + 5);
-    addText('Annex D: Uniform Exceptions (If Applicable)', 11, false, 'left', margin + 5);
-    
-    // Generate Annex A: Weekly Training Schedule
-    pdf.addPage();
-    yPos = margin;
-    
-    pdf.setFontSize(14);
+    // Annex B: PT Overview (on main page)
+    addBlankLine(1);
+    pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('ANNEX A', pageWidth / 2, yPos, { align: 'center' });
-    yPos += lineHeight * 1.5;
-    pdf.text('WEEKLY TRAINING SCHEDULE', pageWidth / 2, yPos, { align: 'center' });
-    yPos += lineHeight * 1.5;
-    pdf.text(`Effective: ${formatDateRange(data.dates.monday, data.dates.friday)}`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += lineHeight * 2;
+    addText('ANNEX B: PT OVERVIEW', 12, true);
+    addBlankLine(0.5);
     
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'normal');
     
-    // Training events table
-    if (data.trainingEvents.length > 0) {
-      addText('Training Events:', 11, true);
-      addBlankLine(0.3);
-      
-      const eventColWidths = [40, 30, 30, 50, 50]; // Date, Time, Name, AO, Uniform
-      const eventColStarts = [margin + 5];
-      for (let i = 1; i < eventColWidths.length; i++) {
-        eventColStarts.push(eventColStarts[i - 1] + eventColWidths[i - 1]);
-      }
-      
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Date', eventColStarts[0], yPos);
-      pdf.text('Time', eventColStarts[1], yPos);
-      pdf.text('Event', eventColStarts[2], yPos);
-      pdf.text('AO', eventColStarts[3], yPos);
-      pdf.text('Uniform', eventColStarts[4], yPos);
-      yPos += lineHeight * 0.8;
-      pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
-      yPos += lineHeight * 0.5;
-      
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'normal');
-      for (const event of data.trainingEvents) {
-        if (yPos > pageHeight - margin - lineHeight) {
-          pdf.addPage();
-          yPos = margin;
-        }
-        
-        const dateObj = new Date(event.date);
-        const dateStr = `${dateObj.getDate()} ${dateObj.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}`;
-        pdf.text(dateStr, eventColStarts[0], yPos);
-        
-        const timeStr = event.hitTime ? formatTime(event.hitTime) : '';
-        pdf.text(timeStr, eventColStarts[1], yPos);
-        
-        const nameLines = pdf.splitTextToSize(event.name, eventColWidths[2] - 2);
-        pdf.text(nameLines[0] || '', eventColStarts[2], yPos);
-        
-        pdf.text(event.ao || '', eventColStarts[3], yPos);
-        pdf.text(event.uniform || '', eventColStarts[4], yPos);
-        
-        yPos += lineHeight * 0.8;
-        pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
-        yPos += lineHeight * 0.3;
-      }
-    } else {
-      addText('No training events scheduled for this week.', 11, false);
-    }
-    
-    // Generate Annex B: PT Overview
-    pdf.addPage();
-    yPos = margin;
-    
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('ANNEX B', pageWidth / 2, yPos, { align: 'center' });
-    yPos += lineHeight * 1.5;
-    pdf.text('PT OVERVIEW', pageWidth / 2, yPos, { align: 'center' });
-    yPos += lineHeight * 1.5;
-    pdf.text(`Effective: ${formatDateRange(data.dates.monday, data.dates.friday)}`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += lineHeight * 2;
-    
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'normal');
-    
-    // PT Plans by company
+    // PT Plans by company in table format
     const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Grizzly Company'];
-    const days: Array<{ key: string; label: string }> = [
-      { key: 'tuesday', label: 'Tuesday' },
-      { key: 'wednesday', label: 'Wednesday' },
-      { key: 'thursday', label: 'Thursday' }
+    const regularDays: Array<{ key: string; label: string }> = [
+      { key: 'tuesday', label: 'Tue' },
+      { key: 'wednesday', label: 'Wed' },
+      { key: 'thursday', label: 'Thu' }
+    ];
+    const rangerDays: Array<{ key: string; label: string }> = [
+      { key: 'monday', label: 'Mon' },
+      { key: 'tuesday', label: 'Tue' },
+      { key: 'wednesday', label: 'Wed' },
+      { key: 'thursday', label: 'Thu' },
+      { key: 'friday', label: 'Fri' }
     ];
     
     for (const company of companies) {
       const plans = data.ptPlans.get(company);
+      const isRanger = company === 'Ranger';
+      const daysToShow = isRanger ? rangerDays : regularDays;
+      
       if (plans && plans.size > 0) {
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        addText(`${company} Company`, 12, true);
-        addBlankLine(0.3);
+        if (yPos > pageHeight - margin - lineHeight * 8) {
+          pdf.addPage();
+          yPos = margin;
+        }
         
         pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        addText(`${company} Company`, 10, true);
+        addBlankLine(0.3);
+        
+        // PT Table headers
+        const ptColWidths = isRanger ? [20, 25, 30, 40, 50, 50] : [20, 25, 30, 50, 50]; // Day, Time, Location, Uniform, Title, Workout
+        const ptColStarts = [margin + 5];
+        for (let i = 1; i < ptColWidths.length; i++) {
+          ptColStarts.push(ptColStarts[i - 1] + ptColWidths[i - 1]);
+        }
+        
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Day', ptColStarts[0], yPos);
+        pdf.text('Time', ptColStarts[1], yPos);
+        pdf.text('Location', ptColStarts[2], yPos);
+        pdf.text('Uniform', ptColStarts[3], yPos);
+        pdf.text('Title', ptColStarts[4], yPos);
+        pdf.text('Workout', ptColStarts[5], yPos);
+        yPos += lineHeight * 1.2;
+        
+        // Draw header line below text
+        pdf.setLineWidth(0.1);
+        pdf.line(margin + 5, yPos - lineHeight * 0.3, pageWidth - margin, yPos - lineHeight * 0.3);
+        
+        pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         
-        for (const day of days) {
+        for (const day of daysToShow) {
           const plan = plans.get(day.key);
           if (plan) {
-            if (yPos > pageHeight - margin - lineHeight * 4) {
+            if (yPos > pageHeight - margin - lineHeight * 3) {
               pdf.addPage();
               yPos = margin;
             }
             
-            pdf.setFont('helvetica', 'bold');
-            addText(`${day.label}:`, 10, true, 'left', margin + 5);
-            pdf.setFont('helvetica', 'normal');
-            addText(`Title: ${plan.title}`, 10, false, 'left', margin + 10);
-            addText(`Time: ${plan.firstFormation}`, 10, false, 'left', margin + 10);
-            addText(`Location: ${plan.location}`, 10, false, 'left', margin + 10);
-            addText(`Uniform: ${plan.uniform}`, 10, false, 'left', margin + 10);
+            const rowStartY = yPos;
+            pdf.text(day.label, ptColStarts[0], yPos);
+            pdf.text(plan.firstFormation, ptColStarts[1], yPos);
             
-            const workoutLines = pdf.splitTextToSize(`Workout: ${plan.workouts}`, pageWidth - (2 * margin) - 10);
-            workoutLines.forEach((line: string) => {
-              if (yPos > pageHeight - margin - lineHeight) {
+            const locationLines = pdf.splitTextToSize(plan.location, ptColWidths[2] - 2);
+            pdf.text(locationLines[0] || '', ptColStarts[2], yPos);
+            
+            const uniformLines = pdf.splitTextToSize(plan.uniform, ptColWidths[3] - 2);
+            pdf.text(uniformLines[0] || '', ptColStarts[3], yPos);
+            
+            const titleLines = pdf.splitTextToSize(plan.title, ptColWidths[4] - 2);
+            pdf.text(titleLines[0] || '', ptColStarts[4], yPos);
+            
+            const workoutLines = pdf.splitTextToSize(plan.workouts, ptColWidths[5] - 2);
+            pdf.text(workoutLines[0] || '', ptColStarts[5], yPos);
+            
+            // Handle multi-line content
+            const maxLines = Math.max(locationLines.length, uniformLines.length, titleLines.length, workoutLines.length, 1);
+            let currentY = yPos;
+            for (let i = 1; i < maxLines; i++) {
+              currentY += lineHeight * 0.7;
+              if (currentY > pageHeight - margin - lineHeight) {
                 pdf.addPage();
-                yPos = margin;
+                currentY = margin;
               }
-              pdf.text(line, margin + 10, yPos);
-              yPos += lineHeight * 0.8;
-            });
+              if (locationLines[i]) pdf.text(locationLines[i], ptColStarts[2], currentY);
+              if (uniformLines[i]) pdf.text(uniformLines[i], ptColStarts[3], currentY);
+              if (titleLines[i]) pdf.text(titleLines[i], ptColStarts[4], currentY);
+              if (workoutLines[i]) pdf.text(workoutLines[i], ptColStarts[5], currentY);
+            }
             
-            addBlankLine(0.5);
+            // Draw line below row (after text)
+            yPos = currentY + lineHeight * 0.8;
+            pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
+            yPos += lineHeight * 0.5;
           }
         }
         
         addBlankLine(0.5);
       }
     }
+    
+    // Annexes
+    addBlankLine(1);
+    addText('ANNEXES (By Reference)', 11, true);
+    addBlankLine(0.3);
+    addText('Annex B: PT Overview (UGA / GGC / Ranger Challenge)', 11, false, 'left', margin + 5);
+    addText('Annex C: Ruck Packing List (If Applicable)', 11, false, 'left', margin + 5);
+    addText('Annex D: Uniform Exceptions (If Applicable)', 11, false, 'left', margin + 5);
     
     // Save PDF
     const fileName = `FRAGO_${data.weekStart.replace(/-/g, '')}.pdf`;
