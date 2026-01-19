@@ -763,9 +763,11 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         ptDayColStarts.push(ptDayColStarts[i - 1] + ptDayColWidths[i - 1]);
       }
       const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
+      
+      // Cell padding constant
+      const cellPadding = 4;
         
       // Calculate row height based on content - ensure proper text fitting
-      const cellPadding = 4; // Define here for use in calculation
       const calculatePTRowHeight = (category: any) => {
         let maxLines = 1;
         daysToShow.forEach((day) => {
@@ -837,7 +839,6 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           }
           
           const rowY = yPos;
-          const cellPadding = 6; // Increased padding for better readability
           
           // Category name (left column)
           pdf.setFont('helvetica', 'bold');
