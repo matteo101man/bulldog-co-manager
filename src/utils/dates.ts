@@ -5,10 +5,22 @@ import { DayOfWeek } from '../types';
  */
 function getCurrentDateEST(): Date {
   const now = new Date();
-  // Convert to EST (UTC-5) or EDT (UTC-4) depending on daylight saving
-  // Using Intl.DateTimeFormat to handle DST automatically
-  const estDateStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
-  return new Date(estDateStr);
+  // Get EST date components directly without string conversion
+  const estFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  const parts = estFormatter.formatToParts(now);
+  const year = parseInt(parts.find(p => p.type === 'year')?.value || '0');
+  const month = parseInt(parts.find(p => p.type === 'month')?.value || '0');
+  const day = parseInt(parts.find(p => p.type === 'day')?.value || '0');
+  
+  // Create date using local timezone with EST date components
+  // This avoids timezone conversion issues
+  return new Date(year, month - 1, day);
 }
 
 /**
