@@ -305,11 +305,10 @@ function formatEventDateTime(date: string, time?: string): string {
  */
 function generatePTHTML(data: WeekData): string {
   const formatDateForDisplay = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    // Parse date string directly to avoid timezone conversion issues
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return `${day} ${monthNames[month - 1]} ${year}`;
   };
 
   const formatDateRange = (start: string, end: string): string => {
@@ -769,12 +768,11 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     const thursdayDate = data.dates.thursday;
     
     // Format date for display (e.g., "21 JAN 2026")
+    // Parse date string directly to avoid timezone conversion issues
     const formatDateForEvent = (dateStr: string): string => {
-      const date = new Date(dateStr);
-      const day = date.getDate();
-      const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-      const year = date.getFullYear();
-      return `${day} ${month} ${year}`;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      return `${day} ${monthNames[month - 1]} ${year}`;
     };
     
     // Format time range in military time
