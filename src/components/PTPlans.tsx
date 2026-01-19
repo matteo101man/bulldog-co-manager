@@ -61,8 +61,9 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
       const plansMap = await getPTPlansForWeek(currentCompany, currentWeekStart);
       const isSpecialWeek = currentWeekStart === SPECIAL_WEEK_START;
       
-      // For non-Battalion companies, load Battalion plan for the appropriate day
-      if (currentCompany !== 'Battalion') {
+      // For non-Battalion companies (except Grizzly Company), load Battalion plan for the appropriate day
+      // Grizzly Company always has their own PT, never Battalion PT
+      if (currentCompany !== 'Battalion' && currentCompany !== 'Grizzly Company') {
         const battalionPlans = await getPTPlansForWeek('Battalion', currentWeekStart);
         
         if (isSpecialWeek) {
@@ -238,7 +239,9 @@ export default function PTPlans({ onBack, onSelectCompany, selectedCompany }: PT
               
               // Check if this is a Battalion-managed day for a non-Battalion company (read-only)
               // Special week: Tuesday is Battalion day; Normal week: Wednesday is Battalion day
-              const isReadOnly = currentCompany !== 'Battalion' && (
+              // Grizzly Company always has their own PT, never Battalion PT, so they can always edit
+              const isReadOnly = currentCompany !== 'Battalion' && 
+                                 currentCompany !== 'Grizzly Company' && (
                 (isSpecialWeek && day === 'tuesday') || 
                 (!isSpecialWeek && day === 'wednesday')
               );
