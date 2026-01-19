@@ -377,7 +377,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Effective: ${formatDateRange(data.dates.monday, data.dates.friday)}`, pageWidth / 2, yPos, { align: 'center' });
+    pdf.text(`Effective: ${formatDateRange(data.dates.monday, data.dates.saturday)}`, pageWidth / 2, yPos, { align: 'center' });
     yPos += lineHeight;
     pdf.text('Time Zone: EST', pageWidth / 2, yPos, { align: 'center' });
     yPos += lineHeight;
@@ -519,7 +519,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'normal');
-    const missionText = `UGA Bulldog Battalion conducts scheduled training and accountability operations ${formatDateRange(data.dates.monday, data.dates.friday)} in order to establish disciplined routines and maintain cadet readiness.`;
+    const missionText = `UGA Bulldog Battalion conducts scheduled training and accountability operations ${formatDateRange(data.dates.monday, data.dates.saturday)} in order to establish disciplined routines and maintain cadet readiness.`;
     addText(missionText);
     addBlankLine(1);
     
