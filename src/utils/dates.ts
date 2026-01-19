@@ -21,15 +21,20 @@ export function getCurrentWeekStart(): string {
   // Calculate days to subtract to get to Monday
   // If today is Sunday (0), go back 6 days; otherwise go back (day - 1) days
   const daysToSubtract = day === 0 ? 6 : day - 1;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - daysToSubtract);
+  
+  // Create a new date object and work with local date components to avoid timezone issues
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const date = today.getDate();
+  
+  const monday = new Date(year, month, date - daysToSubtract);
   monday.setHours(0, 0, 0, 0); // Reset time to start of day
   
-  // Format as YYYY-MM-DD in EST
-  const year = monday.getFullYear();
-  const month = String(monday.getMonth() + 1).padStart(2, '0');
-  const date = String(monday.getDate()).padStart(2, '0');
-  return `${year}-${month}-${date}`;
+  // Format as YYYY-MM-DD (using local date components to avoid timezone conversion)
+  const mondayYear = monday.getFullYear();
+  const mondayMonth = String(monday.getMonth() + 1).padStart(2, '0');
+  const mondayDate = String(monday.getDate()).padStart(2, '0');
+  return `${mondayYear}-${mondayMonth}-${mondayDate}`;
 }
 
 /**
@@ -147,6 +152,36 @@ export function getWeekDatesForWeek(weekStartDate: string): { monday: string; tu
  * @param weekStartDate - Week start date (Monday) in YYYY-MM-DD format (in EST)
  */
 export function getFullWeekDates(weekStartDate: string): { monday: string; tuesday: string; wednesday: string; thursday: string; friday: string; saturday: string; sunday: string } {
+  // Parse the date string (YYYY-MM-DD) and work with local date components to avoid timezone issues
+  const [year, month, day] = weekStartDate.split('-').map(Number);
+  
+  // Create dates using local date constructor to avoid timezone conversion
+  const monday = new Date(year, month - 1, day);
+  const tuesday = new Date(year, month - 1, day + 1);
+  const wednesday = new Date(year, month - 1, day + 2);
+  const thursday = new Date(year, month - 1, day + 3);
+  const friday = new Date(year, month - 1, day + 4);
+  const saturday = new Date(year, month - 1, day + 5);
+  const sunday = new Date(year, month - 1, day + 6);
+  
+  // Format as YYYY-MM-DD (using local date components)
+  const formatDate = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+  
+  return {
+    monday: formatDate(monday),
+    tuesday: formatDate(tuesday),
+    wednesday: formatDate(wednesday),
+    thursday: formatDate(thursday),
+    friday: formatDate(friday),
+    saturday: formatDate(saturday),
+    sunday: formatDate(sunday),
+  };
+}
   const [year, month, day] = weekStartDate.split('-').map(Number);
   
   // Use UTC date arithmetic to avoid timezone issues

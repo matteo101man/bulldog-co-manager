@@ -449,6 +449,59 @@ function generatePTHTML(data: WeekData): string {
 }
 
 /**
+ * Show a confirmation dialog and return a promise that resolves to true/false
+ */
+function showConfirmDialog(message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    // Create a modal element
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.style.cssText = 'position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'bg-white rounded-lg shadow-lg border border-gray-200 p-6 mx-4 max-w-md w-full';
+    dialog.style.cssText = 'background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 1px solid #e5e7eb; padding: 1.5rem; margin: 0 1rem; max-width: 28rem; width: 100%;';
+    
+    const title = document.createElement('h3');
+    title.className = 'text-lg font-semibold text-gray-900 mb-4';
+    title.textContent = message;
+    title.style.cssText = 'font-size: 1.125rem; font-weight: 600; color: #111827; margin-bottom: 1rem;';
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 0.75rem;';
+    
+    const yesButton = document.createElement('button');
+    yesButton.textContent = 'Yes';
+    yesButton.className = 'flex-1 py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700';
+    yesButton.style.cssText = 'flex: 1; padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 600; color: white; background-color: #2563eb; border: none; cursor: pointer; min-height: 44px;';
+    yesButton.onmouseover = () => yesButton.style.backgroundColor = '#1d4ed8';
+    yesButton.onmouseout = () => yesButton.style.backgroundColor = '#2563eb';
+    yesButton.onclick = () => {
+      document.body.removeChild(modal);
+      resolve(true);
+    };
+    
+    const noButton = document.createElement('button');
+    noButton.textContent = 'No';
+    noButton.className = 'flex-1 py-3 px-4 rounded-lg font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300';
+    noButton.style.cssText = 'flex: 1; padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 600; color: #374151; background-color: #e5e7eb; border: none; cursor: pointer; min-height: 44px;';
+    noButton.onmouseover = () => noButton.style.backgroundColor = '#d1d5db';
+    noButton.onmouseout = () => noButton.style.backgroundColor = '#e5e7eb';
+    noButton.onclick = () => {
+      document.body.removeChild(modal);
+      resolve(false);
+    };
+    
+    buttonContainer.appendChild(yesButton);
+    buttonContainer.appendChild(noButton);
+    dialog.appendChild(title);
+    dialog.appendChild(buttonContainer);
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+  });
+}
+
+/**
  * Generate FRAGO PDF
  */
 export async function generateFRAGO(weekStartDate?: string): Promise<void> {
@@ -706,10 +759,10 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('a. Key Events', 11, true);
     addBlankLine(0.3);
     
-    // Prompt for weekly events
-    const hasLeadershipLab = confirm('Do we have leadership lab this week?');
-    const hasTactics = confirm('Do we have tactics this week?');
-    const hasTrainingMeeting = confirm('Do we have a training meeting this week?');
+    // Prompt for weekly events using custom dialog
+    const hasLeadershipLab = await showConfirmDialog('Do we have leadership lab this week?');
+    const hasTactics = await showConfirmDialog('Do we have tactics this week?');
+    const hasTrainingMeeting = await showConfirmDialog('Do we have a training meeting this week?');
     
     // Get Tuesday and Thursday dates for the week
     const tuesdayDate = data.dates.tuesday;
