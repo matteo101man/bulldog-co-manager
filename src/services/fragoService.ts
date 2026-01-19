@@ -253,21 +253,21 @@ function formatCadetNameWithRank(cadet: Cadet | null | undefined): string {
 
 /**
  * Format date range for FRAGO header (e.g., "18–24 AUG 2025")
+ * Parse dates directly to avoid timezone conversion issues
  */
 function formatDateRange(start: string, end: string): string {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+  // Parse date strings directly (YYYY-MM-DD format)
+  const [startYear, startMonth, startDay] = start.split('-').map(Number);
+  const [endYear, endMonth, endDay] = end.split('-').map(Number);
   
-  const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const startDay = startDate.getDate();
-  const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const endDay = endDate.getDate();
-  const year = startDate.getFullYear();
+  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const startMonthName = monthNames[startMonth - 1];
+  const endMonthName = monthNames[endMonth - 1];
   
   if (startMonth === endMonth) {
-    return `${startDay}–${endDay} ${startMonth} ${year}`;
+    return `${startDay}–${endDay} ${startMonthName} ${startYear}`;
   } else {
-    return `${startDay} ${startMonth}–${endDay} ${endMonth} ${year}`;
+    return `${startDay} ${startMonthName}–${endDay} ${endMonthName} ${startYear}`;
   }
 }
 
@@ -312,7 +312,16 @@ function generatePTHTML(data: WeekData): string {
   };
 
   const formatDateRange = (start: string, end: string): string => {
-    return `${formatDateForDisplay(start)}–${formatDateForDisplay(end)}`;
+    // Parse dates directly to avoid timezone conversion issues
+    const [startYear, startMonth, startDay] = start.split('-').map(Number);
+    const [endYear, endMonth, endDay] = end.split('-').map(Number);
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    
+    if (startMonth === endMonth) {
+      return `${startDay}–${endDay} ${monthNames[startMonth - 1]} ${startYear}`;
+    } else {
+      return `${startDay} ${monthNames[startMonth - 1]}–${endDay} ${monthNames[endMonth - 1]} ${startYear}`;
+    }
   };
 
   const weekRange = formatDateRange(data.dates.monday, data.dates.saturday);
