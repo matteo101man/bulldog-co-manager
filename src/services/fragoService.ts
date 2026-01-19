@@ -301,6 +301,154 @@ function formatEventDateTime(date: string, time?: string): string {
 }
 
 /**
+ * Generate HTML document with PT tables for email
+ */
+function generatePTHTML(data: WeekData): string {
+  const formatDateForDisplay = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
+  const formatDateRange = (start: string, end: string): string => {
+    return `${formatDateForDisplay(start)}–${formatDateForDisplay(end)}`;
+  };
+
+  const weekRange = formatDateRange(data.dates.monday, data.dates.saturday);
+  
+  const companies: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Grizzly Company'];
+  const regularDays: Array<{ key: string; label: string; dateKey: string }> = [
+    { key: 'tuesday', label: 'Tuesday', dateKey: 'tuesday' },
+    { key: 'wednesday', label: 'Wednesday', dateKey: 'wednesday' },
+    { key: 'thursday', label: 'Thursday', dateKey: 'thursday' }
+  ];
+  const rangerDays: Array<{ key: string; label: string; dateKey: string }> = [
+    { key: 'monday', label: 'Monday', dateKey: 'monday' },
+    { key: 'tuesday', label: 'Tuesday', dateKey: 'tuesday' },
+    { key: 'wednesday', label: 'Wednesday', dateKey: 'wednesday' },
+    { key: 'thursday', label: 'Thursday', dateKey: 'thursday' },
+    { key: 'friday', label: 'Friday', dateKey: 'friday' }
+  ];
+
+  let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PT Schedule - Week of ${weekRange}</title>
+</head>
+<body>
+<div style="font-family: Arial, sans-serif; max-width: 900px; border: 1px solid #e0e0e0; margin: 20px auto; background-color: #ffffff;">
+    
+    <div style="background-color: #ba0c2f; color: #ffffff; padding: 20px; text-align: center;">
+        <h2 style="margin: 0; letter-spacing: 1px; font-size: 20px;">UGA ARMY ROTC | PT SCHEDULE</h2>
+        <p style="margin: 10px 0 0 0; font-size: 14px;">Week of ${weekRange}</p>
+    </div>
+
+    <div style="padding: 30px; line-height: 1.6; color: #333333;">
+        
+        <p style="font-weight: bold; font-size: 16px;">ALCON,</p>
+        
+        <p>Please find the Physical Training (PT) schedule for the week of <strong>${weekRange}</strong>. Ensure all personnel are briefed on the uniform requirements and workout details below.</p>`;
+
+  for (const company of companies) {
+    const plans = data.ptPlans.get(company);
+    const isRanger = company === 'Ranger';
+    const daysToShow = isRanger ? rangerDays : regularDays;
+    
+    let companyDisplayName: string;
+    if (company === 'Grizzly Company') {
+      companyDisplayName = 'Grizzly Company';
+    } else if (company === 'Ranger') {
+      companyDisplayName = 'Ranger Challenge';
+    } else {
+      companyDisplayName = `${company} Company`;
+    }
+
+    html += `
+        <h3 style="border-bottom: 2px solid #ba0c2f; padding-bottom: 5px; color: #ba0c2f; margin-top: 30px;">${companyDisplayName}</h3>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f9f9f9; border: 1px solid #ddd;">
+            <thead>
+                <tr style="background-color: #ba0c2f; color: #ffffff;">
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: left; font-weight: bold;">Day</th>`;
+
+    daysToShow.forEach((day) => {
+      const plan = plans?.get(day.key);
+      const dateStr = formatDateForDisplay(data.dates[day.dateKey as keyof typeof data.dates]);
+      const timeStr = plan?.firstFormation || '';
+      html += `
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${day.label}<br>${dateStr}${timeStr ? `<br>${timeStr}` : ''}</th>`;
+    });
+
+    html += `
+                </tr>
+            </thead>
+            <tbody>`;
+
+    // Uniform row
+    html += `
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #ba0c2f; background-color: #fff4f4;">Uniform</td>`;
+    daysToShow.forEach((day) => {
+      const plan = plans?.get(day.key);
+      const uniform = plan?.uniform || 'NONE';
+      let uniformText = '';
+      if (uniform === 'NONE' || !uniform) {
+        uniformText = 'Contracted: NONE<br>Uncontracted: Appropriate Attire';
+      } else {
+        uniformText = `Contracted: ${uniform}<br>Uncontracted: Appropriate Attire`;
+      }
+      html += `
+                    <td style="padding: 10px; border: 1px solid #ddd; vertical-align: top;">${uniformText}</td>`;
+    });
+    html += `
+                </tr>`;
+
+    // Location row
+    html += `
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #ba0c2f; background-color: #fff4f4;">Location</td>`;
+    daysToShow.forEach((day) => {
+      const plan = plans?.get(day.key);
+      const location = plan?.location || 'NONE';
+      html += `
+                    <td style="padding: 10px; border: 1px solid #ddd; vertical-align: top;">${location}</td>`;
+    });
+    html += `
+                </tr>`;
+
+    // Activity row
+    html += `
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #ba0c2f; background-color: #fff4f4;">Activity</td>`;
+    daysToShow.forEach((day) => {
+      const plan = plans?.get(day.key);
+      const activity = plan?.workouts || 'NONE';
+      html += `
+                    <td style="padding: 10px; border: 1px solid #ddd; vertical-align: top;">${activity.replace(/\n/g, '<br>')}</td>`;
+    });
+    html += `
+                </tr>`;
+
+    html += `
+            </tbody>
+        </table>`;
+  }
+
+  html += `
+        <div style="margin-top: 30px; padding: 15px; background-color: #fff4f4; border-left: 5px solid #ba0c2f;">
+            <strong>Note:</strong> All cadets are expected to attend PT as scheduled. Uniform requirements are listed above for each day. Contracted cadets must wear the specified uniform; uncontracted cadets should wear appropriate workout attire.
+        </div>
+    </div>
+</div>
+</body>
+</html>`;
+
+  return html;
+}
+
+/**
  * Generate FRAGO PDF
  */
 export async function generateFRAGO(weekStartDate?: string): Promise<void> {
@@ -963,6 +1111,18 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     // Save PDF
     const fileName = `FRAGO_${data.weekStart.replace(/-/g, '')}.pdf`;
     pdf.save(fileName);
+    
+    // Generate and save HTML document with PT tables
+    const htmlContent = generatePTHTML(data);
+    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+    const htmlUrl = URL.createObjectURL(htmlBlob);
+    const htmlLink = document.createElement('a');
+    htmlLink.href = htmlUrl;
+    htmlLink.download = `PT_Schedule_${data.weekStart.replace(/-/g, '')}.html`;
+    document.body.appendChild(htmlLink);
+    htmlLink.click();
+    document.body.removeChild(htmlLink);
+    URL.revokeObjectURL(htmlUrl);
     
   } catch (error) {
     console.error('Error generating FRAGO:', error);
