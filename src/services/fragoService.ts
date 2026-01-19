@@ -124,8 +124,9 @@ async function getWeekPTPlans(weekStart: string): Promise<Map<Company, Map<strin
   for (const company of companies) {
     const plans = await getPTPlansForWeek(company, weekStart);
     
-    // For special week, replace Tuesday with Battalion PT for all companies
-    if (isSpecialWeek && battalionPT && company !== 'Ranger') {
+    // For special week, replace Tuesday with Battalion PT for all companies (except Ranger and Grizzly Company)
+    // Grizzly Company always has their own PT, never Battalion PT
+    if (isSpecialWeek && battalionPT && company !== 'Ranger' && company !== 'Grizzly Company') {
       plans.set('tuesday', battalionPT);
     }
     
@@ -448,8 +449,8 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       { name: 'High', getValue: (w: any) => w ? `${w.high}°F` : '--', multiline: false },
       { name: 'Low', getValue: (w: any) => w ? `${w.low}°F` : '--', multiline: false },
       { name: 'Wind', getValue: (w: any) => w ? `${w.wind} mph` : '--', multiline: false },
-      { name: 'Precip D', getValue: (w: any) => w ? `${w.precipDay}%` : '--', multiline: false },
-      { name: 'Precip N', getValue: (w: any) => w ? `${w.precipNight}%` : '--', multiline: false },
+      { name: 'Precip (Day)', getValue: (w: any) => w ? `${w.precipDay}%` : '--', multiline: false },
+      { name: 'Precip (Night)', getValue: (w: any) => w ? `${w.precipNight}%` : '--', multiline: false },
       { name: 'Events', getValue: (w: any) => w?.events || 'NONE', multiline: true },
       { name: 'Impact', getValue: (w: any) => w?.impact || 'NONE', multiline: true }
     ];
@@ -467,7 +468,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       }
       
       const rowY = yPos;
-      const cellPadding = 2;
+      const cellPadding = 4; // Increased padding
       
       // Category name (left column)
       pdf.setFont('helvetica', 'bold');
@@ -720,7 +721,16 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        addText(`${company} Company`, 10, true);
+        // Fix "Grizzly Company Company" issue and display Ranger Challenge properly
+        let companyDisplayName: string;
+        if (company === 'Grizzly Company') {
+          companyDisplayName = 'Grizzly Company';
+        } else if (company === 'Ranger') {
+          companyDisplayName = 'Ranger Challenge';
+        } else {
+          companyDisplayName = `${company} Company`;
+        }
+        addText(companyDisplayName, 10, true);
         addBlankLine(0.3);
         
         // PT Table with grid formatting (centered, similar to weather table)
@@ -793,7 +803,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           }
           
           const rowY = yPos;
-          const cellPadding = 2;
+          const cellPadding = 4; // Increased padding
           
           // Category name (left column)
           pdf.setFont('helvetica', 'bold');

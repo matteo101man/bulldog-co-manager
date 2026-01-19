@@ -9,13 +9,13 @@ interface PTPlansProps {
   selectedCompany?: Company | null;
 }
 
-const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Battalion'];
+const COMPANIES: Company[] = ['Alpha', 'Bravo', 'Charlie', 'Ranger', 'Grizzly Company', 'Battalion'];
 
 // Special week: week starting January 19, 2026 (January 19th is a Monday)
 const SPECIAL_WEEK_START = '2026-01-19';
 
 function getDaysForCompany(company: Company, weekStartDate?: string): DayOfWeek[] {
-  // Special handling for the week starting January 13, 2025
+  // Special handling for the week starting January 19, 2026
   const isSpecialWeek = weekStartDate === SPECIAL_WEEK_START;
   
   if (company === 'Battalion') {
@@ -24,6 +24,10 @@ function getDaysForCompany(company: Company, weekStartDate?: string): DayOfWeek[
   }
   if (company === 'Ranger') {
     return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  }
+  if (company === 'Grizzly Company') {
+    // Grizzly Company always has their own PT, never Battalion PT
+    return ['tuesday', 'wednesday', 'thursday'];
   }
   // For other companies: during special week, they get Tuesday (read-only Battalion), Wednesday, and Thursday
   return isSpecialWeek ? ['tuesday', 'wednesday', 'thursday'] : ['tuesday', 'wednesday', 'thursday'];
