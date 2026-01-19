@@ -28,25 +28,42 @@ function getCurrentDateEST(): Date {
  * Returns ISO date string (YYYY-MM-DD)
  */
 export function getCurrentWeekStart(): string {
-  const today = getCurrentDateEST();
-  const day = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const now = new Date();
+  // Get EST date components directly
+  const estFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'long'
+  });
+  
+  const parts = estFormatter.formatToParts(now);
+  const year = parseInt(parts.find(p => p.type === 'year')?.value || '0');
+  const month = parseInt(parts.find(p => p.type === 'month')?.value || '0');
+  const day = parseInt(parts.find(p => p.type === 'day')?.value || '0');
+  const weekday = parts.find(p => p.type === 'weekday')?.value || '';
+  
+  // Calculate day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  const dayOfWeekMap: { [key: string]: number } = {
+    'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+    'Thursday': 4, 'Friday': 5, 'Saturday': 6
+  };
+  const dayOfWeek = dayOfWeekMap[weekday] ?? 1;
+  
   // Calculate days to subtract to get to Monday
-  // If today is Sunday (0), go back 6 days; otherwise go back (day - 1) days
-  const daysToSubtract = day === 0 ? 6 : day - 1;
+  // If today is Sunday (0), go back 6 days; otherwise go back (dayOfWeek - 1) days
+  const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   
-  // Create a new date object and work with local date components to avoid timezone issues
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const date = today.getDate();
+  // Calculate Monday date using EST date components
+  const mondayDate = day - daysToSubtract;
+  const monday = new Date(year, month - 1, mondayDate);
   
-  const monday = new Date(year, month, date - daysToSubtract);
-  monday.setHours(0, 0, 0, 0); // Reset time to start of day
-  
-  // Format as YYYY-MM-DD (using local date components to avoid timezone conversion)
+  // Format as YYYY-MM-DD
   const mondayYear = monday.getFullYear();
   const mondayMonth = String(monday.getMonth() + 1).padStart(2, '0');
-  const mondayDate = String(monday.getDate()).padStart(2, '0');
-  return `${mondayYear}-${mondayMonth}-${mondayDate}`;
+  const mondayDay = String(monday.getDate()).padStart(2, '0');
+  return `${mondayYear}-${mondayMonth}-${mondayDay}`;
 }
 
 /**
