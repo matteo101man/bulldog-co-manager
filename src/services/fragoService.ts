@@ -469,7 +469,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       }
       
       const rowY = yPos;
-      const cellPadding = 6; // Increased padding for better readability
+      const cellPadding = 4;
       
       // Category name (left column)
       pdf.setFont('helvetica', 'bold');
@@ -755,9 +755,11 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       addBlankLine(0.3);
       
       // PT Table with grid formatting (centered, similar to weather table)
-      const ptDayColWidth = 20;
+      // Make Ranger Challenge table smaller
+      const isRangerTable = isRanger;
+      const ptDayColWidth = isRangerTable ? 18 : 20;
       const numDays = daysToShow.length;
-      const ptDayColWidths = Array(numDays).fill(45); // Fixed width for each day column
+      const ptDayColWidths = Array(numDays).fill(isRangerTable ? 35 : 45); // Smaller columns for Ranger
       const totalPtTableWidth = ptDayColWidth + ptDayColWidths.reduce((a, b) => a + b, 0);
       const ptTableStartX = (pageWidth - totalPtTableWidth) / 2; // Center the table
       const ptDayColStarts = [ptTableStartX + ptDayColWidth];
@@ -783,8 +785,8 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       
       let ptTableStartY = yPos;
       
-      // Header row
-      pdf.setFontSize(8);
+      // Header row - smaller font for Ranger
+      pdf.setFontSize(isRangerTable ? 7 : 8);
       pdf.setFont('helvetica', 'bold');
       const ptHeaderRowHeight = lineHeight * 1.3;
       pdf.text('Day', ptTableStartX + ptDayColWidth / 2, yPos + ptHeaderRowHeight / 2, { align: 'center' });
@@ -806,12 +808,21 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       
       // Category rows: Uniform, Location, Activity
       const ptCategories = [
-        { name: 'Uniform', getValue: (plan: PTPlan | null) => plan?.uniform || 'NONE', multiline: true },
+        { 
+          name: 'Uniform', 
+          getValue: (plan: PTPlan | null) => {
+            if (!plan || !plan.uniform || plan.uniform === 'NONE') {
+              return 'Contracted: NONE\nUncontracted: Appropriate workout attire, Water source';
+            }
+            return `Contracted: ${plan.uniform}\nUncontracted: Appropriate workout attire, Water source`;
+          }, 
+          multiline: true 
+        },
         { name: 'Location', getValue: (plan: PTPlan | null) => plan?.location || 'NONE', multiline: true },
         { name: 'Activity', getValue: (plan: PTPlan | null) => plan?.workouts || 'NONE', multiline: true }
       ];
       
-      pdf.setFontSize(8);
+      pdf.setFontSize(isRangerTable ? 7 : 8);
       pdf.setFont('helvetica', 'normal');
       
       for (const category of ptCategories) {
@@ -828,7 +839,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           
           // Category name (left column)
           pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(8);
+          pdf.setFontSize(isRangerTable ? 7 : 8);
           pdf.text(category.name, ptTableStartX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
           
         // Values for each day
@@ -844,7 +855,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
             let currentY = rowY + cellPadding;
             lines.forEach((line: string) => {
               pdf.text(line, cellX + cellPadding, currentY);
-              currentY += lineHeight * 0.6;
+              currentY += lineHeight * (isRangerTable ? 0.5 : 0.6);
             });
           } else {
             pdf.text(value, cellX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
