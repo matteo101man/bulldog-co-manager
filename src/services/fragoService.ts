@@ -753,18 +753,18 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       }
       addText(companyDisplayName, 10, true);
       addBlankLine(0.3);
-        
-        // PT Table with grid formatting (centered, similar to weather table)
-        const ptDayColWidth = 20;
-        const numDays = daysToShow.length;
-        const ptDayColWidths = Array(numDays).fill(45); // Fixed width for each day column
-        const totalPtTableWidth = ptDayColWidth + ptDayColWidths.reduce((a, b) => a + b, 0);
-        const ptTableStartX = (pageWidth - totalPtTableWidth) / 2; // Center the table
-        const ptDayColStarts = [ptTableStartX + ptDayColWidth];
-        for (let i = 1; i < ptDayColWidths.length; i++) {
-          ptDayColStarts.push(ptDayColStarts[i - 1] + ptDayColWidths[i - 1]);
-        }
-        const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
+      
+      // PT Table with grid formatting (centered, similar to weather table)
+      const ptDayColWidth = 20;
+      const numDays = daysToShow.length;
+      const ptDayColWidths = Array(numDays).fill(45); // Fixed width for each day column
+      const totalPtTableWidth = ptDayColWidth + ptDayColWidths.reduce((a, b) => a + b, 0);
+      const ptTableStartX = (pageWidth - totalPtTableWidth) / 2; // Center the table
+      const ptDayColStarts = [ptTableStartX + ptDayColWidth];
+      for (let i = 1; i < ptDayColWidths.length; i++) {
+        ptDayColStarts.push(ptDayColStarts[i - 1] + ptDayColWidths[i - 1]);
+      }
+      const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
         
       // Calculate row height based on content
       const calculatePTRowHeight = (category: any) => {
@@ -799,22 +799,22 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         }
       });
         
-        // Draw header row border
-        pdf.setLineWidth(0.2);
-        pdf.rect(ptTableStartX, yPos, ptTableEndX - ptTableStartX, ptHeaderRowHeight);
-        yPos += ptHeaderRowHeight;
-        
-        // Category rows: Uniform, Location, Activity
-        const ptCategories = [
-          { name: 'Uniform', getValue: (plan: PTPlan | null) => plan?.uniform || 'NONE', multiline: true },
-          { name: 'Location', getValue: (plan: PTPlan | null) => plan?.location || 'NONE', multiline: true },
-          { name: 'Activity', getValue: (plan: PTPlan | null) => plan?.workouts || 'NONE', multiline: true }
-        ];
-        
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        
-        for (const category of ptCategories) {
+      // Draw header row border
+      pdf.setLineWidth(0.2);
+      pdf.rect(ptTableStartX, yPos, ptTableEndX - ptTableStartX, ptHeaderRowHeight);
+      yPos += ptHeaderRowHeight;
+      
+      // Category rows: Uniform, Location, Activity
+      const ptCategories = [
+        { name: 'Uniform', getValue: (plan: PTPlan | null) => plan?.uniform || 'NONE', multiline: true },
+        { name: 'Location', getValue: (plan: PTPlan | null) => plan?.location || 'NONE', multiline: true },
+        { name: 'Activity', getValue: (plan: PTPlan | null) => plan?.workouts || 'NONE', multiline: true }
+      ];
+      
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      
+      for (const category of ptCategories) {
           const ptRowHeight = calculatePTRowHeight(category);
           
           if (yPos > pageHeight - margin - ptRowHeight * 2) {
