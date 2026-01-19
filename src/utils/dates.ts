@@ -182,27 +182,6 @@ export function getFullWeekDates(weekStartDate: string): { monday: string; tuesd
     sunday: formatDate(sunday),
   };
 }
-  const [year, month, day] = weekStartDate.split('-').map(Number);
-  
-  // Use UTC date arithmetic to avoid timezone issues
-  const formatDate = (y: number, m: number, d: number): string => {
-    const date = new Date(Date.UTC(y, m - 1, d));
-    const estYear = date.getUTCFullYear();
-    const estMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const estDay = String(date.getUTCDate()).padStart(2, '0');
-    return `${estYear}-${estMonth}-${estDay}`;
-  };
-
-  return {
-    monday: formatDate(year, month, day),
-    tuesday: formatDate(year, month, day + 1),
-    wednesday: formatDate(year, month, day + 2),
-    thursday: formatDate(year, month, day + 3),
-    friday: formatDate(year, month, day + 4),
-    saturday: formatDate(year, month, day + 5),
-    sunday: formatDate(year, month, day + 6),
-  };
-}
 
 /**
  * Format date as "Mon Nov 17" style
