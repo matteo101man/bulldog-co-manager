@@ -660,7 +660,9 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         addBlankLine(0.3);
         
         // PT Table headers
-        const ptColWidths = isRanger ? [20, 25, 30, 40, 50, 50] : [20, 25, 30, 50, 50]; // Day, Time, Location, Uniform, Title, Workout
+        // For regular companies: Day, Time, Location, Uniform, Title, Workout (6 columns)
+        // For Ranger: Day, Time, Location, Uniform, Title, Workout (6 columns - same)
+        const ptColWidths = [20, 25, 30, 40, 50, 50]; // Day, Time, Location, Uniform, Title, Workout
         const ptColStarts = [margin + 5];
         for (let i = 1; i < ptColWidths.length; i++) {
           ptColStarts.push(ptColStarts[i - 1] + ptColWidths[i - 1]);
@@ -693,18 +695,18 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
             
             const rowStartY = yPos;
             pdf.text(day.label, ptColStarts[0], yPos);
-            pdf.text(plan.firstFormation, ptColStarts[1], yPos);
+            pdf.text(plan.firstFormation || '', ptColStarts[1], yPos);
             
-            const locationLines = pdf.splitTextToSize(plan.location, ptColWidths[2] - 2);
+            const locationLines = pdf.splitTextToSize(plan.location || '', ptColWidths[2] - 2);
             pdf.text(locationLines[0] || '', ptColStarts[2], yPos);
             
-            const uniformLines = pdf.splitTextToSize(plan.uniform, ptColWidths[3] - 2);
+            const uniformLines = pdf.splitTextToSize(plan.uniform || '', ptColWidths[3] - 2);
             pdf.text(uniformLines[0] || '', ptColStarts[3], yPos);
             
-            const titleLines = pdf.splitTextToSize(plan.title, ptColWidths[4] - 2);
+            const titleLines = pdf.splitTextToSize(plan.title || '', ptColWidths[4] - 2);
             pdf.text(titleLines[0] || '', ptColStarts[4], yPos);
             
-            const workoutLines = pdf.splitTextToSize(plan.workouts, ptColWidths[5] - 2);
+            const workoutLines = pdf.splitTextToSize(plan.workouts || '', ptColWidths[5] - 2);
             pdf.text(workoutLines[0] || '', ptColStarts[5], yPos);
             
             // Handle multi-line content
@@ -747,7 +749,9 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     
   } catch (error) {
     console.error('Error generating FRAGO:', error);
-    alert('Error generating FRAGO. Please try again.');
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Full error details:', error);
+    alert(`Error generating FRAGO: ${errorMessage}\n\nCheck the browser console for more details.`);
     throw error;
   }
 }
