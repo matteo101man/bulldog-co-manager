@@ -561,19 +561,15 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     // BN PT
     addText('BN PT: IAW published schedule', 11, false, 'left', margin + 5);
     
-    // Training events
+    // Training events - use dates directly from training schedule
     for (const event of data.trainingEvents) {
-      // For multi-day events, use endDate if available, otherwise use date
-      // Special handling: If event name contains "Ranger Challenge" and has endDate, use endDate
-      let displayDate = event.date;
-      if (event.name.toLowerCase().includes('ranger challenge') && event.endDate) {
-        displayDate = event.endDate;
-      } else if (event.endDate) {
-        // For other multi-day events, use start date
-        displayDate = event.date;
-      }
+      // Always use the event's actual date from the database
+      // For multi-day events, show the start date (event.date)
+      const eventDate = event.date;
       
-      let eventText = `${event.name}: ${formatEventDateTime(displayDate, event.hitTime)}`;
+      // Format the event - only show time if it's valid (not TBD, 0TBD, etc.)
+      const formattedTime = formatTime(event.hitTime);
+      let eventText = `${event.name}: ${formatEventDateTime(eventDate, formattedTime ? event.hitTime : undefined)}`;
       if (event.ao) {
         eventText += `, ${event.ao}`;
       }
@@ -768,19 +764,25 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       }
       const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
         
-      // Calculate row height based on content
+      // Calculate row height based on content - ensure proper text fitting
+      const cellPadding = 4; // Define here for use in calculation
       const calculatePTRowHeight = (category: any) => {
         let maxLines = 1;
         daysToShow.forEach((day) => {
           const plan = plans?.get(day.key);
           const value = category.getValue(plan);
           if (value !== 'NONE' && value !== '--') {
-            const cellWidth = ptDayColWidths[0];
-            const lines = pdf.splitTextToSize(value, cellWidth - 4);
+            // Use actual cell width minus padding for accurate text wrapping
+            const cellWidth = ptDayColWidths[0] - (cellPadding * 2);
+            const lines = pdf.splitTextToSize(value, cellWidth);
             maxLines = Math.max(maxLines, lines.length);
           }
         });
-        return Math.max(lineHeight * 1.5, lineHeight * 0.7 * maxLines + lineHeight * 0.5);
+        // Ensure minimum row height and add extra space for multi-line content
+        const baseHeight = isRangerTable ? lineHeight * 1.2 : lineHeight * 1.5;
+        const lineSpacing = isRangerTable ? lineHeight * 0.5 : lineHeight * 0.6;
+        const contentHeight = lineSpacing * maxLines + lineHeight * 0.5;
+        return Math.max(baseHeight, contentHeight);
       };
       
       let ptTableStartY = yPos;
@@ -842,20 +844,26 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           pdf.setFontSize(isRangerTable ? 7 : 8);
           pdf.text(category.name, ptTableStartX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
           
-        // Values for each day
+        // Values for each day - ensure text fits properly
         pdf.setFont('helvetica', 'normal');
         daysToShow.forEach((day, idx) => {
           const plan = plans?.get(day.key);
           const value = category.getValue(plan);
           const cellX = ptDayColStarts[idx];
           const cellWidth = ptDayColWidths[idx];
+          const availableWidth = cellWidth - (cellPadding * 2);
           
           if (value !== 'NONE' && value !== '--') {
-            const lines = pdf.splitTextToSize(value, cellWidth - cellPadding * 2);
+            // Split text to fit within the available cell width
+            const lines = pdf.splitTextToSize(value, availableWidth);
             let currentY = rowY + cellPadding;
+            const lineSpacing = isRangerTable ? lineHeight * 0.5 : lineHeight * 0.6;
             lines.forEach((line: string) => {
-              pdf.text(line, cellX + cellPadding, currentY);
-              currentY += lineHeight * (isRangerTable ? 0.5 : 0.6);
+              // Ensure text doesn't go beyond cell boundaries
+              if (currentY < rowY + ptRowHeight - lineSpacing) {
+                pdf.text(line, cellX + cellPadding, currentY);
+                currentY += lineSpacing;
+              }
             });
           } else {
             pdf.text(value, cellX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
