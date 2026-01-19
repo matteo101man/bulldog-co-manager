@@ -816,9 +816,9 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           name: 'Uniform', 
           getValue: (plan: PTPlan | null) => {
             if (!plan || !plan.uniform || plan.uniform === 'NONE') {
-              return 'Contracted: NONE\nUncontracted: Appropriate workout attire, Water source';
+              return 'Contracted: NONE\nUncontracted: Appropriate Attire';
             }
-            return `Contracted: ${plan.uniform}\nUncontracted: Appropriate workout attire, Water source`;
+            return `Contracted: ${plan.uniform}\nUncontracted: Appropriate Attire`;
           }, 
           multiline: true 
         },
