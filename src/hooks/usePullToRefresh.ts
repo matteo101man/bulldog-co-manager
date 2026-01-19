@@ -20,20 +20,16 @@ export function usePullToRefresh({
   const isPulling = useRef(false);
   const elementRef = useRef<HTMLDivElement>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const wasAtTopRef = useRef(true);
 
-  // Check if element or window is at the top
+  // Check if we're at the top - simplified check
   const isAtTop = () => {
-    // Check window scroll
-    const windowAtTop = window.scrollY === 0 || window.pageYOffset === 0;
+    // Primary check: window scroll
+    const windowScroll = window.scrollY || window.pageYOffset || 0;
+    const docScroll = document.documentElement.scrollTop || document.body.scrollTop || 0;
     
-    // Check document body scroll
-    const bodyAtTop = document.documentElement.scrollTop === 0 && document.body.scrollTop === 0;
-    
-    // Check element scroll if it exists
-    const element = elementRef.current;
-    const elementAtTop = element ? element.scrollTop === 0 : true;
-    
-    return windowAtTop && bodyAtTop && elementAtTop;
+    // Allow small tolerance (5px) for rounding issues
+    return windowScroll <= 5 && docScroll <= 5;
   };
 
   useEffect(() => {
@@ -43,15 +39,22 @@ export function usePullToRefresh({
     const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (!isMobile) return;
 
-    const element = elementRef.current;
-    if (!element) return;
+    // Track scroll position to know when we're at top
+    const handleScroll = () => {
+      wasAtTopRef.current = isAtTop();
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
 
     const handleTouchStart = (e: TouchEvent) => {
-      // Only start if we're at the top and touch started near the top of the viewport
+      // Don't start if already refreshing
+      if (isRefreshing) return;
+
       const touchY = e.touches[0].clientY;
-      const isNearTop = touchY < 100; // Touch started in top 100px of screen
       
-      if (isAtTop() && isNearTop && !isPulling.current && !isRefreshing) {
+      // Check if we're at top and touch is in upper portion of screen
+      if (wasAtTopRef.current && touchY < 200 && !isPulling.current) {
         touchStartY.current = touchY;
         touchCurrentY.current = touchY;
         isPulling.current = true;
@@ -64,14 +67,14 @@ export function usePullToRefresh({
       touchCurrentY.current = e.touches[0].clientY;
       const pullDistance = touchCurrentY.current - touchStartY.current;
 
-      // Only allow downward pull when at top
-      if (pullDistance > 0 && isAtTop()) {
-        // Prevent default scrolling while pulling
-        if (pullDistance > 10) {
+      // Only allow downward pull
+      if (pullDistance > 0) {
+        // If we've pulled enough, prevent default to stop scrolling
+        if (pullDistance > 15 && wasAtTopRef.current) {
           e.preventDefault();
         }
       } else {
-        // Reset if user scrolls up or page is not at top
+        // Reset if user scrolls up
         isPulling.current = false;
         touchStartY.current = null;
         touchCurrentY.current = null;
@@ -88,8 +91,8 @@ export function usePullToRefresh({
 
       const pullDistance = touchCurrentY.current - touchStartY.current;
 
-      // Trigger refresh if threshold is met
-      if (pullDistance >= threshold && isAtTop()) {
+      // Trigger refresh if threshold is met and we're still at top
+      if (pullDistance >= threshold && wasAtTopRef.current) {
         setIsRefreshing(true);
         onRefresh();
       }
@@ -100,38 +103,17 @@ export function usePullToRefresh({
       touchCurrentY.current = null;
     };
 
-    // Also listen on document to catch touches that might start on child elements
-    const handleDocumentTouchStart = (e: TouchEvent) => {
-      // Only handle if touch started within our element
-      const element = elementRef.current;
-      if (element && element.contains(e.target as Node)) {
-        handleTouchStart(e);
-      }
-    };
-
-    const handleDocumentTouchMove = (e: TouchEvent) => {
-      const element = elementRef.current;
-      if (element && (element.contains(e.target as Node) || isPulling.current)) {
-        handleTouchMove(e);
-      }
-    };
-
-    const handleDocumentTouchEnd = (e: TouchEvent) => {
-      const element = elementRef.current;
-      if (element && (element.contains(e.target as Node) || isPulling.current)) {
-        handleTouchEnd();
-      }
-    };
-
-    // Use capture phase to catch events before they bubble
-    document.addEventListener('touchstart', handleDocumentTouchStart, { passive: false, capture: true });
-    document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false, capture: true });
-    document.addEventListener('touchend', handleDocumentTouchEnd, { passive: true, capture: true });
+    // Listen on document to catch all touches
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
-      document.removeEventListener('touchstart', handleDocumentTouchStart, { capture: true } as EventListenerOptions);
-      document.removeEventListener('touchmove', handleDocumentTouchMove, { capture: true } as EventListenerOptions);
-      document.removeEventListener('touchend', handleDocumentTouchEnd, { capture: true } as EventListenerOptions);
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [enabled, threshold, onRefresh, isRefreshing]);
 
