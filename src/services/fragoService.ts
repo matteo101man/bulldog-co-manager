@@ -699,7 +699,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
         
         const ptRowHeight = lineHeight * 2;
-        const ptTableStartY = yPos;
+        let ptTableStartY = yPos;
         
         // Header row
         pdf.setFontSize(8);
