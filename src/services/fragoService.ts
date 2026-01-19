@@ -276,8 +276,9 @@ function formatDateRange(start: string, end: string): string {
  */
 function formatTime(time?: string): string {
   if (!time || time.trim() === '' || time === '0' || time === '00' || time === '0000') return '';
-  const cleaned = time.replace(':', '').trim();
-  if (cleaned === '' || cleaned === '0' || cleaned === '00' || cleaned === '0000') return '';
+  const cleaned = time.replace(':', '').trim().toUpperCase();
+  // Filter out TBD variations
+  if (cleaned === '' || cleaned === '0' || cleaned === '00' || cleaned === '0000' || cleaned === 'TBD' || cleaned === '0TBD' || cleaned.startsWith('0TBD')) return '';
   return cleaned.padStart(4, '0');
 }
 
@@ -468,7 +469,7 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       }
       
       const rowY = yPos;
-      const cellPadding = 4; // Increased padding
+      const cellPadding = 6; // Increased padding for better readability
       
       // Category name (left column)
       pdf.setFont('helvetica', 'bold');
@@ -729,26 +730,29 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       const isRanger = company === 'Ranger';
       const daysToShow = isRanger ? rangerDays : regularDays;
       
+      // Always show all companies, even if they don't have plans
       if (plans && plans.size > 0) {
         hasAnyPTData = true;
-        if (yPos > pageHeight - margin - lineHeight * 8) {
-          pdf.addPage();
-          yPos = margin;
-        }
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        // Fix "Grizzly Company Company" issue and display Ranger Challenge properly
-        let companyDisplayName: string;
-        if (company === 'Grizzly Company') {
-          companyDisplayName = 'Grizzly Company';
-        } else if (company === 'Ranger') {
-          companyDisplayName = 'Ranger Challenge';
-        } else {
-          companyDisplayName = `${company} Company`;
-        }
-        addText(companyDisplayName, 10, true);
-        addBlankLine(0.3);
+      }
+      
+      if (yPos > pageHeight - margin - lineHeight * 8) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      // Fix "Grizzly Company Company" issue and display Ranger Challenge properly
+      let companyDisplayName: string;
+      if (company === 'Grizzly Company') {
+        companyDisplayName = 'Grizzly Company';
+      } else if (company === 'Ranger') {
+        companyDisplayName = 'Ranger Challenge';
+      } else {
+        companyDisplayName = `${company} Company`;
+      }
+      addText(companyDisplayName, 10, true);
+      addBlankLine(0.3);
         
         // PT Table with grid formatting (centered, similar to weather table)
         const ptDayColWidth = 20;
@@ -762,38 +766,38 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         }
         const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
         
-        // Calculate row height based on content
-        const calculatePTRowHeight = (category: any) => {
-          let maxLines = 1;
-          daysToShow.forEach((day) => {
-            const plan = plans.get(day.key);
-            const value = category.getValue(plan);
-            if (value !== 'NONE' && value !== '--') {
-              const cellWidth = ptDayColWidths[0];
-              const lines = pdf.splitTextToSize(value, cellWidth - 4);
-              maxLines = Math.max(maxLines, lines.length);
-            }
-          });
-          return Math.max(lineHeight * 1.5, lineHeight * 0.7 * maxLines + lineHeight * 0.5);
-        };
-        
-        let ptTableStartY = yPos;
-        
-        // Header row
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'bold');
-        const ptHeaderRowHeight = lineHeight * 1.3;
-        pdf.text('Day', ptTableStartX + ptDayColWidth / 2, yPos + ptHeaderRowHeight / 2, { align: 'center' });
-        daysToShow.forEach((day, idx) => {
-          const plan = plans.get(day.key);
-          const timeStr = plan?.firstFormation || '';
-          if (timeStr) {
-            pdf.text(day.label, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + lineHeight * 0.4, { align: 'center' });
-            pdf.text(timeStr, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + lineHeight * 0.9, { align: 'center' });
-          } else {
-            pdf.text(day.label, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + ptHeaderRowHeight / 2, { align: 'center' });
+      // Calculate row height based on content
+      const calculatePTRowHeight = (category: any) => {
+        let maxLines = 1;
+        daysToShow.forEach((day) => {
+          const plan = plans?.get(day.key);
+          const value = category.getValue(plan);
+          if (value !== 'NONE' && value !== '--') {
+            const cellWidth = ptDayColWidths[0];
+            const lines = pdf.splitTextToSize(value, cellWidth - 4);
+            maxLines = Math.max(maxLines, lines.length);
           }
         });
+        return Math.max(lineHeight * 1.5, lineHeight * 0.7 * maxLines + lineHeight * 0.5);
+      };
+      
+      let ptTableStartY = yPos;
+      
+      // Header row
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      const ptHeaderRowHeight = lineHeight * 1.3;
+      pdf.text('Day', ptTableStartX + ptDayColWidth / 2, yPos + ptHeaderRowHeight / 2, { align: 'center' });
+      daysToShow.forEach((day, idx) => {
+        const plan = plans?.get(day.key);
+        const timeStr = plan?.firstFormation || '';
+        if (timeStr) {
+          pdf.text(day.label, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + lineHeight * 0.4, { align: 'center' });
+          pdf.text(timeStr, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + lineHeight * 0.9, { align: 'center' });
+        } else {
+          pdf.text(day.label, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, yPos + ptHeaderRowHeight / 2, { align: 'center' });
+        }
+      });
         
         // Draw header row border
         pdf.setLineWidth(0.2);
@@ -820,49 +824,48 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           }
           
           const rowY = yPos;
-          const cellPadding = 4; // Increased padding
+          const cellPadding = 6; // Increased padding for better readability
           
           // Category name (left column)
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(8);
           pdf.text(category.name, ptTableStartX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
           
-          // Values for each day
-          pdf.setFont('helvetica', 'normal');
-          daysToShow.forEach((day, idx) => {
-            const plan = plans.get(day.key);
-            const value = category.getValue(plan);
-            const cellX = ptDayColStarts[idx];
-            const cellWidth = ptDayColWidths[idx];
-            
-            if (value !== 'NONE' && value !== '--') {
-              const lines = pdf.splitTextToSize(value, cellWidth - cellPadding * 2);
-              let currentY = rowY + cellPadding;
-              lines.forEach((line: string) => {
-                pdf.text(line, cellX + cellPadding, currentY);
-                currentY += lineHeight * 0.6;
-              });
-            } else {
-              pdf.text(value, cellX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
-            }
-          });
+        // Values for each day
+        pdf.setFont('helvetica', 'normal');
+        daysToShow.forEach((day, idx) => {
+          const plan = plans?.get(day.key);
+          const value = category.getValue(plan);
+          const cellX = ptDayColStarts[idx];
+          const cellWidth = ptDayColWidths[idx];
           
-          // Draw row border
-          pdf.rect(ptTableStartX, rowY, ptTableEndX - ptTableStartX, ptRowHeight);
-          yPos += ptRowHeight;
-        }
-        
-        // Draw vertical lines
-        pdf.setLineWidth(0.2);
-        pdf.line(ptTableStartX + ptDayColWidth, ptTableStartY, ptTableStartX + ptDayColWidth, yPos);
-        ptDayColStarts.forEach(x => {
-          pdf.line(x, ptTableStartY, x, yPos);
+          if (value !== 'NONE' && value !== '--') {
+            const lines = pdf.splitTextToSize(value, cellWidth - cellPadding * 2);
+            let currentY = rowY + cellPadding;
+            lines.forEach((line: string) => {
+              pdf.text(line, cellX + cellPadding, currentY);
+              currentY += lineHeight * 0.6;
+            });
+          } else {
+            pdf.text(value, cellX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
+          }
         });
         
-        yPos += lineHeight * 0.5;
-        
-        addBlankLine(0.5);
+        // Draw row border
+        pdf.rect(ptTableStartX, rowY, ptTableEndX - ptTableStartX, ptRowHeight);
+        yPos += ptRowHeight;
       }
+      
+      // Draw vertical lines
+      pdf.setLineWidth(0.2);
+      pdf.line(ptTableStartX + ptDayColWidth, ptTableStartY, ptTableStartX + ptDayColWidth, yPos);
+      ptDayColStarts.forEach(x => {
+        pdf.line(x, ptTableStartY, x, yPos);
+      });
+      
+      yPos += lineHeight * 0.5;
+      
+      addBlankLine(0.5);
     }
     
     if (!hasAnyPTData) {

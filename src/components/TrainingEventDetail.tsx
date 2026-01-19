@@ -460,7 +460,7 @@ export default function TrainingEventDetail({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               ) : (
-                <div className="text-gray-900">{new Date(event.date).toLocaleDateString()}</div>
+                <div className="text-gray-900">{event.date}</div>
               )}
             </div>
 
@@ -476,7 +476,7 @@ export default function TrainingEventDetail({
                 />
               ) : (
                 <div className="text-gray-900">
-                  {event.endDate ? new Date(event.endDate).toLocaleDateString() : 'Not set'}
+                  {event.endDate ? event.endDate : 'Not set'}
                 </div>
               )}
             </div>
