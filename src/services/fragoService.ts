@@ -378,92 +378,99 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('No change to base OPORD.');
     addBlankLine(0.5);
     
-    // Weather Table
+    // Weather Table with grid formatting
     const weekDays = [data.dates.monday, data.dates.tuesday, data.dates.wednesday, data.dates.thursday, data.dates.friday];
     addText('Weather Table:', 11, true);
     addBlankLine(0.3);
     
-    // Table headers
-    const colWidths = [30, 20, 20, 20, 25, 25, 35, 35]; // Day, High, Low, Wind, Precip Day, Precip Night, Events, Impact
-    const colStarts = [margin + 5];
-    for (let i = 1; i < colWidths.length; i++) {
-      colStarts.push(colStarts[i - 1] + colWidths[i - 1]);
+    // Table structure: Day column + 5 day columns
+    const dayColWidth = 30;
+    const dayColWidths = [35, 35, 35, 35, 35]; // Equal width for each day
+    const tableStartX = margin + 5;
+    const dayColStarts = [tableStartX + dayColWidth];
+    for (let i = 1; i < dayColWidths.length; i++) {
+      dayColStarts.push(dayColStarts[i - 1] + dayColWidths[i - 1]);
     }
+    const tableEndX = dayColStarts[dayColStarts.length - 1] + dayColWidths[dayColWidths.length - 1];
     
+    const rowHeight = lineHeight * 1.5;
+    let tableStartY = yPos;
+    
+    // Header row
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
-    const headerY = yPos;
-    pdf.text('Day', colStarts[0], yPos);
-    pdf.text('High', colStarts[1], yPos);
-    pdf.text('Low', colStarts[2], yPos);
-    pdf.text('Wind', colStarts[3], yPos);
-    pdf.text('Precip D', colStarts[4], yPos);
-    pdf.text('Precip N', colStarts[5], yPos);
-    pdf.text('Events', colStarts[6], yPos);
-    pdf.text('Impact', colStarts[7], yPos);
-    yPos += lineHeight * 1.2;
+    pdf.text('Day', tableStartX + dayColWidth / 2, yPos + lineHeight * 0.5, { align: 'center' });
+    const dayLabels = weekDays.map(date => formatDateShort(date));
+    dayLabels.forEach((label, idx) => {
+      pdf.text(label, dayColStarts[idx] + dayColWidths[idx] / 2, yPos + lineHeight * 0.5, { align: 'center' });
+    });
     
-    // Draw header line below text
-    pdf.setLineWidth(0.1);
-    pdf.line(margin + 5, yPos - lineHeight * 0.3, pageWidth - margin, yPos - lineHeight * 0.3);
+    // Draw header row border
+    pdf.setLineWidth(0.2);
+    pdf.rect(tableStartX, yPos, tableEndX - tableStartX, rowHeight);
+    yPos += rowHeight;
     
-    // Table rows for Monday-Friday
+    // Category rows: High, Low, Wind, Precip Day, Precip Night, Events, Impact
+    const categories = [
+      { name: 'High', getValue: (w: any) => w ? `${w.high}°F` : '--' },
+      { name: 'Low', getValue: (w: any) => w ? `${w.low}°F` : '--' },
+      { name: 'Wind', getValue: (w: any) => w ? `${w.wind} mph` : '--' },
+      { name: 'Precip D', getValue: (w: any) => w ? `${w.precipDay}%` : '--' },
+      { name: 'Precip N', getValue: (w: any) => w ? `${w.precipNight}%` : '--' },
+      { name: 'Events', getValue: (w: any) => w?.events || 'NONE', multiline: true },
+      { name: 'Impact', getValue: (w: any) => w?.impact || 'NONE', multiline: true }
+    ];
+    
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
-    for (const date of weekDays) {
-      const weather = data.weather.get(date);
-      if (yPos > pageHeight - margin - lineHeight * 3) {
+    
+    for (const category of categories) {
+      if (yPos > pageHeight - margin - rowHeight * 2) {
         pdf.addPage();
         yPos = margin;
+        tableStartY = yPos;
       }
       
-      const dayLabel = formatDateShort(date);
-      pdf.text(dayLabel, colStarts[0], yPos);
+      const rowY = yPos;
+      const cellPadding = lineHeight * 0.3;
       
-      if (weather) {
-        pdf.text(`${weather.high}°F`, colStarts[1], yPos);
-        pdf.text(`${weather.low}°F`, colStarts[2], yPos);
-        pdf.text(`${weather.wind} mph`, colStarts[3], yPos);
-        pdf.text(`${weather.precipDay}%`, colStarts[4], yPos);
-        pdf.text(`${weather.precipNight}%`, colStarts[5], yPos);
+      // Category name (left column)
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(category.name, tableStartX + cellPadding, rowY + cellPadding);
+      
+      // Values for each day
+      pdf.setFont('helvetica', 'normal');
+      weekDays.forEach((date, idx) => {
+        const weather = data.weather.get(date);
+        const value = category.getValue(weather);
+        const cellX = dayColStarts[idx];
+        const cellWidth = dayColWidths[idx];
         
-        // Events and Impact with word wrap
-        const eventsText = weather.events || 'NONE';
-        const impactText = weather.impact || 'NONE';
-        const eventsLines = pdf.splitTextToSize(eventsText, colWidths[6] - 2);
-        const impactLines = pdf.splitTextToSize(impactText, colWidths[7] - 2);
-        const maxLines = Math.max(eventsLines.length, impactLines.length, 1);
-        
-        let currentY = yPos;
-        for (let i = 0; i < maxLines; i++) {
-          if (i > 0) {
-            currentY += lineHeight * 0.8;
-            if (currentY > pageHeight - margin - lineHeight) {
-              pdf.addPage();
-              currentY = margin;
-            }
-          }
-          pdf.text(eventsLines[i] || '', colStarts[6], currentY);
-          pdf.text(impactLines[i] || '', colStarts[7], currentY);
+        if (category.multiline) {
+          const lines = pdf.splitTextToSize(value, cellWidth - cellPadding * 2);
+          let currentY = rowY + cellPadding;
+          lines.forEach((line: string, lineIdx: number) => {
+            if (lineIdx > 0) currentY += lineHeight * 0.7;
+            pdf.text(line, cellX + cellPadding, currentY);
+          });
+        } else {
+          pdf.text(value, cellX + cellPadding, rowY + cellPadding);
         }
-        
-        // Draw line below row (after text)
-        yPos = currentY + lineHeight * 0.8;
-      } else {
-        // No weather data - show empty cells
-        pdf.text('--', colStarts[1], yPos);
-        pdf.text('--', colStarts[2], yPos);
-        pdf.text('--', colStarts[3], yPos);
-        pdf.text('--', colStarts[4], yPos);
-        pdf.text('--', colStarts[5], yPos);
-        pdf.text('NONE', colStarts[6], yPos);
-        pdf.text('NONE', colStarts[7], yPos);
-        yPos += lineHeight * 0.8;
-      }
+      });
       
-      pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
-      yPos += lineHeight * 0.5;
+      // Draw row border
+      pdf.rect(tableStartX, rowY, tableEndX - tableStartX, rowHeight);
+      yPos += rowHeight;
     }
+    
+    // Draw vertical lines
+    pdf.setLineWidth(0.2);
+    pdf.line(tableStartX + dayColWidth, tableStartY, tableStartX + dayColWidth, yPos);
+    dayColStarts.forEach(x => {
+      pdf.line(x, tableStartY, x, yPos);
+    });
+    
+    yPos += lineHeight * 0.5;
     
     pdf.setFontSize(11);
     addBlankLine(0.5);
@@ -610,22 +617,30 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
     addText('b. Emergency Contacts', 11, true);
     addBlankLine(0.3);
     addText('LTC Layfield – (706) 542-0559', 11, false, 'left', margin + 5);
-    addText('LTC Lyles – (706) 542-0566', 11, false, 'left', margin + 5);
     addText('MAJ Carlson – (706) 542-0557', 11, false, 'left', margin + 5);
     addBlankLine(2);
     
     // Signatures
     if (data.leadership.bc) {
-      addText(formatCadetNameWithRank(data.leadership.bc), 11, false, 'left', margin);
-      addText('BN CDR', 10, false, 'left', margin);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(formatCadetNameWithRank(data.leadership.bc), margin, yPos);
+      yPos += lineHeight;
+      pdf.setFontSize(10);
+      pdf.text('BN CDR', margin, yPos);
+      yPos += lineHeight * 1.5;
     }
-    addBlankLine(1);
     
     if (data.leadership.s3) {
-      addText('OFFICIAL:', 11, true, 'left', margin);
-      addBlankLine(0.5);
-      addText(formatCadetNameWithRank(data.leadership.s3), 11, false, 'left', margin);
-      addText('BN S-3', 10, false, 'left', margin);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('OFFICIAL:', margin, yPos);
+      yPos += lineHeight * 1.2;
+      pdf.text(formatCadetNameWithRank(data.leadership.s3), margin, yPos);
+      yPos += lineHeight;
+      pdf.setFontSize(10);
+      pdf.text('BN S-3', margin, yPos);
+      yPos += lineHeight;
     }
     addBlankLine(1);
     
@@ -672,77 +687,97 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
         addText(`${company} Company`, 10, true);
         addBlankLine(0.3);
         
-        // PT Table headers
-        // For regular companies: Day, Time, Location, Uniform, Title, Workout (6 columns)
-        // For Ranger: Day, Time, Location, Uniform, Title, Workout (6 columns - same)
-        const ptColWidths = [20, 25, 30, 40, 50, 50]; // Day, Time, Location, Uniform, Title, Workout
-        const ptColStarts = [margin + 5];
-        for (let i = 1; i < ptColWidths.length; i++) {
-          ptColStarts.push(ptColStarts[i - 1] + ptColWidths[i - 1]);
+        // PT Table with grid formatting (similar to weather table)
+        const ptTableStartX = margin + 5;
+        const ptDayColWidth = 25;
+        const numDays = daysToShow.length;
+        const ptDayColWidths = Array(numDays).fill((pageWidth - 2 * margin - ptDayColWidth - 10) / numDays);
+        const ptDayColStarts = [ptTableStartX + ptDayColWidth];
+        for (let i = 1; i < ptDayColWidths.length; i++) {
+          ptDayColStarts.push(ptDayColStarts[i - 1] + ptDayColWidths[i - 1]);
         }
+        const ptTableEndX = ptDayColStarts[ptDayColStarts.length - 1] + ptDayColWidths[ptDayColWidths.length - 1];
         
+        const ptRowHeight = lineHeight * 2;
+        const ptTableStartY = yPos;
+        
+        // Header row
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Day', ptColStarts[0], yPos);
-        pdf.text('Time', ptColStarts[1], yPos);
-        pdf.text('Location', ptColStarts[2], yPos);
-        pdf.text('Uniform', ptColStarts[3], yPos);
-        pdf.text('Title', ptColStarts[4], yPos);
-        pdf.text('Workout', ptColStarts[5], yPos);
-        yPos += lineHeight * 1.2;
+        pdf.text('Day', ptTableStartX + ptDayColWidth / 2, yPos + lineHeight * 0.7, { align: 'center' });
+        daysToShow.forEach((day, idx) => {
+          const timeStr = plans.get(day.key)?.firstFormation || '';
+          const dayText = timeStr ? `${day.label}\n${timeStr}` : day.label;
+          const lines = dayText.split('\n');
+          let currentY = yPos + lineHeight * 0.5;
+          lines.forEach((line: string) => {
+            pdf.text(line, ptDayColStarts[idx] + ptDayColWidths[idx] / 2, currentY, { align: 'center' });
+            currentY += lineHeight * 0.6;
+          });
+        });
         
-        // Draw header line below text
-        pdf.setLineWidth(0.1);
-        pdf.line(margin + 5, yPos - lineHeight * 0.3, pageWidth - margin, yPos - lineHeight * 0.3);
+        // Draw header row border
+        pdf.setLineWidth(0.2);
+        pdf.rect(ptTableStartX, yPos, ptTableEndX - ptTableStartX, ptRowHeight);
+        yPos += ptRowHeight;
+        
+        // Category rows: Uniform, Location, Activity
+        const ptCategories = [
+          { name: 'Uniform', getValue: (plan: PTPlan | null) => plan?.uniform || 'NONE', multiline: true },
+          { name: 'Location', getValue: (plan: PTPlan | null) => plan?.location || 'NONE', multiline: true },
+          { name: 'Activity', getValue: (plan: PTPlan | null) => plan?.workouts || 'NONE', multiline: true }
+        ];
         
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         
-        for (const day of daysToShow) {
-          const plan = plans.get(day.key);
-          if (plan) {
-            if (yPos > pageHeight - margin - lineHeight * 3) {
-              pdf.addPage();
-              yPos = margin;
-            }
-            
-            const rowStartY = yPos;
-            pdf.text(day.label, ptColStarts[0], yPos);
-            pdf.text(plan.firstFormation || '', ptColStarts[1], yPos);
-            
-            const locationLines = pdf.splitTextToSize(plan.location || '', ptColWidths[2] - 2);
-            pdf.text(locationLines[0] || '', ptColStarts[2], yPos);
-            
-            const uniformLines = pdf.splitTextToSize(plan.uniform || '', ptColWidths[3] - 2);
-            pdf.text(uniformLines[0] || '', ptColStarts[3], yPos);
-            
-            const titleLines = pdf.splitTextToSize(plan.title || '', ptColWidths[4] - 2);
-            pdf.text(titleLines[0] || '', ptColStarts[4], yPos);
-            
-            const workoutLines = pdf.splitTextToSize(plan.workouts || '', ptColWidths[5] - 2);
-            pdf.text(workoutLines[0] || '', ptColStarts[5], yPos);
-            
-            // Handle multi-line content
-            const maxLines = Math.max(locationLines.length, uniformLines.length, titleLines.length, workoutLines.length, 1);
-            let currentY = yPos;
-            for (let i = 1; i < maxLines; i++) {
-              currentY += lineHeight * 0.7;
-              if (currentY > pageHeight - margin - lineHeight) {
-                pdf.addPage();
-                currentY = margin;
-              }
-              if (locationLines[i]) pdf.text(locationLines[i], ptColStarts[2], currentY);
-              if (uniformLines[i]) pdf.text(uniformLines[i], ptColStarts[3], currentY);
-              if (titleLines[i]) pdf.text(titleLines[i], ptColStarts[4], currentY);
-              if (workoutLines[i]) pdf.text(workoutLines[i], ptColStarts[5], currentY);
-            }
-            
-            // Draw line below row (after text)
-            yPos = currentY + lineHeight * 0.8;
-            pdf.line(margin + 5, yPos, pageWidth - margin, yPos);
-            yPos += lineHeight * 0.5;
+        for (const category of ptCategories) {
+          if (yPos > pageHeight - margin - ptRowHeight * 2) {
+            pdf.addPage();
+            yPos = margin;
+            ptTableStartY = yPos;
           }
+          
+          const rowY = yPos;
+          const cellPadding = lineHeight * 0.3;
+          
+          // Category name (left column)
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(category.name, ptTableStartX + cellPadding, rowY + cellPadding);
+          
+          // Values for each day
+          pdf.setFont('helvetica', 'normal');
+          daysToShow.forEach((day, idx) => {
+            const plan = plans.get(day.key);
+            const value = category.getValue(plan);
+            const cellX = ptDayColStarts[idx];
+            const cellWidth = ptDayColWidths[idx];
+            
+            if (category.multiline) {
+              const lines = pdf.splitTextToSize(value, cellWidth - cellPadding * 2);
+              let currentY = rowY + cellPadding;
+              lines.forEach((line: string) => {
+                pdf.text(line, cellX + cellPadding, currentY);
+                currentY += lineHeight * 0.7;
+              });
+            } else {
+              pdf.text(value, cellX + cellPadding, rowY + cellPadding);
+            }
+          });
+          
+          // Draw row border
+          pdf.rect(ptTableStartX, rowY, ptTableEndX - ptTableStartX, ptRowHeight);
+          yPos += ptRowHeight;
         }
+        
+        // Draw vertical lines
+        pdf.setLineWidth(0.2);
+        pdf.line(ptTableStartX + ptDayColWidth, ptTableStartY, ptTableStartX + ptDayColWidth, yPos);
+        ptDayColStarts.forEach(x => {
+          pdf.line(x, ptTableStartY, x, yPos);
+        });
+        
+        yPos += lineHeight * 0.5;
         
         addBlankLine(0.5);
       }
