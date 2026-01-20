@@ -124,9 +124,10 @@ async function getWeekPTPlans(weekStart: string): Promise<Map<Company, Map<strin
   for (const company of companies) {
     const plans = await getPTPlansForWeek(company, weekStart);
     
-    // For special week, replace Tuesday with Battalion PT for all companies (except Ranger and Grizzly Company)
+    // For special week, replace Tuesday with Battalion PT for all companies (except Grizzly Company)
     // Grizzly Company always has their own PT, never Battalion PT
-    if (isSpecialWeek && battalionPT && company !== 'Ranger' && company !== 'Grizzly Company') {
+    // Ranger Challenge also gets Battalion PT on Tuesday for special weeks
+    if (isSpecialWeek && battalionPT && company !== 'Grizzly Company') {
       plans.set('tuesday', battalionPT);
     }
     
