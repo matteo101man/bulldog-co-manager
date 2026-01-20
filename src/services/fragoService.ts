@@ -799,10 +799,10 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
       addText(`• Leadership Lab: ${labDate}, ${labTime}, OCPs, Water Source`, 11, false, 'left', margin + 5);
     }
     
-    // Training Meeting (Tuesday, 2:00-2:30PM, OCPs, Water Source)
+    // Training Meeting (Tuesday, 2:55-3:25PM, OCPs, Water Source)
     if (hasTrainingMeeting) {
       const meetingDate = formatDateForEvent(tuesdayDate);
-      const meetingTime = formatTimeRange('1400', '1430'); // 2:00PM-2:30PM in military time
+      const meetingTime = formatTimeRange('1455', '1525'); // 2:55PM-3:25PM in military time
       addText(`• Training Meeting: ${meetingDate}, ${meetingTime}, OCPs, Water Source`, 11, false, 'left', margin + 5);
     }
     
