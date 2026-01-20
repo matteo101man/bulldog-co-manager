@@ -1051,8 +1051,14 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           if (value !== 'NONE' && value !== '--') {
             // Use actual cell width minus padding for accurate text wrapping
             const cellWidth = ptDayColWidths[0] - (cellPadding * 2);
-            const lines = pdf.splitTextToSize(value, cellWidth);
-            maxLines = Math.max(maxLines, lines.length);
+            // Split by newlines first, then wrap each line
+            const valueLines = value.split('\n');
+            valueLines.forEach(line => {
+              const wrappedLines = pdf.splitTextToSize(line, cellWidth);
+              maxLines = Math.max(maxLines, wrappedLines.length * valueLines.length);
+            });
+            // Account for newlines in the value
+            maxLines = Math.max(maxLines, valueLines.length);
           }
         });
         // Ensure minimum row height and add extra space for multi-line content
@@ -1130,16 +1136,21 @@ export async function generateFRAGO(weekStartDate?: string): Promise<void> {
           const availableWidth = cellWidth - (cellPadding * 2);
           
           if (value !== 'NONE' && value !== '--') {
-            // Split text to fit within the available cell width
-            const lines = pdf.splitTextToSize(value, availableWidth);
+            // Split by newlines first, then wrap each line
+            const valueLines = value.split('\n');
             let currentY = rowY + cellPadding;
             const lineSpacing = isRangerTable ? lineHeight * 0.5 : lineHeight * 0.6;
-            lines.forEach((line: string) => {
-              // Ensure text doesn't go beyond cell boundaries
-              if (currentY < rowY + ptRowHeight - lineSpacing) {
-                pdf.text(line, cellX + cellPadding, currentY);
-                currentY += lineSpacing;
-              }
+            
+            valueLines.forEach((line: string) => {
+              // Wrap each line to fit within cell width
+              const wrappedLines = pdf.splitTextToSize(line, availableWidth);
+              wrappedLines.forEach((wrappedLine: string) => {
+                // Ensure text doesn't go beyond cell boundaries
+                if (currentY < rowY + ptRowHeight - lineSpacing) {
+                  pdf.text(wrappedLine, cellX + cellPadding, currentY);
+                  currentY += lineSpacing;
+                }
+              });
             });
           } else {
             pdf.text(value, cellX + cellPadding, rowY + cellPadding + lineHeight * 0.5);
