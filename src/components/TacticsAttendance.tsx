@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Cadet, AttendanceStatus, AttendanceRecord } from '../types';
 import { getCadetsByMSLevel } from '../services/cadetService';
-import { getAttendanceRecord, updateAttendanceRecord, getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
+import { getAttendanceRecord, updateAttendance, getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
 import { getCurrentWeekStart, getWeekDatesForWeek, formatDateWithDay, getWeekStartByOffset, formatDateWithOrdinal } from '../utils/dates';
 
 interface TacticsAttendanceProps {
@@ -12,9 +12,7 @@ interface TacticsAttendanceProps {
 export default function TacticsAttendance({ onBack, onSelectCadet }: TacticsAttendanceProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
-  const [localAttendanceMap, setLocalAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [currentWeekStart, setCurrentWeekStart] = useState<string>(getCurrentWeekStart());
   const [unexcusedTotals, setUnexcusedTotals] = useState<Map<string, number>>(new Map());
   const weekDates = getWeekDatesForWeek(currentWeekStart);
@@ -55,7 +53,6 @@ export default function TacticsAttendance({ onBack, onSelectCadet }: TacticsAtte
         attendance.set(cadet.id, fullRecord);
       }
       setAttendanceMap(attendance);
-      setLocalAttendanceMap(new Map(attendance));
     } catch (error) {
       console.error('Error loading data:', error);
       alert(`Error loading data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -75,86 +72,46 @@ export default function TacticsAttendance({ onBack, onSelectCadet }: TacticsAtte
     }
   }
 
-  function handleStatusChange(cadetId: string, status: AttendanceStatus) {
-    setLocalAttendanceMap(prev => {
-      const newMap = new Map(prev);
-      const existingRecord = newMap.get(cadetId) || {
-        cadetId,
-        ptMonday: null,
-        ptTuesday: null,
-        ptWednesday: null,
-        ptThursday: null,
-        ptFriday: null,
-        labThursday: null,
-        tacticsTuesday: null,
-        weekStartDate: currentWeekStart
-      };
-      
-      const updatedRecord: AttendanceRecord = {
-        ...existingRecord,
-        tacticsTuesday: status || null,
-        weekStartDate: currentWeekStart
-      };
-      
-      newMap.set(cadetId, updatedRecord);
-      return newMap;
-    });
-  }
-
-  async function handleSave() {
-    setSaving(true);
+  async function handleStatusChange(cadetId: string, status: AttendanceStatus) {
+    // Save immediately to database - real-time subscription will update UI
     try {
-      const changes: Array<{ cadetId: string; record: AttendanceRecord }> = [];
+      await updateAttendance(cadetId, 'tuesday', status, currentWeekStart, 'Tactics');
       
-      localAttendanceMap.forEach((localRecord, cadetId) => {
-        const serverRecord = attendanceMap.get(cadetId);
+      // Update local state optimistically for immediate UI feedback
+      setAttendanceMap(prev => {
+        const newMap = new Map(prev);
+        const existingRecord = newMap.get(cadetId) || {
+          cadetId,
+          ptMonday: null,
+          ptTuesday: null,
+          ptWednesday: null,
+          ptThursday: null,
+          ptFriday: null,
+          labThursday: null,
+          tacticsTuesday: null,
+          weekStartDate: currentWeekStart
+        };
         
-        if (localRecord.tacticsTuesday !== (serverRecord?.tacticsTuesday ?? null)) {
-          changes.push({ cadetId, record: localRecord });
-        }
-      });
-
-      // Also check for records that exist in server but not in local
-      attendanceMap.forEach((serverRecord, cadetId) => {
-        if (!localAttendanceMap.has(cadetId)) {
-          const newRecord: AttendanceRecord = {
-            cadetId,
-            weekStartDate: currentWeekStart,
-            ptMonday: null,
-            ptTuesday: null,
-            ptWednesday: null,
-            ptThursday: null,
-            ptFriday: null,
-            labThursday: null,
-            tacticsTuesday: null
-          };
-          changes.push({ cadetId, record: newRecord });
-        }
+        const updatedRecord: AttendanceRecord = {
+          ...existingRecord,
+          tacticsTuesday: status || null,
+          weekStartDate: currentWeekStart
+        };
+        
+        newMap.set(cadetId, updatedRecord);
+        return newMap;
       });
       
-      // Save all changes
-      await Promise.all(
-        changes.map(({ record }) => updateAttendanceRecord(record))
-      );
-
-      setAttendanceMap(new Map(localAttendanceMap));
+      // Reload unexcused totals in case they changed
       await loadUnexcusedTotals();
-      alert('Attendance saved successfully!');
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      alert(`Error saving attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      await loadData();
-    } finally {
-      setSaving(false);
+      console.error('Error updating attendance:', error);
+      alert(`Error updating attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  // Check if there are unsaved changes
-  const hasUnsavedChanges = JSON.stringify(Array.from(attendanceMap.entries()).sort()) !== 
-                            JSON.stringify(Array.from(localAttendanceMap.entries()).sort());
-
   // Calculate stats
-  const records = Array.from(localAttendanceMap.values());
+  const records = Array.from(attendanceMap.values());
   let presentCount = 0;
   let excusedCount = 0;
   let unexcusedCount = 0;
@@ -204,7 +161,7 @@ export default function TacticsAttendance({ onBack, onSelectCadet }: TacticsAtte
         {/* Cadet list */}
         <div className="space-y-2">
           {cadets.map((cadet) => {
-            const record = localAttendanceMap.get(cadet.id);
+            const record = attendanceMap.get(cadet.id);
             const tacticsTuesday = record?.tacticsTuesday ?? null;
             
             return (
@@ -241,23 +198,6 @@ export default function TacticsAttendance({ onBack, onSelectCadet }: TacticsAtte
         {cadets.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             No MS3 cadets found
-          </div>
-        )}
-
-        {/* Save button */}
-        {cadets.length > 0 && (
-          <div className="mt-4 mb-4">
-            <button
-              onClick={handleSave}
-              disabled={!hasUnsavedChanges || saving}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-white touch-manipulation min-h-[44px] ${
-                hasUnsavedChanges && !saving
-                  ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
-                  : 'bg-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {saving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'All Changes Saved'}
-            </button>
           </div>
         )}
 
