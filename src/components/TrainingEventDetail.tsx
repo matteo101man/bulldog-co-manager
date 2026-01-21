@@ -336,7 +336,6 @@ export default function TrainingEventDetail({
 
   function formatDate(dateString: string): string {
     const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${day.toString().padStart(2, '0')}${months[month - 1]}${year}`;
   }
@@ -356,8 +355,6 @@ export default function TrainingEventDetail({
       </div>
     );
   }
-
-  const currentData = isEditing ? editedEvent : event;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-safe-area-inset-bottom">
@@ -636,7 +633,6 @@ export default function TrainingEventDetail({
             setEditedEvent={setEditedEvent}
             isEditing={isEditing}
             cadets={cadets}
-            formatDate={formatDate}
           />
         )}
       </main>
@@ -712,13 +708,6 @@ function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, forma
     updateConop('attachedAppendices', {
       ...conop.attachedAppendices,
       [appendix]: value
-    });
-  }
-
-  function updateResourceStatus(resource: string, status: PlanningStatus) {
-    updateConop('resourceStatus', {
-      ...conop.resourceStatus,
-      [resource]: status
     });
   }
 
