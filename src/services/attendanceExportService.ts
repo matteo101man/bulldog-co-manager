@@ -610,9 +610,9 @@ export async function exportLastWeekAbsences(): Promise<void> {
       getSemesterTotal: (record) => {
         if (!record) return 0;
         let total = 0;
-        if (record.ptTuesday === 'excused' || record.ptTuesday === 'unexcused') total++;
-        if (record.ptWednesday === 'excused' || record.ptWednesday === 'unexcused') total++;
-        if (record.ptThursday === 'excused' || record.ptThursday === 'unexcused') total++;
+        if (record.ptTuesday === 'unexcused') total++;
+        if (record.ptWednesday === 'unexcused') total++;
+        if (record.ptThursday === 'unexcused') total++;
         return total;
       }
     },
@@ -623,7 +623,7 @@ export async function exportLastWeekAbsences(): Promise<void> {
       getStatus: (record, dateStr) => getLabAttendanceForDate(record, dateStr),
       getSemesterTotal: (record) => {
         if (!record) return 0;
-        return (record.labThursday === 'excused' || record.labThursday === 'unexcused') ? 1 : 0;
+        return (record.labThursday === 'unexcused') ? 1 : 0;
       }
     },
     { 
@@ -633,7 +633,7 @@ export async function exportLastWeekAbsences(): Promise<void> {
       getStatus: (record, dateStr, cadetMSLevel) => getTacticsAttendanceForDate(record, dateStr, cadetMSLevel),
       getSemesterTotal: (record) => {
         if (!record) return 0;
-        return (record.tacticsTuesday === 'excused' || record.tacticsTuesday === 'unexcused') ? 1 : 0;
+        return (record.tacticsTuesday === 'unexcused') ? 1 : 0;
       }
     }
   ];
@@ -658,18 +658,18 @@ export async function exportLastWeekAbsences(): Promise<void> {
         const absences = new Map<string, AttendanceStatus>();
         let hadAbsence = false;
         
-        // Check last week dates for this type
+        // Check last week dates for this type - only count unexcused absences
         for (const dateStr of sheetDates) {
           // Skip current week Tuesday if it's not in the last week dates
           if (dateStr === currentTuesdayStr && !lastWeekDates.includes(dateStr)) {
             const status = getStatus(currentWeekRecord, dateStr, cadet.militaryScienceLevel);
-            if (status === 'excused' || status === 'unexcused') {
+            if (status === 'unexcused') {
               absences.set(dateStr, status);
               hadAbsence = true;
             }
           } else if (lastWeekDates.includes(dateStr)) {
             const status = getStatus(lastWeekRecord, dateStr, cadet.militaryScienceLevel);
-            if (status === 'excused' || status === 'unexcused') {
+            if (status === 'unexcused') {
               absences.set(dateStr, status);
               hadAbsence = true;
             }
@@ -681,18 +681,18 @@ export async function exportLastWeekAbsences(): Promise<void> {
           // Calculate total absences for this type - count ALL absences regardless of date
           let semesterTotalAbsences = 0;
           
-          // Count absences from ALL attendance records for this cadet (all weeks, all dates)
+          // Count unexcused absences from ALL attendance records for this cadet (all weeks, all dates)
           const cadetRecords = allAttendanceRecords.get(cadet.id) || [];
           for (const record of cadetRecords) {
-            // Count absences for this week based on attendance type
+            // Count only unexcused absences for this week based on attendance type
             if (type === 'PT') {
-              if (record.ptTuesday === 'excused' || record.ptTuesday === 'unexcused') semesterTotalAbsences++;
-              if (record.ptWednesday === 'excused' || record.ptWednesday === 'unexcused') semesterTotalAbsences++;
-              if (record.ptThursday === 'excused' || record.ptThursday === 'unexcused') semesterTotalAbsences++;
+              if (record.ptTuesday === 'unexcused') semesterTotalAbsences++;
+              if (record.ptWednesday === 'unexcused') semesterTotalAbsences++;
+              if (record.ptThursday === 'unexcused') semesterTotalAbsences++;
             } else if (type === 'Lab') {
-              if (record.labThursday === 'excused' || record.labThursday === 'unexcused') semesterTotalAbsences++;
+              if (record.labThursday === 'unexcused') semesterTotalAbsences++;
             } else if (type === 'Tactics') {
-              if (record.tacticsTuesday === 'excused' || record.tacticsTuesday === 'unexcused') semesterTotalAbsences++;
+              if (record.tacticsTuesday === 'unexcused') semesterTotalAbsences++;
             }
           }
           
@@ -712,7 +712,8 @@ export async function exportLastWeekAbsences(): Promise<void> {
         const [year, month, day] = d.split('-');
         return `${month}/${day}/${year}`;
       }),
-      'Total Semester Absences'
+      'Total Semester Absences',
+      'Contracted'
     ];
     
     // Create worksheet data
@@ -763,7 +764,8 @@ export async function exportLastWeekAbsences(): Promise<void> {
             if (status === 'unexcused') return 'U';
             return '';
           }),
-          data.semesterTotalAbsences
+          data.semesterTotalAbsences,
+          cadet.contracted === 'Y' ? 'Yes' : cadet.contracted === 'N' ? 'No' : ''
         ];
         const rowIndex = wsData.length;
         wsData.push(row);
@@ -778,7 +780,8 @@ export async function exportLastWeekAbsences(): Promise<void> {
     ws['!cols'] = [
       { wch: 20 }, // Name column
       ...sheetDates.map(() => ({ wch: 12 })), // Date columns
-      { wch: 20 } // Total absences column
+      { wch: 20 }, // Total absences column
+      { wch: 12 } // Contracted column
     ];
     
     // Apply styling
@@ -885,14 +888,15 @@ export async function exportLastWeekAbsences(): Promise<void> {
             };
           }
         } else {
-          // Name and total columns
+          // Name, total absences, and contracted columns
           const isNameCell = C === 0;
+          const isTotalAbsencesCell = C === sheetDates.length + 1;
+          const isContractedCell = C === sheetDates.length + 2;
           const cadet = cadetRowMap.get(R);
-          const isContracted = cadet?.contracted === true;
           
           ws[cellAddress].s = {
-            fill: isNameCell && isContracted ? { fgColor: { rgb: 'FFFFFF00' } } : undefined,
-            alignment: { horizontal: C === 0 ? 'left' : 'center', vertical: 'center' },
+            fill: isNameCell && cadet?.contracted === 'Y' ? { fgColor: { rgb: 'FFFFFF00' } } : undefined,
+            alignment: { horizontal: isNameCell ? 'left' : 'center', vertical: 'center' },
             border: {
               top: { style: 'thin', color: { rgb: 'FF000000' } },
               bottom: { style: 'thin', color: { rgb: 'FF000000' } },
