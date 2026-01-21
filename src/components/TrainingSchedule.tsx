@@ -102,6 +102,10 @@ export default function TrainingSchedule({
         return <span className="text-yellow-600 text-xl font-bold">◐</span>;
       case 'issues':
         return <span className="text-red-600 text-xl font-bold">!</span>;
+      case 'not-started':
+        return <span className="text-gray-600 text-xl font-bold">○</span>;
+      default:
+        return <span className="text-gray-600 text-xl font-bold">○</span>;
     }
   }
 

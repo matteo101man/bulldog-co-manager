@@ -614,15 +614,17 @@ export default function TrainingEventDetail({
                   onChange={(e) => setEditedEvent({ ...editedEvent, planningStatus: e.target.value as PlanningStatus })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="complete">Complete ✓</option>
+                  <option value="not-started">Not Started ○</option>
                   <option value="in-progress">In Progress ◐</option>
                   <option value="issues">Issues !</option>
+                  <option value="complete">Complete ✓</option>
                 </select>
               ) : (
                 <div className="text-gray-900">
-                  {event.planningStatus === 'complete' && '✓ Complete'}
+                  {event.planningStatus === 'not-started' && '○ Not Started'}
                   {event.planningStatus === 'in-progress' && '◐ In Progress'}
                   {event.planningStatus === 'issues' && '! Issues'}
+                  {event.planningStatus === 'complete' && '✓ Complete'}
                 </div>
               )}
             </div>
