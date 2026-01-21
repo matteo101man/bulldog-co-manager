@@ -10,6 +10,8 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  private hasRefreshed = false;
+
   public state: State = {
     hasError: false,
     error: null
@@ -21,6 +23,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    
+    // Hard refresh the page once if we haven't already
+    if (!this.hasRefreshed) {
+      this.hasRefreshed = true;
+      // Use sessionStorage to prevent multiple refreshes in the same session
+      const refreshKey = 'error_refresh_attempted';
+      if (!sessionStorage.getItem(refreshKey)) {
+        sessionStorage.setItem(refreshKey, 'true');
+        // Hard refresh by reloading with cache bypass
+        setTimeout(() => {
+          window.location.href = window.location.href.split('?')[0] + '?refresh=' + Date.now();
+        }, 100);
+      }
+    }
   }
 
   public render() {
