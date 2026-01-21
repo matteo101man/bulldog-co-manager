@@ -1,5 +1,6 @@
 const {onDocumentCreated} = require('firebase-functions/v2/firestore');
 const {onRequest} = require('firebase-functions/v2/https');
+const {onSchedule} = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
@@ -358,6 +359,67 @@ SEQUENCE:0
     } catch (error) {
       console.error('Error generating calendar:', error);
       res.status(500).send('Error generating calendar: ' + error.message);
+    }
+  }
+);
+
+/**
+ * Scheduled Cloud Function that backs up attendance data daily (Monday-Friday)
+ * Runs at 11:00 PM EST every weekday
+ * Stores backup in Firestore, overwriting the previous day's backup
+ */
+exports.dailyAttendanceBackup = onSchedule(
+  {
+    schedule: '0 23 * * 1-5', // 11:00 PM EST, Monday-Friday (1-5)
+    timeZone: 'America/New_York',
+    region: 'us-central1',
+  },
+  async (event) => {
+    try {
+      console.log('Starting daily attendance backup...');
+      const db = admin.firestore();
+      
+      // Get all attendance records
+      const attendanceSnapshot = await db.collection('attendance').get();
+      
+      const attendanceRecords = [];
+      attendanceSnapshot.forEach((doc) => {
+        attendanceRecords.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log(`Found ${attendanceRecords.length} attendance records`);
+      
+      // Get current date for backup metadata
+      const now = new Date();
+      const backupDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      // Create backup document
+      const backupData = {
+        version: '1.0',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        backupDate: backupDate,
+        recordCount: attendanceRecords.length,
+        attendance: attendanceRecords
+      };
+      
+      // Store backup in Firestore, using 'latest' as the document ID to overwrite each day
+      // This ensures we always have the most recent backup accessible
+      await db.collection('attendanceBackups').doc('latest').set(backupData);
+      
+      // Also store a date-specific backup for historical tracking
+      await db.collection('attendanceBackups').doc(backupDate).set(backupData);
+      
+      console.log(`Backup completed successfully. Stored ${attendanceRecords.length} records.`);
+      console.log(`Backup date: ${backupDate}`);
+      
+      return null;
+    } catch (error) {
+      console.error('Error creating attendance backup:', error);
+      // Don't throw - we don't want failed backups to cause function failures
+      return null;
     }
   }
 );
