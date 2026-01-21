@@ -765,7 +765,7 @@ export async function exportLastWeekAbsences(): Promise<void> {
             return '';
           }),
           data.semesterTotalAbsences,
-          cadet.contracted === 'Y' ? 'Y' : cadet.contracted === 'N' ? 'N' : ''
+          (cadet.contracted === 'Y' || cadet.contracted === true) ? 'Y' : (cadet.contracted === 'N' || cadet.contracted === false) ? 'N' : (cadet.contracted || '')
         ];
         const rowIndex = wsData.length;
         wsData.push(row);
