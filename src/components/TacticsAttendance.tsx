@@ -30,8 +30,9 @@ export default function TacticsAttendance({ onBack, onSelectCadet }: TacticsAtte
   async function loadData() {
     setLoading(true);
     try {
-      // Get all MS3 cadets
-      const ms3Cadets = await getCadetsByMSLevel('MS3');
+      // Get all MS3 cadets, excluding Grizzly Company
+      const allMs3Cadets = await getCadetsByMSLevel('MS3');
+      const ms3Cadets = allMs3Cadets.filter(cadet => cadet.company !== 'Grizzly Company');
       setCadets(ms3Cadets);
       
       // Get attendance for all cadets for this week
