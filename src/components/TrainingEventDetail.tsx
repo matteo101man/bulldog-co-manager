@@ -334,12 +334,6 @@ export default function TrainingEventDetail({
     return cadet ? `${cadet.lastName}, ${cadet.firstName}` : cadetId;
   }
 
-  function formatDate(dateString: string): string {
-    const [year, month, day] = dateString.split('-').map(Number);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${day.toString().padStart(2, '0')}${months[month - 1]}${year}`;
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -646,10 +640,9 @@ interface ConopTabProps {
   setEditedEvent: (event: Partial<TrainingEvent>) => void;
   isEditing: boolean;
   cadets: Cadet[];
-  formatDate: (date: string) => string;
 }
 
-function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets, formatDate }: ConopTabProps) {
+function ConopTab({ event, editedEvent, setEditedEvent, isEditing, cadets }: ConopTabProps) {
   const conop = isEditing ? (editedEvent.conop || {}) : (event.conop || {});
   
   function updateConop(field: keyof ConopData, value: any) {
