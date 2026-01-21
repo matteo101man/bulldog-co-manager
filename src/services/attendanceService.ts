@@ -215,7 +215,6 @@ async function fetchAndCacheAttendance(
   weekStartDate: string
 ): Promise<Map<string, AttendanceRecord>> {
   const cadets = await getCadetsByCompany(company);
-  const attendanceMap = new Map<string, AttendanceRecord>();
   
   // Create a set of cadet IDs for this company for quick lookup
   const cadetIds = new Set(cadets.map(c => c.id));
@@ -229,7 +228,16 @@ async function fetchAndCacheAttendance(
   
   const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
   
-  // Only include records for cadets in this company
+  // Cache ALL records for the week (not just this company)
+  // This ensures the cache contains data for all companies
+  const allAttendanceMap = new Map<string, AttendanceRecord>();
+  records.forEach(record => {
+    allAttendanceMap.set(record.cadetId, record);
+  });
+  await cacheService.cacheAttendance(allAttendanceMap, weekStartDate);
+  
+  // Filter by company for return value
+  const attendanceMap = new Map<string, AttendanceRecord>();
   records.forEach(record => {
     if (cadetIds.has(record.cadetId)) {
       attendanceMap.set(record.cadetId, record);
@@ -238,9 +246,6 @@ async function fetchAndCacheAttendance(
 
   // Ensure all cadets have a record (even if null)
   ensureAllCadetsHaveRecords(attendanceMap, cadets, weekStartDate);
-
-  // Cache the results
-  await cacheService.cacheAttendance(attendanceMap, weekStartDate);
 
   return attendanceMap;
 }
@@ -307,26 +312,31 @@ export function subscribeToCompanyAttendance(
     q,
     async (querySnapshot) => {
       const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
-      const attendanceMap = new Map<string, AttendanceRecord>();
       
-      // Get cadets for filtering
+      // Cache ALL records for the week (not just this company)
+      // This ensures the cache contains data for all companies
+      const allAttendanceMap = new Map<string, AttendanceRecord>();
+      records.forEach(record => {
+        allAttendanceMap.set(record.cadetId, record);
+      });
+      await cacheService.cacheAttendance(allAttendanceMap, weekStartDate);
+      
+      // Filter by company for the callback
       const cadets = await getCadetsByCompany(company);
       const cadetIds = new Set(cadets.map(c => c.id));
+      const companyAttendanceMap = new Map<string, AttendanceRecord>();
       
       // Only include records for cadets in this company
       records.forEach(record => {
         if (cadetIds.has(record.cadetId)) {
-          attendanceMap.set(record.cadetId, record);
+          companyAttendanceMap.set(record.cadetId, record);
         }
       });
       
       // Ensure all cadets have a record
-      ensureAllCadetsHaveRecords(attendanceMap, cadets, weekStartDate);
+      ensureAllCadetsHaveRecords(companyAttendanceMap, cadets, weekStartDate);
       
-      // Update cache
-      await cacheService.cacheAttendance(attendanceMap, weekStartDate);
-      
-      onUpdate(attendanceMap);
+      onUpdate(companyAttendanceMap);
     },
     (error) => {
       console.error('Error in attendance subscription:', error);
