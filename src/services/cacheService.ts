@@ -75,7 +75,7 @@ class CacheService {
 
   /**
    * Get cached cadets by company
-   * If company is 'Master', returns all cadets excluding Grizzly Company
+   * If company is 'Master', returns all cadets
    */
   async getCachedCadets(company: string): Promise<any[] | null> {
     try {
@@ -89,7 +89,7 @@ class CacheService {
         let request: IDBRequest;
         
         if (company === 'Master') {
-          // Get all cadets, then filter out Grizzly Company
+          // Get all cadets
           request = store.getAll();
         } else {
           // Get cadets for specific company
@@ -99,11 +99,6 @@ class CacheService {
 
         request.onsuccess = () => {
           let cadets = request.result;
-          
-          // Filter out Grizzly Company for Master list
-          if (company === 'Master') {
-            cadets = cadets.filter((cadet: any) => cadet.company !== 'Grizzly Company');
-          }
           
           resolve(cadets.length > 0 ? cadets : null);
         };

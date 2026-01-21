@@ -16,7 +16,7 @@ export default function CadetsList({ onSelectCadet, onBack, onAddCadet, onSettin
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedCompanies, setSelectedCompanies] = useState<Set<Company>>(new Set(COMPANIES.filter(c => c !== 'Grizzly Company')));
+  const [selectedCompanies, setSelectedCompanies] = useState<Set<Company>>(new Set(COMPANIES));
   const [showContracted, setShowContracted] = useState(true);
   const [showUncontracted, setShowUncontracted] = useState(true);
   const unsubscribeRef = useRef<(() => void) | null>(null);
