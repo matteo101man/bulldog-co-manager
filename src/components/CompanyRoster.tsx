@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Cadet, Company, AttendanceStatus, DayOfWeek, AttendanceRecord, AttendanceType } from '../types';
 import { getCadetsByCompany, subscribeToCadets } from '../services/cadetService';
-import { getCompanyAttendance, updateAttendance, updateAttendanceRecord, getAllAttendanceForWeek, subscribeToCompanyAttendance, batchUpdateAttendanceRecords } from '../services/attendanceService';
+import { getCompanyAttendance, updateAttendance, getAllAttendanceForWeek, subscribeToCompanyAttendance } from '../services/attendanceService';
 import { getCurrentWeekStart, getWeekDates, formatDateWithDay, getWeekStartByOffset, getWeekDatesForWeek, formatDateWithOrdinal, getCurrentDateStringEST } from '../utils/dates';
 import { getTotalUnexcusedAbsencesForCadets } from '../services/attendanceService';
 import { calculateDayStats, calculateWeekStats, getCadetsByStatusAndLevel } from '../utils/stats';
@@ -15,9 +15,7 @@ interface CompanyRosterProps {
 export default function CompanyRoster({ company, onBack, onSelectCadet }: CompanyRosterProps) {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
-  const [localAttendanceMap, setLocalAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'week'>('week');
   const [currentWeekStart, setCurrentWeekStart] = useState<string>(getCurrentWeekStart());
   const [attendanceType, setAttendanceType] = useState<AttendanceType>('PT');
@@ -54,13 +52,6 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
       currentWeekStart,
       (updatedAttendance) => {
         setAttendanceMap(updatedAttendance);
-        // Only update local map if there are no unsaved changes
-        setLocalAttendanceMap(prev => {
-          const hasChanges = JSON.stringify(Array.from(updatedAttendance.entries()).sort()) !== 
-                           JSON.stringify(Array.from(prev.entries()).sort());
-          // If no changes, update from server; otherwise keep local changes
-          return hasChanges ? prev : new Map(updatedAttendance);
-        });
         setLoading(false);
       },
       (error) => {
@@ -68,7 +59,6 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         // Fallback to one-time fetch
         getCompanyAttendance(company, currentWeekStart).then(attendance => {
           setAttendanceMap(attendance);
-          setLocalAttendanceMap(new Map(attendance));
         }).catch(err => {
           console.error('Error loading attendance:', err);
         }).finally(() => setLoading(false));
@@ -82,7 +72,6 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
     ]).then(([cadetList, attendance]) => {
       setCadets(cadetList);
       setAttendanceMap(attendance);
-      setLocalAttendanceMap(new Map(attendance));
       setLoading(false);
     }).catch(error => {
       console.error('Error loading data:', error);
@@ -118,54 +107,22 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
     }
   }
 
-  function handleStatusChange(cadetId: string, day: DayOfWeek, status: AttendanceStatus, type: AttendanceType) {
-    // Update local state immediately for real-time UI update
-    setLocalAttendanceMap(prev => {
-      const newMap = new Map(prev);
-      const existingRecord = newMap.get(cadetId) || {
-        cadetId,
-        ptMonday: null,
-        ptTuesday: null,
-        ptWednesday: null,
-        ptThursday: null,
-        ptFriday: null,
-        labThursday: null,
-        weekStartDate: currentWeekStart
-      };
-      
-      const updatedRecord: AttendanceRecord = {
-        ...existingRecord,
-        weekStartDate: currentWeekStart
-      };
-      
-      if (type === 'PT') {
-        if (day === 'monday') updatedRecord.ptMonday = status || null;
-        else if (day === 'tuesday') updatedRecord.ptTuesday = status || null;
-        else if (day === 'wednesday') updatedRecord.ptWednesday = status || null;
-        else if (day === 'thursday') updatedRecord.ptThursday = status || null;
-        else if (day === 'friday') updatedRecord.ptFriday = status || null;
-      } else if (type === 'Lab' && day === 'thursday') {
-        updatedRecord.labThursday = status || null;
-      }
-      
-      newMap.set(cadetId, updatedRecord);
-      return newMap;
-    });
-  }
-
-  function handleMarkAllForDay(day: DayOfWeek, type: AttendanceType, status: AttendanceStatus) {
-    // Mark all cadets in the company with the specified status for the specified day
-    setLocalAttendanceMap(prev => {
-      const newMap = new Map(prev);
-      cadets.forEach(cadet => {
-        const existingRecord = newMap.get(cadet.id) || {
-          cadetId: cadet.id,
+  async function handleStatusChange(cadetId: string, day: DayOfWeek, status: AttendanceStatus, type: AttendanceType) {
+    // Save immediately to database - real-time subscription will update UI
+    try {
+      await updateAttendance(cadetId, day, status, currentWeekStart, type);
+      // Update local state optimistically for immediate UI feedback
+      setAttendanceMap(prev => {
+        const newMap = new Map(prev);
+        const existingRecord = newMap.get(cadetId) || {
+          cadetId,
           ptMonday: null,
           ptTuesday: null,
           ptWednesday: null,
           ptThursday: null,
           ptFriday: null,
           labThursday: null,
+          tacticsTuesday: null,
           weekStartDate: currentWeekStart
         };
         
@@ -175,159 +132,64 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
         };
         
         if (type === 'PT') {
-          if (day === 'monday') updatedRecord.ptMonday = status;
-          else if (day === 'tuesday') updatedRecord.ptTuesday = status;
-          else if (day === 'wednesday') updatedRecord.ptWednesday = status;
-          else if (day === 'thursday') updatedRecord.ptThursday = status;
-          else if (day === 'friday') updatedRecord.ptFriday = status;
+          if (day === 'monday') updatedRecord.ptMonday = status || null;
+          else if (day === 'tuesday') updatedRecord.ptTuesday = status || null;
+          else if (day === 'wednesday') updatedRecord.ptWednesday = status || null;
+          else if (day === 'thursday') updatedRecord.ptThursday = status || null;
+          else if (day === 'friday') updatedRecord.ptFriday = status || null;
         } else if (type === 'Lab' && day === 'thursday') {
-          updatedRecord.labThursday = status;
+          updatedRecord.labThursday = status || null;
+        } else if (type === 'Tactics' && day === 'tuesday') {
+          updatedRecord.tacticsTuesday = status || null;
         }
         
-        newMap.set(cadet.id, updatedRecord);
+        newMap.set(cadetId, updatedRecord);
+        return newMap;
       });
-      return newMap;
-    });
-  }
-
-  async function handleMarkAllPresent(day: DayOfWeek, type: AttendanceType) {
-    handleMarkAllForDay(day, type, 'present');
-  }
-
-  async function handleMarkAllExcused(day: DayOfWeek, type: AttendanceType) {
-    handleMarkAllForDay(day, type, 'excused');
-  }
-
-  async function handleMarkAllUnexcused(day: DayOfWeek, type: AttendanceType) {
-    handleMarkAllForDay(day, type, 'unexcused');
-  }
-
-  async function handleClearAll(day: DayOfWeek, type: AttendanceType) {
-    handleMarkAllForDay(day, type, null);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      // Get all changes (compare localAttendanceMap with attendanceMap)
-      const changes: Array<{ cadetId: string; day: DayOfWeek; status: AttendanceStatus; type: AttendanceType }> = [];
-      
-      localAttendanceMap.forEach((localRecord, cadetId) => {
-        const serverRecord = attendanceMap.get(cadetId);
-        
-        // Check PT changes
-        if (localRecord.ptMonday !== (serverRecord?.ptMonday ?? null)) {
-          changes.push({ cadetId, day: 'monday', status: localRecord.ptMonday ?? null, type: 'PT' });
-        }
-        if (localRecord.ptTuesday !== (serverRecord?.ptTuesday ?? null)) {
-          changes.push({ cadetId, day: 'tuesday', status: localRecord.ptTuesday, type: 'PT' });
-        }
-        if (localRecord.ptWednesday !== (serverRecord?.ptWednesday ?? null)) {
-          changes.push({ cadetId, day: 'wednesday', status: localRecord.ptWednesday, type: 'PT' });
-        }
-        if (localRecord.ptThursday !== (serverRecord?.ptThursday ?? null)) {
-          changes.push({ cadetId, day: 'thursday', status: localRecord.ptThursday, type: 'PT' });
-        }
-        if (localRecord.ptFriday !== (serverRecord?.ptFriday ?? null)) {
-          changes.push({ cadetId, day: 'friday', status: localRecord.ptFriday ?? null, type: 'PT' });
-        }
-        
-        // Check Lab changes
-        if (localRecord.labThursday !== (serverRecord?.labThursday ?? null)) {
-          changes.push({ cadetId, day: 'thursday', status: localRecord.labThursday, type: 'Lab' });
-        }
-      });
-
-      // Also check for records that exist in server but not in local (shouldn't happen, but be safe)
-      attendanceMap.forEach((serverRecord, cadetId) => {
-        if (!localAttendanceMap.has(cadetId)) {
-          // This shouldn't happen, but handle it
-          if (serverRecord.ptMonday !== null && serverRecord.ptMonday !== undefined) {
-            changes.push({ cadetId, day: 'monday', status: null, type: 'PT' });
-          }
-          if (serverRecord.ptTuesday !== null) {
-            changes.push({ cadetId, day: 'tuesday', status: null, type: 'PT' });
-          }
-          if (serverRecord.ptWednesday !== null) {
-            changes.push({ cadetId, day: 'wednesday', status: null, type: 'PT' });
-          }
-          if (serverRecord.ptThursday !== null) {
-            changes.push({ cadetId, day: 'thursday', status: null, type: 'PT' });
-          }
-          if (serverRecord.ptFriday !== null && serverRecord.ptFriday !== undefined) {
-            changes.push({ cadetId, day: 'friday', status: null, type: 'PT' });
-          }
-          if (serverRecord.labThursday !== null) {
-            changes.push({ cadetId, day: 'thursday', status: null, type: 'Lab' });
-          }
-        }
-      });
-
-      // Group changes by cadet to update each cadet's record once
-      const changesByCadet = new Map<string, AttendanceRecord>();
-      
-      // Initialize with current local state for each cadet that has changes
-      changes.forEach(({ cadetId }) => {
-        if (!changesByCadet.has(cadetId)) {
-          const localRecord = localAttendanceMap.get(cadetId);
-          if (localRecord) {
-            changesByCadet.set(cadetId, { ...localRecord });
-          } else {
-            // Create new record if it doesn't exist locally
-            changesByCadet.set(cadetId, {
-              cadetId,
-              weekStartDate: currentWeekStart,
-              ptMonday: null,
-              ptTuesday: null,
-              ptWednesday: null,
-              ptThursday: null,
-              ptFriday: null,
-              labThursday: null
-            });
-          }
-        }
-      });
-      
-      // Save all changes to the database using batch update for better performance
-      // This prevents race conditions when updating multiple days for the same cadet
-      const recordsToUpdate = Array.from(changesByCadet.values());
-      
-      // Use batch update for better performance (especially with multiple users)
-      if (recordsToUpdate.length > 1) {
-        await batchUpdateAttendanceRecords(recordsToUpdate);
-      } else if (recordsToUpdate.length === 1) {
-        await updateAttendanceRecord(recordsToUpdate[0]);
-      }
-
-      // Update the server attendance map to match local
-      setAttendanceMap(new Map(localAttendanceMap));
       
       // Reload unexcused totals in case they changed
       await loadUnexcusedTotals();
-      
-      // Reload data to refresh company stats for Master List
-      if (company === 'Master') {
-        await loadData();
-      }
-      
-      // Show success feedback
-      if (company === 'Master') {
-        alert('Attendance saved successfully! Changes will be reflected in all company rosters.');
-      } else {
-        alert('Attendance saved successfully!');
-      }
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      alert(`Error saving attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Reload data to sync with server
-      await loadData();
-    } finally {
-      setSaving(false);
+      console.error('Error updating attendance:', error);
+      alert(`Error updating attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  // Calculate stats using localAttendanceMap for real-time updates
-  const records = Array.from(localAttendanceMap.values());
+  async function handleMarkAllForDay(day: DayOfWeek, type: AttendanceType, status: AttendanceStatus) {
+    // Mark all cadets in the company with the specified status for the specified day
+    // Save immediately to database for each cadet
+    try {
+      const updatePromises = cadets.map(cadet => 
+        updateAttendance(cadet.id, day, status, currentWeekStart, type)
+      );
+      await Promise.all(updatePromises);
+      
+      // Reload unexcused totals in case they changed
+      await loadUnexcusedTotals();
+    } catch (error) {
+      console.error('Error marking all for day:', error);
+      alert(`Error updating attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async function handleMarkAllPresent(day: DayOfWeek, type: AttendanceType) {
+    await handleMarkAllForDay(day, type, 'present');
+  }
+
+  async function handleMarkAllExcused(day: DayOfWeek, type: AttendanceType) {
+    await handleMarkAllForDay(day, type, 'excused');
+  }
+
+  async function handleMarkAllUnexcused(day: DayOfWeek, type: AttendanceType) {
+    await handleMarkAllForDay(day, type, 'unexcused');
+  }
+
+  async function handleClearAll(day: DayOfWeek, type: AttendanceType) {
+    await handleMarkAllForDay(day, type, null);
+  }
+
+  // Calculate stats using attendanceMap (now synced in real-time)
+  const records = Array.from(attendanceMap.values());
   const cadetsMap = new Map(cadets.map(c => [c.id, c]));
   const mondayStats = showMondayFriday ? calculateDayStats(records, 'monday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
   const tuesdayStats = attendanceType === 'PT' ? calculateDayStats(records, 'tuesday', attendanceType) : { present: 0, excused: 0, unexcused: 0 };
@@ -374,9 +236,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
     currentDayStats.assigned = cadets.length;
   }
   
-  // Check if there are unsaved changes
-  const hasUnsavedChanges = JSON.stringify(Array.from(attendanceMap.entries()).sort()) !== 
-                            JSON.stringify(Array.from(localAttendanceMap.entries()).sort());
+  // No longer tracking unsaved changes - everything saves immediately
 
 
   if (loading) {
@@ -550,7 +410,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
                   </div>
                   <div className="space-y-2 mb-4">
                     {groupedByLevel.get(level)!.map((cadet) => {
-                      const record = localAttendanceMap.get(cadet.id);
+                      const record = attendanceMap.get(cadet.id);
                       return (
                         <CadetRow
                           key={cadet.id}
@@ -571,7 +431,7 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
           ) : (
             // Regular companies: Simple list
             cadets.map((cadet) => {
-              const record = localAttendanceMap.get(cadet.id);
+              const record = attendanceMap.get(cadet.id);
               return (
                 <CadetRow
                   key={cadet.id}
@@ -594,22 +454,6 @@ export default function CompanyRoster({ company, onBack, onSelectCadet }: Compan
           </div>
         )}
 
-        {/* Save button */}
-        {cadets.length > 0 && (
-          <div className="mt-4 mb-4">
-            <button
-              onClick={handleSave}
-              disabled={!hasUnsavedChanges || saving}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-white touch-manipulation min-h-[44px] ${
-                hasUnsavedChanges && !saving
-                  ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
-                  : 'bg-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {saving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'All Changes Saved'}
-            </button>
-          </div>
-        )}
 
         {/* Today's Attendance */}
         {cadets.length > 0 && currentDayName && currentDayDate && (

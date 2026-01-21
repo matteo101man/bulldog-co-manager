@@ -47,11 +47,17 @@ export default function Attendance({ onBack, onSelectCompany, onTactics, onIssue
   }
 
   async function handleClearAttendance() {
-    const confirmed = window.confirm(
-      'Are you sure you want to clear all attendance data? This will reset all attendance records to blank (—). This action cannot be undone.'
+    // Require password confirmation
+    const password = window.prompt(
+      'Are you sure you want to clear all attendance data? This will reset all attendance records to blank (—). This action cannot be undone.\n\nPlease enter password to confirm:'
     );
 
-    if (!confirmed) return;
+    if (password === null) return; // User cancelled
+
+    if (password !== 'password') {
+      alert('Incorrect password. Operation cancelled.');
+      return;
+    }
 
     setClearing(true);
     try {
